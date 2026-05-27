@@ -121,7 +121,7 @@ export function getFrame(bundle: AtlasBundle, atlasName: string, frameKey: strin
  * `background-<class>` per playable class. All requests run in parallel.
  */
 export async function loadAtlasBundle(version: string, data: TreeData): Promise<AtlasBundle> {
-  const baseUrl = `/trees/${version}/assets`;
+  const baseUrl = `${import.meta.env.BASE_URL}trees/${version}/assets`;
 
   const classBackgroundNames = data.playableClassIndices
     .map((i) => data.classes[i])

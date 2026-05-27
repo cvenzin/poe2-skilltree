@@ -2,7 +2,7 @@ import type { RawTreeData, TreeData } from './types';
 import { normalizeTreeData } from './normalize';
 
 export async function loadTreeData(version: string): Promise<TreeData> {
-  const url = `/trees/${version}/data.json`;
+  const url = `${import.meta.env.BASE_URL}trees/${version}/data.json`;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${url}: ${r.status} ${r.statusText}`);
   const raw = (await r.json()) as unknown;
