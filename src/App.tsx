@@ -9,6 +9,7 @@ import type { TreeData } from './data/types';
 import TreeCanvas from './render/TreeCanvas';
 import Toolbar from './ui/Toolbar';
 import NodeTooltip from './ui/NodeTooltip';
+import Attribution from './ui/Attribution';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
 
 export default function App() {
@@ -142,6 +143,7 @@ export default function App() {
         />
         <Toolbar data={status.data} />
         <NodeTooltip />
+        <Attribution />
       </>
     );
   }
