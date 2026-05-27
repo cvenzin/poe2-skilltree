@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# PoE 2 Skill Tree Viewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based viewer and planner for the Path of Exile 2 passive skill tree.
+Lets you pick a class and ascendancy, search nodes, preview pathing, allocate
+points within a budget, undo/redo, and share builds via URL.
 
-Currently, two official plugins are available:
+Live: <https://cvenzin.github.io/poe2-skilltree/>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Class and ascendancy selection (filters to playable classes per export
+  version).
+- Search nodes by name or stats; Enter / Shift+Enter steps through matches.
+- Click an unallocated node to preview the cheapest path from your class
+  start; click again to allocate.
+- Click an allocated node to cascade-unallocate every node that depended on
+  it.
+- Passive and ascendancy budgets with editable caps.
+- Undo / redo and a one-click reset.
+- Shareable URL hash encodes class, ascendancy, allocations, and version.
+- Pan, wheel-zoom, and pinch-zoom on touch.
+- Mobile layout: collapsible toolbar, bottom-anchored tooltips, long-press
+  suppression so dwelling on a node to read its stats doesn't allocate.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech stack
 
-## Expanding the ESLint configuration
+React 19, TypeScript, Vite, [pixi.js] v8, [pixi-viewport], [zustand],
+[@floating-ui/react]. The viewer is a fully static SPA; GitHub Pages serves
+the build with no backend.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+[pixi.js]: https://pixijs.com/
+[pixi-viewport]: https://github.com/davidfig/pixi-viewport
+[zustand]: https://zustand-demo.pmnd.rs/
+[@floating-ui/react]: https://floating-ui.com/
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Development
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # vite dev server with HMR
+npm run build    # tsc -b && vite build, output to dist/
+npm run preview  # serve dist/ locally
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The build runs in CI via [.github/workflows/deploy.yml] on every push to
+`main` and deploys `dist/` to GitHub Pages.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+[.github/workflows/deploy.yml]: .github/workflows/deploy.yml
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Regenerating icons
+
+`public/favicon.svg` is the source of truth for the icon. To regenerate the
+rasterized PNG variants (`apple-touch-icon.png`, `icon-192.png`,
+`icon-512.png`):
+
+```bash
+node scripts/gen-icons.mjs
 ```
+
+## Tree data
+
+Tree data under `public/trees/<version>/` comes from GGG's official export:
+<https://github.com/grindinggear/poe2-skilltree-export>. Adding a new version
+is a matter of dropping a new export folder into `public/trees/` and
+appending the version string to [src/data/versions.ts].
+
+[src/data/versions.ts]: src/data/versions.ts
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+Path of Exile 2 is a trademark of Grinding Gear Games Ltd. This product
+isn't affiliated with or endorsed by Grinding Gear Games in any way.

@@ -33,7 +33,8 @@ export default function Attribution() {
           </div>
           <div style={popoverDisclaimerStyle}>
             Path of Exile 2 is a trademark of Grinding Gear Games Ltd.
-            This is a fan-made tool, not affiliated with or endorsed by GGG.
+            This product isn&apos;t affiliated with or endorsed by Grinding
+            Gear Games in any way.
           </div>
           <a
             href={REPO_URL}
