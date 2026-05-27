@@ -1,6 +1,10 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { stripStatsMarkup } from '../interaction/statsMarkup';
 import type { TreeNode } from '../data/types';
+
+const TOOLTIP_OFFSET = 16;
+const VIEWPORT_MARGIN = 8;
 
 /**
  * DOM-overlay tooltip anchored near the cursor at the hovered node's client
@@ -16,19 +20,47 @@ export default function NodeTooltip() {
   const data = useStore((s) =>
     s.status.kind === 'ready' ? s.status.data : null
   );
+  const ref = useRef<HTMLDivElement | null>(null);
+  // Tentative position; the layout effect below clamps it to the viewport
+  // once the tooltip's real size is known (varies per node — some are 1 line,
+  // some are 10+). Two-pass render is fine: tooltip re-renders on every
+  // hover change anyway.
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!hovered || !ref.current) {
+      setPosition(null);
+      return;
+    }
+    const rect = ref.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Prefer offset to the lower-right of the cursor, but flip/shift so the
+    // tooltip stays inside the viewport on small screens (mobile) and at edges.
+    let left = hovered.clientX + TOOLTIP_OFFSET;
+    let top = hovered.clientY + TOOLTIP_OFFSET;
+    if (left + rect.width > vw - VIEWPORT_MARGIN) {
+      left = Math.max(VIEWPORT_MARGIN, vw - rect.width - VIEWPORT_MARGIN);
+    }
+    if (top + rect.height > vh - VIEWPORT_MARGIN) {
+      top = Math.max(VIEWPORT_MARGIN, vh - rect.height - VIEWPORT_MARGIN);
+    }
+    setPosition({ left, top });
+  }, [hovered]);
 
   if (!hovered || !data) return null;
   const node = data.nodes[hovered.nodeKey];
   if (!node?.name) return null;
 
-  // Offset the tooltip past the cursor's hot spot so it doesn't immediately
-  // overlap the node icon and re-trigger pointerout flicker. The container
-  // is `pointer-events: none` so it never intercepts viewport drag/zoom.
-  const left = hovered.clientX + 16;
-  const top = hovered.clientY + 16;
+  // First render places the tooltip off-screen so it can be measured without
+  // a visible flash at the wrong position; the layout effect then commits
+  // the clamped coordinates synchronously before paint.
+  const style: React.CSSProperties = position
+    ? { ...containerStyle, left: position.left, top: position.top }
+    : { ...containerStyle, left: -9999, top: -9999, visibility: 'hidden' };
 
   return (
-    <div style={{ ...containerStyle, left, top }}>
+    <div ref={ref} style={style}>
       <NodeTooltipContents node={node} />
     </div>
   );
@@ -95,7 +127,7 @@ const containerStyle: React.CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
   fontSize: 13,
   lineHeight: 1.45,
-  maxWidth: 420,
+  maxWidth: 'min(420px, calc(100vw - 16px))',
   boxShadow: '0 8px 22px rgba(0, 0, 0, 0.6)',
   zIndex: 100,
 };

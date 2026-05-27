@@ -125,6 +125,9 @@ const containerStyle: React.CSSProperties = {
   position: 'absolute',
   top: 16,
   left: 16,
+  // Cap to viewport on narrow screens so the toolbar can't overflow off-screen.
+  maxWidth: 'calc(100vw - 32px)',
+  boxSizing: 'border-box',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
@@ -141,6 +144,7 @@ const containerStyle: React.CSSProperties = {
 
 const rowStyle: React.CSSProperties = {
   display: 'flex',
+  flexWrap: 'wrap',
   gap: 8,
   alignItems: 'flex-end',
 };

@@ -13,6 +13,19 @@ html, body, #root {
   background: #111;
   color: #ddd;
   overflow: hidden;
+  /* Block mobile pull-to-refresh and rubber-band scroll — overflow:hidden
+   * alone doesn't stop those on iOS/Android, leaving ghost scrollbars and
+   * stray document movement under the pixi canvas. */
+  overscroll-behavior: none;
+}
+
+body {
+  /* Dynamic viewport unit handles the collapsing mobile URL bar so children
+   * never exceed the visible area. Falls back to 100% on browsers without dvh. */
+  height: 100dvh;
+  /* Pixi-viewport handles its own pan/pinch via pointer events; this just
+   * tells the browser to skip its built-in touch scroll/zoom defaults. */
+  touch-action: none;
 }
 
 a { color: inherit; }
