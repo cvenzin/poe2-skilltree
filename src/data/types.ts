@@ -69,6 +69,12 @@ export interface TreeNode {
   isNotable?: boolean;
   isMastery?: boolean;
   isJewelSocket?: boolean;
+  /** Multiple-choice hub: a stat-less ascendancy notable whose graph
+   *  neighbours are mutually-exclusive options. The hub itself doesn't cost a
+   *  point; the chosen option does. 5 such hubs in 0.5.0 — Path Seeker,
+   *  Projectile Proximity Specialisation, Lucid Dreaming, Brew Concoction,
+   *  Implanted Gems. */
+  isMultipleChoice?: boolean;
   group: number;
   orbit: number;
   orbitIndex: number;

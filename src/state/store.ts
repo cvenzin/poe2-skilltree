@@ -146,6 +146,10 @@ export function countBudgets(
     // toward the budget. Defensive guard for stale state that has one in
     // `allocated` from before the click-handler stopped adding it.
     if (node.isAscendancyStart) continue;
+    // Multiple-choice hubs (e.g. "Projectile Proximity Specialisation") have
+    // no stats and exist only as routing nodes for the choice options. The
+    // chosen option carries the actual cost — the hub is free.
+    if (node.isMultipleChoice) continue;
     if (!node.ascendancyId) {
       passive++;
     } else if (node.ascendancyId === ascendancyId) {

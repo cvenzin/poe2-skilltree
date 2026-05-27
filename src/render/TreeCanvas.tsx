@@ -14,7 +14,18 @@ import { spritesForNode, type NodeState } from './frameForNode';
 import { drawMasteries, type MasteryRedraw } from './drawMasteries';
 import { useStore } from '../state/store';
 import { startNodeKeyForClass, pruneConstraintLocked, computeConstraintHiddenKeys, isUnlockConstraintSatisfied } from '../data/normalize';
-import { bfsShortestPath, buildBlockedKeys, cascadeUnallocate, computeEntwinedAllocatableKeys, isEntwinedRealitiesActive, MEDIUM_RADIUS } from '../interaction/pathing';
+import {
+  bfsShortestPath,
+  buildBlockedKeys,
+  cascadeUnallocate,
+  computeEntwinedAllocatableKeys,
+  isEntwinedRealitiesActive,
+  MEDIUM_RADIUS,
+  validatePathThroughMcHubs,
+  isLeafMcOption,
+  hubOfLeafOption,
+  leafOptionsOfHub,
+} from '../interaction/pathing';
 
 interface TreeCanvasProps {
   data: TreeData;
@@ -1605,8 +1616,11 @@ function attachNodeInteraction(
   // Ascendancy start nodes are not allocatable in-game — they're implicit
   // when the ascendancy is selected, like the class start node for the
   // main tree. Default cursor to hint that clicking does nothing.
+  // Multiple-choice hubs (e.g. "Projectile Proximity Specialisation") are
+  // routing nodes — the player picks an option, not the hub itself.
   const isAscStart = data.nodes[nodeKey]?.isAscendancyStart === true;
-  wrap.cursor = isAscStart ? 'default' : 'pointer';
+  const isMcHub = data.nodes[nodeKey]?.isMultipleChoice === true;
+  wrap.cursor = isAscStart || isMcHub ? 'default' : 'pointer';
 
   const onHover = (e: import('pixi.js').FederatedPointerEvent) => {
     const state = useStore.getState();
@@ -1615,9 +1629,9 @@ function attachNodeInteraction(
       clientX: e.client.x,
       clientY: e.client.y,
     });
-    // No preview for: ascendancy start (unallocatable), already-allocated
-    // (preview-as-cascade is later polish per §9.1).
-    if (isAscStart || state.allocated.has(nodeKey)) {
+    // No preview for: ascendancy start, multiple-choice hub (both
+    // unallocatable), already-allocated (preview-as-cascade is later polish).
+    if (isAscStart || isMcHub || state.allocated.has(nodeKey)) {
       state.setPreviewPath(null);
       return;
     }
@@ -1633,6 +1647,14 @@ function attachNodeInteraction(
       return;
     }
     const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);
+    // MC-hub rule: a path that traverses an MC hub must commit to one of its
+    // leaves (either pre-allocated or the click target itself). Reject the
+    // preview if the path tries to skim past the hub without a choice — the
+    // click handler will refuse identically, so the preview should match.
+    if (path && !validatePathThroughMcHubs(data, path, state.allocated)) {
+      state.setPreviewPath(null);
+      return;
+    }
     state.setPreviewPath(path);
   };
 
@@ -1652,6 +1674,7 @@ function attachNodeInteraction(
 
   wrap.on('pointertap', () => {
     if (isAscStart) return; // ascendancy start is implicit, not allocatable
+    if (isMcHub) return;    // multiple-choice hub — players click an option, not the hub
     // 300ms matches the threshold most mobile UIs treat as "quick tap"
     // (Android's onClick fires up to ~500ms, iOS double-tap window is 300ms).
     // Anything longer reads as a deliberate hold for inspection, not a commit.
@@ -1698,6 +1721,10 @@ function attachNodeInteraction(
     }
     const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);
     if (!path || path.length === 0) return;
+    // MC-hub rule (b): traversing the hub requires a leaf to be chosen.
+    // Refuse the click if the path passes through a hub without one — the
+    // user must allocate a leaf first.
+    if (!validatePathThroughMcHubs(data, path, state.allocated)) return;
     const next = new Set(state.allocated);
     // Skip the ascendancy start if the BFS routed the path through it —
     // it's implicit, never stored in `allocated`, never counted toward the
@@ -1706,6 +1733,16 @@ function attachNodeInteraction(
     for (const key of path) {
       if (data.nodes[key]?.isAscendancyStart) continue;
       next.add(key);
+      // MC-hub rule (c): only one leaf per hub. Adding a leaf evicts any
+      // previously-allocated leaf sibling of the same hub.
+      if (isLeafMcOption(data, key)) {
+        const hubKey = hubOfLeafOption(data, key);
+        if (hubKey) {
+          for (const sibling of leafOptionsOfHub(data, hubKey)) {
+            if (sibling !== key && state.allocated.has(sibling)) next.delete(sibling);
+          }
+        }
+      }
     }
     state.tryAllocate(next, data);
   });
