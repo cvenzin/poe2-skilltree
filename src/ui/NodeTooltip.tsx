@@ -110,8 +110,11 @@ function NodeTooltipContents({ node }: Readonly<{ node: TreeNode }>) {
 function StatBody({ text }: Readonly<{ text: string }>) {
   const lines = text.split('\n').map((line) => {
     const m = /^•\s*(.*)$/.exec(line);
+    // `noUncheckedIndexedAccess` widens m[1] to `string | undefined` even
+    // though group 1 (`(.*)`) always captures. Default to the raw line so
+    // TS doesn't have to be convinced.
     return m
-      ? ({ kind: 'bullet', text: m[1] } as const)
+      ? ({ kind: 'bullet', text: m[1] ?? line } as const)
       : ({ kind: 'text', text: line } as const);
   });
   return (

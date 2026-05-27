@@ -39,7 +39,9 @@ export function tokenizeStatLine(text: string): StatToken[] {
   for (const m of plain.matchAll(UNDERLINE_MARKUP)) {
     const start = m.index ?? 0;
     if (start > cursor) tokens.push({ kind: 'text', text: plain.slice(cursor, start) });
-    tokens.push({ kind: 'underline', text: m[1] });
+    // The regex requires group 1 to match, so m[1] is always a string at runtime;
+    // `noUncheckedIndexedAccess` widens it to `| undefined`, hence the fallback.
+    tokens.push({ kind: 'underline', text: m[1] ?? '' });
     cursor = start + m[0].length;
   }
   if (cursor < plain.length) tokens.push({ kind: 'text', text: plain.slice(cursor) });
