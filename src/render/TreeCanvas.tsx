@@ -446,12 +446,17 @@ function applyHoverScale(
   return wrap;
 }
 
-/** Approximate jewel-radius in world units. PoE 1 had Small/Medium/Large
- *  (~800/1200/1500); 0.5.0 doesn't tag sockets with their type, so a single
- *  "medium-ish" default works for the v1 preview. Empirically matches the
- *  distances observed in nodes whose `keystonesInRadius` is populated. */
-const JEWEL_RADIUS = 1200;
-const JEWEL_RING_COLOR = 0xa0e0ff;
+/** Jewel radii in world units. The 0.5.0 export doesn't ship per-socket radius
+ *  metadata, so we draw all three (Small / Medium / Large) — same values PoE 1
+ *  used and the magnitudes that match the distances in `keystonesInRadius`.
+ *  Each tier gets its own colour so the player can read which radius covers
+ *  which nearby nodes. */
+const JEWEL_RADIUS_SMALL = 800;
+const JEWEL_RADIUS_MEDIUM = 1200;
+const JEWEL_RADIUS_LARGE = 1500;
+const JEWEL_RING_SMALL_COLOR = 0x80ffc0;
+const JEWEL_RING_MEDIUM_COLOR = 0xa0e0ff;
+const JEWEL_RING_LARGE_COLOR = 0xff90b0;
 const KEYSTONE_RING_COLOR = 0xffd66a;
 
 /** Bright violet for the constraint-gate / unlocked-node highlight. Chosen to
@@ -460,6 +465,19 @@ const KEYSTONE_RING_COLOR = 0xffd66a;
 const UNLOCK_RING_COLOR = 0xc060ff;
 const UNLOCK_RING_WIDTH = 5;
 const UNLOCK_RING_ALPHA = 0.95;
+
+function addRadiusRing(
+  layer: Container,
+  centre: { x: number; y: number },
+  radius: number,
+  color: number,
+): void {
+  const ring = new Graphics()
+    .circle(centre.x, centre.y, radius)
+    .stroke({ color, width: 4, alpha: 0.6 });
+  ring.eventMode = 'none';
+  layer.addChild(ring);
+}
 
 /**
  * Draw the radius preview around a hovered jewel socket. When the socket has
@@ -504,11 +522,11 @@ function applyJewelOverlay(
 
   const pos = worldContainer.toLocal(wrap.getGlobalPosition());
 
-  const ring = new Graphics()
-    .circle(pos.x, pos.y, JEWEL_RADIUS)
-    .stroke({ color: JEWEL_RING_COLOR, width: 4, alpha: 0.6 });
-  ring.eventMode = 'none';
-  layer.addChild(ring);
+  // Draw Large first so the inner rings paint on top — useful when one
+  // tier's stroke happens to overlap a notable/keystone the player is reading.
+  addRadiusRing(layer, pos, JEWEL_RADIUS_LARGE, JEWEL_RING_LARGE_COLOR);
+  addRadiusRing(layer, pos, JEWEL_RADIUS_MEDIUM, JEWEL_RING_MEDIUM_COLOR);
+  addRadiusRing(layer, pos, JEWEL_RADIUS_SMALL, JEWEL_RING_SMALL_COLOR);
 
   if (!node.keystonesInRadius) return;
   for (const skillId of node.keystonesInRadius) {
