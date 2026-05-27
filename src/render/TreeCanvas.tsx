@@ -14,7 +14,7 @@ import { spritesForNode, type NodeState } from './frameForNode';
 import { drawMasteries, type MasteryRedraw } from './drawMasteries';
 import { useStore } from '../state/store';
 import { startNodeKeyForClass, pruneConstraintLocked, computeConstraintHiddenKeys, isUnlockConstraintSatisfied } from '../data/normalize';
-import { bfsShortestPath, buildBlockedKeys, cascadeUnallocate } from '../interaction/pathing';
+import { bfsShortestPath, buildBlockedKeys, cascadeUnallocate, computeEntwinedAllocatableKeys, isEntwinedRealitiesActive, MEDIUM_RADIUS } from '../interaction/pathing';
 
 interface TreeCanvasProps {
   data: TreeData;
@@ -179,6 +179,16 @@ interface PathingContext {
    *  uses this to toggle wrap.visible and filter edges; pathing already has
    *  these blocked via blockedKeys. */
   hiddenKeys: ReadonlySet<string>;
+  /** Main-tree non-keystone nodes that "Entwined Realities" lets the player
+   *  click without a connecting path. Empty unless the notable is allocated on
+   *  Druid Oracle and at least one keystone is allocated. Recomputed in
+   *  {@link refreshConstraintState} so click/hover handlers see the current
+   *  allowed set without rescanning the tree on every event. */
+  entwinedKeys: ReadonlySet<string>;
+  /** True when "Entwined Realities" (Druid Oracle) is currently allocated.
+   *  Drives keystone-hover behaviour (show the medium-radius ring) even when
+   *  no keystones are yet allocated and `entwinedKeys` is therefore empty. */
+  entwinedActive: boolean;
 }
 
 interface MountContext {
@@ -314,12 +324,15 @@ function refreshConstraintState(
 ): void {
   if (!ctx.pathing) return;
   const { classStartKey, ascendancyId, frontierKeys } = ctx.pathing;
+  const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, allocated);
   ctx.pathing = {
     classStartKey,
     ascendancyId,
     frontierKeys,
     blockedKeys: buildBlockedKeys(data, classStartKey, ascendancyId, allocated),
-    hiddenKeys: computeConstraintHiddenKeys(data, ascendancyId, allocated),
+    hiddenKeys,
+    entwinedKeys: computeEntwinedAllocatableKeys(data, allocated, ascendancyId, hiddenKeys),
+    entwinedActive: isEntwinedRealitiesActive(data, allocated, ascendancyId),
   };
 }
 
@@ -463,14 +476,31 @@ function applyJewelOverlay(
   wraps: ReadonlyMap<string, Container>,
   layer: Container,
   worldContainer: Container,
+  pathing: PathingContext | null,
 ): void {
   for (const child of [...layer.children]) child.destroy({ children: true });
   layer.removeChildren();
   if (!hovered) return;
   const node = data.nodes[hovered.nodeKey];
-  if (!node?.isJewelSocket) return;
+  if (!node) return;
   const wrap = wraps.get(hovered.nodeKey);
   if (!wrap) return;
+
+  // Keystone hover, Entwined Realities allocated → visualise the Medium Radius
+  // that defines which non-keystone passives become free-allocatable. Drawn in
+  // the same violet as the unlock-highlight rings so it reads as the same
+  // mechanic. Works for any keystone (allocated or not) for build planning.
+  if (node.isKeystone && pathing?.entwinedActive) {
+    const pos = worldContainer.toLocal(wrap.getGlobalPosition());
+    const ring = new Graphics()
+      .circle(pos.x, pos.y, MEDIUM_RADIUS)
+      .stroke({ color: UNLOCK_RING_COLOR, width: 4, alpha: 0.55 });
+    ring.eventMode = 'none';
+    layer.addChild(ring);
+    return;
+  }
+
+  if (!node.isJewelSocket) return;
 
   const pos = worldContainer.toLocal(wrap.getGlobalPosition());
 
@@ -793,7 +823,7 @@ async function mount(
   );
 
   // Initial jewel overlay (nothing hovered yet — clears the layer).
-  applyJewelOverlay(useStore.getState().hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer);
+  applyJewelOverlay(useStore.getState().hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
 
   ctx.unsubscribeStore = useStore.subscribe((s, prev) => {
     if (s.allocated !== prev.allocated || s.previewPath !== prev.previewPath) {
@@ -802,8 +832,11 @@ async function mount(
     if (s.searchMatches !== prev.searchMatches || s.searchCursor !== prev.searchCursor) {
       applySearchHighlight(s.searchMatches, s.searchCursor, ctx.nodeWraps, searchMatchLayer, worldContainer);
     }
-    if (s.hovered !== prev.hovered) {
-      applyJewelOverlay(s.hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer);
+    // Redraw the radius overlay when either the hovered node OR the Entwined-
+    // active flag flips. The pathing context is already refreshed by applyAll
+    // above, so `ctx.pathing.entwinedActive` is current.
+    if (s.hovered !== prev.hovered || s.allocated !== prev.allocated) {
+      applyJewelOverlay(s.hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
     }
     if (s.hovered?.nodeKey !== prev.hovered?.nodeKey) {
       ctx.hoverScaledWrap = applyHoverScale(ctx.nodeWraps, ctx.hoverScaledWrap, s.hovered?.nodeKey ?? null);
@@ -891,10 +924,12 @@ function swapContext(
   const allocated = useStore.getState().allocated;
   const blockedKeys = buildBlockedKeys(data, classStartKey, ascendancyId, allocated);
   const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, allocated);
+  const entwinedKeys = computeEntwinedAllocatableKeys(data, allocated, ascendancyId, hiddenKeys);
+  const entwinedActive = isEntwinedRealitiesActive(data, allocated, ascendancyId);
   const frontierKeys = new Set<string>([classStartKey]);
   const ascStartKey = findAscendancyStartKey(data, ascendancyId);
   if (ascStartKey) frontierKeys.add(ascStartKey);
-  ctx.pathing = { classStartKey, ascendancyId, blockedKeys, frontierKeys, hiddenKeys };
+  ctx.pathing = { classStartKey, ascendancyId, blockedKeys, frontierKeys, hiddenKeys, entwinedKeys, entwinedActive };
 
   if (ctx.backdropLayer) drawCentralBackdrop(ctx.backdropLayer, atlases, data, className, ascendancyId);
   if (ctx.mainCircleLayer) drawMainCircle(ctx.mainCircleLayer, atlases, data, className);
@@ -906,7 +941,7 @@ function swapContext(
   ctx.applyAll?.(state.allocated, state.previewPath);
   // Clear any stale hover/search remnants tied to the old ascendancy's nodes.
   if (ctx.jewelOverlay && ctx.worldContainer) {
-    applyJewelOverlay(state.hovered, data, ctx.nodeWraps, ctx.jewelOverlay, ctx.worldContainer);
+    applyJewelOverlay(state.hovered, data, ctx.nodeWraps, ctx.jewelOverlay, ctx.worldContainer, ctx.pathing);
   }
   if (ctx.searchMatchLayer && ctx.worldContainer) {
     applySearchHighlight(state.searchMatches, state.searchCursor, ctx.nodeWraps, ctx.searchMatchLayer, ctx.worldContainer);
@@ -1570,6 +1605,15 @@ function attachNodeInteraction(
     }
     const pathing = ctx.pathing;
     if (!pathing) return;
+    // Entwined Realities short-circuits the connecting-path cost: any
+    // Entwined-eligible target previews as a single-node addition, regardless
+    // of whether BFS could route through the rest of the tree. The fallback
+    // is what makes the notable worth taking — otherwise the player still
+    // pays for the chain.
+    if (pathing.entwinedKeys.has(nodeKey)) {
+      state.setPreviewPath([nodeKey]);
+      return;
+    }
     const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);
     state.setPreviewPath(path);
   };
@@ -1608,13 +1652,30 @@ function attachNodeInteraction(
       return;
     }
     if (state.allocated.has(nodeKey)) {
-      const cascaded = cascadeUnallocate(data, state.allocated, pathing.frontierKeys, nodeKey);
+      const cascaded = cascadeUnallocate(
+        data,
+        state.allocated,
+        pathing.frontierKeys,
+        nodeKey,
+        pathing.ascendancyId,
+        pathing.hiddenKeys,
+      );
       // If the cascade removes the gate of constraint-locked nodes (e.g. Druid
       // Oracle's "The Unseen Path"), those Forbidden Path nodes aren't graph-
       // reachable from the class start, so cascadeUnallocate won't catch them.
       // Prune by constraint so they drop in the same commit.
       const next = pruneConstraintLocked(cascaded, ctx.pathing?.ascendancyId ?? null, data);
       state.commitAllocation(next);
+      return;
+    }
+    // Entwined Realities: any eligible target allocates as a single node,
+    // bypassing BFS entirely. Otherwise BFS would still find a long route
+    // through the tree and charge the player for the connecting chain,
+    // defeating the whole point of the notable.
+    if (pathing.entwinedKeys.has(nodeKey)) {
+      const direct = new Set(state.allocated);
+      direct.add(nodeKey);
+      state.tryAllocate(direct, data);
       return;
     }
     const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);

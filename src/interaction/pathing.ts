@@ -168,6 +168,82 @@ export function buildBlockedKeys(
   return blocked;
 }
 
+/** Druid Oracle's "Entwined Realities" ascendancy notable (skill 32905):
+ *  "Non-Keystone Passive Skills in Medium Radius of allocated Keystone Passive
+ *  Skills can be allocated without being connected to your tree."
+ *
+ *  The export doesn't ship a numeric Medium Radius, so we use 1200 world units
+ *  — the same approximation the jewel-socket overlay uses for PoE 1's medium
+ *  jewels. Ascendancies don't have keystones, so only main-tree keystones gate
+ *  the effect. */
+const ENTWINED_REALITIES_SKILL_ID = 32905;
+export const MEDIUM_RADIUS = 1200;
+const MEDIUM_RADIUS_SQ = MEDIUM_RADIUS * MEDIUM_RADIUS;
+
+export function isEntwinedRealitiesActive(
+  data: TreeData,
+  allocated: ReadonlySet<string>,
+  ascendancyId: string | null,
+): boolean {
+  if (ascendancyId !== 'Druid1') return false;
+  const key = data.nodeBySkillId.get(ENTWINED_REALITIES_SKILL_ID);
+  return key !== undefined && allocated.has(key);
+}
+
+/** Set of main-tree non-keystone passive nodes that "Entwined Realities" lets
+ *  the player allocate without a connecting path. Empty when the ascendancy
+ *  isn't Druid Oracle, the notable isn't allocated, or no keystone is taken.
+ *
+ *  Excludes ascendancy nodes, masteries, class starts, and constraint-hidden
+ *  nodes (e.g. Forbidden Path nodes when "The Unseen Path" isn't allocated). */
+export function computeEntwinedAllocatableKeys(
+  data: TreeData,
+  allocated: ReadonlySet<string>,
+  ascendancyId: string | null,
+  hiddenKeys: ReadonlySet<string>,
+): Set<string> {
+  if (!isEntwinedRealitiesActive(data, allocated, ascendancyId)) return new Set();
+  const keystonePoints: { x: number; y: number }[] = [];
+  for (const key of allocated) {
+    const n = data.nodes[key];
+    if (!n?.isKeystone) continue;
+    if (n.x === undefined || n.y === undefined) continue;
+    keystonePoints.push({ x: n.x, y: n.y });
+  }
+  if (keystonePoints.length === 0) return new Set();
+
+  const out = new Set<string>();
+  for (const [key, n] of Object.entries(data.nodes)) {
+    if (!isEntwinedEligible(key, n, hiddenKeys)) continue;
+    if (isWithinAnyRadius(n.x!, n.y!, keystonePoints)) out.add(key);
+  }
+  return out;
+}
+
+function isEntwinedEligible(
+  key: string,
+  n: TreeNode,
+  hiddenKeys: ReadonlySet<string>,
+): boolean {
+  if (key === ROOT_KEY) return false;
+  if (n.ascendancyId) return false;
+  if (n.isKeystone) return false;
+  if (n.isMastery) return false;
+  if (n.classStartIndex && n.classStartIndex.length > 0) return false;
+  if (n.x === undefined || n.y === undefined) return false;
+  if (hiddenKeys.has(key)) return false;
+  return true;
+}
+
+function isWithinAnyRadius(x: number, y: number, points: readonly { x: number; y: number }[]): boolean {
+  for (const p of points) {
+    const dx = x - p.x;
+    const dy = y - p.y;
+    if (dx * dx + dy * dy <= MEDIUM_RADIUS_SQ) return true;
+  }
+  return false;
+}
+
 /**
  * Compute the new `allocated` set after a node is removed (clicked while
  * already allocated). Cascades — any allocated node that no longer has a
@@ -189,16 +265,50 @@ export function cascadeUnallocate(
   data: TreeData,
   allocated: ReadonlySet<string>,
   frontierKeys: ReadonlySet<string>,
-  removed: string
+  removed: string,
+  ascendancyId: string | null = null,
+  hiddenKeys: ReadonlySet<string> = EMPTY_SET,
 ): Set<string> {
   if (!allocated.has(removed)) return new Set(allocated);
 
   const remaining = new Set(allocated);
   remaining.delete(removed);
 
-  const reachable = new Set<string>();
-  const queue: string[] = [...frontierKeys];
+  const seeds = collectCascadeSeeds(data, remaining, frontierKeys, ascendancyId, hiddenKeys);
+  const reachable = walkAllocated(data, remaining, seeds);
 
+  // Drop the frontier roots themselves — they're implicit, not part of `allocated`.
+  for (const key of frontierKeys) reachable.delete(key);
+  return reachable;
+}
+
+/** Seed set for cascade BFS: class/ascendancy starts + Entwined Realities
+ *  anchors. Each anchor is an allocated node within Medium Radius of an
+ *  allocated keystone (when the notable is itself allocated on Druid Oracle);
+ *  treating it as a reachability root keeps deliberately-disconnected nodes
+ *  from being dropped when neighbours change. */
+function collectCascadeSeeds(
+  data: TreeData,
+  remaining: ReadonlySet<string>,
+  frontierKeys: ReadonlySet<string>,
+  ascendancyId: string | null,
+  hiddenKeys: ReadonlySet<string>,
+): string[] {
+  const seeds: string[] = [...frontierKeys];
+  const entwined = computeEntwinedAllocatableKeys(data, remaining, ascendancyId, hiddenKeys);
+  for (const key of remaining) {
+    if (entwined.has(key)) seeds.push(key);
+  }
+  return seeds;
+}
+
+function walkAllocated(
+  data: TreeData,
+  remaining: ReadonlySet<string>,
+  seeds: readonly string[],
+): Set<string> {
+  const reachable = new Set<string>();
+  const queue: string[] = [...seeds];
   while (queue.length > 0) {
     const current = queue.shift()!;
     if (reachable.has(current)) continue;
@@ -211,11 +321,10 @@ export function cascadeUnallocate(
       }
     }
   }
-
-  // Drop the frontier roots themselves — they're implicit, not part of `allocated`.
-  for (const key of frontierKeys) reachable.delete(key);
   return reachable;
 }
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
 
 function neighbours(node: TreeNode): readonly string[] {
   // PoE edge lists are direction-tagged but gameplay is undirected, so we
