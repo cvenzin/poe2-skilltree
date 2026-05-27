@@ -1,4 +1,4 @@
-import type { RawTreeData, TreeData, Edge } from './types';
+import type { RawTreeData, TreeData, Edge, UnlockConstraint } from './types';
 
 // data.json arrives with mixed-type edge endpoints ("root" string, otherwise
 // numeric). The renderer + pathing code only deals in node *keys*, which are
@@ -37,6 +37,15 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
     if (node.ascendancyId) ascIdsWithNodes.add(node.ascendancyId);
   }
 
+  // Nodes whose visibility/allocation gates on `unlockConstraint`. In 0.5.0 the
+  // only emitter is Druid Oracle's "The Unseen Path" (skill 5571), which gates
+  // 200 main-tree "Forbidden Path" nodes. Iterated by pathing/render whenever
+  // allocation changes — keep the set hot so we don't re-scan ~5000 nodes.
+  const constrainedNodeKeys = new Set<string>();
+  for (const [key, node] of Object.entries(raw.nodes)) {
+    if (node.unlockConstraint) constrainedNodeKeys.add(key);
+  }
+
   // Playable = classes with at least one *valid* ascendancy:
   //   - PoE 1 placeholder classes (Marauder, Duelist, Shadow, Templar) have
   //     empty `ascendancies` and are filtered out at the class level.
@@ -66,7 +75,92 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
     startNodeByClassIndex,
     playableClassIndices,
     playableAscendancyIds,
+    constrainedNodeKeys,
   };
+}
+
+/** Evaluate an `unlockConstraint` against the current ascendancy + allocation.
+ *  Satisfied = (constraint's ascendancy, if set, matches the selected one) AND
+ *  every skill in `constraint.nodes` is currently allocated.
+ *
+ *  Resolves skill ids → node keys via `data.nodeBySkillId`; an id with no node
+ *  fails closed (constraint unsatisfiable). */
+export function isUnlockConstraintSatisfied(
+  constraint: UnlockConstraint,
+  ascendancyId: string | null,
+  allocated: ReadonlySet<string>,
+  data: Pick<TreeData, 'nodeBySkillId'>,
+): boolean {
+  if (constraint.ascendancy && constraint.ascendancy !== ascendancyId) return false;
+  for (const skillId of constraint.nodes) {
+    const key = data.nodeBySkillId.get(skillId);
+    if (!key) return false;
+    if (!allocated.has(key)) return false;
+  }
+  return true;
+}
+
+/** Return the set of constraint-locked node keys that are currently hidden
+ *  (constraint unsatisfied). Empty when no constrained nodes exist or all
+ *  constraints are met. */
+export function computeConstraintHiddenKeys(
+  data: Pick<TreeData, 'nodes' | 'nodeBySkillId' | 'constrainedNodeKeys'>,
+  ascendancyId: string | null,
+  allocated: ReadonlySet<string>,
+): Set<string> {
+  const hidden = new Set<string>();
+  for (const key of data.constrainedNodeKeys) {
+    const constraint = data.nodes[key]?.unlockConstraint;
+    if (!constraint) continue;
+    if (!isUnlockConstraintSatisfied(constraint, ascendancyId, allocated, data)) {
+      hidden.add(key);
+    }
+  }
+  return hidden;
+}
+
+/**
+ * Drop nodes from `allocated` whose `unlockConstraint` is no longer satisfied
+ * by the current `(ascendancyId, allocated)` state. Runs to a fixed point so a
+ * cascade (e.g. unallocating a gate that itself enables a deeper gate) settles
+ * in one call.
+ *
+ * In 0.5.0 every constraint references Druid Oracle's "The Unseen Path"
+ * (skill 5571), so this almost always converges in one pass — but the loop
+ * costs nothing and shields against future chained constraints.
+ *
+ * Returns the *same* set instance when nothing was pruned, so callers can
+ * cheaply compare identity to decide whether to push undo history.
+ */
+export function pruneConstraintLocked(
+  allocated: ReadonlySet<string>,
+  ascendancyId: string | null,
+  data: Pick<TreeData, 'nodes' | 'nodeBySkillId' | 'constrainedNodeKeys'>,
+): ReadonlySet<string> {
+  if (data.constrainedNodeKeys.size === 0) return allocated;
+  let current = allocated;
+  let next = prunePass(current, ascendancyId, data);
+  while (next !== current) {
+    current = next;
+    next = prunePass(current, ascendancyId, data);
+  }
+  return current;
+}
+
+function prunePass(
+  allocated: ReadonlySet<string>,
+  ascendancyId: string | null,
+  data: Pick<TreeData, 'nodes' | 'nodeBySkillId'>,
+): ReadonlySet<string> {
+  let pruned: Set<string> | null = null;
+  for (const key of allocated) {
+    const constraint = data.nodes[key]?.unlockConstraint;
+    if (!constraint) continue;
+    if (isUnlockConstraintSatisfied(constraint, ascendancyId, allocated, data)) continue;
+    pruned ??= new Set(allocated);
+    pruned.delete(key);
+  }
+  return pruned ?? allocated;
 }
 
 /**

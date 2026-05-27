@@ -1,4 +1,5 @@
 import type { TreeData, TreeNode } from '../data/types';
+import { computeConstraintHiddenKeys } from '../data/normalize';
 
 /**
  * Nodes the BFS must never traverse. `"root"` is the synthetic central node
@@ -126,6 +127,10 @@ function expandFrom(ctx: BfsContext, current: string): boolean {
  *      `Witch → Energy Shield → Path of Sorceress → Path Seeker → Path of
  *      Warrior → Melee Damage`, giving Witch a 5-hop reach into Warrior's
  *      subtree. Blocking these nodes from traversal closes that leak.
+ *   4. Nodes whose `unlockConstraint` isn't currently satisfied. In 0.5.0 this
+ *      is the 200 main-tree nodes gated behind Druid Oracle's "The Unseen
+ *      Path" (skill 5571). Without 5571 allocated, they're invisible in-game
+ *      and BFS must not route through (or to) them.
  *
  *  When an ascendancy is selected, that ascendancy's nodes are NOT blocked —
  *  but the main-tree BFS still won't normally reach them unless the data
@@ -137,6 +142,7 @@ export function buildBlockedKeys(
   data: TreeData,
   selectedClassStartKey: string,
   selectedAscendancyId: string | null,
+  allocated: ReadonlySet<string>,
 ): Set<string> {
   const blocked = new Set<string>([ROOT_KEY]);
   for (const startKey of data.startNodeByClassIndex.values()) {
@@ -155,6 +161,9 @@ export function buildBlockedKeys(
     // its own non-mastery chain. Verified safe — no normal node is reachable
     // only through a mastery in the 0.5.0 main tree.
     if (node.isMastery) blocked.add(key);
+  }
+  for (const key of computeConstraintHiddenKeys(data, selectedAscendancyId, allocated)) {
+    blocked.add(key);
   }
   return blocked;
 }

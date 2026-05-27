@@ -1,5 +1,6 @@
 import type { TreeData } from '../data/types';
 import type { BuildSnapshot } from './store';
+import { pruneConstraintLocked } from '../data/normalize';
 
 /**
  * URL share-hash format (INSTRUCTIONS.md §10.4):
@@ -64,12 +65,16 @@ export function reconcileShareHash(
   const ascendancyId =
     asc && data.playableAscendancyIds.has(asc.id) ? asc.id : null;
 
-  const allocated = raw.allocatedKeys.filter((k) => data.nodes[k] !== undefined);
+  const allocatedKeys = raw.allocatedKeys.filter((k) => data.nodes[k] !== undefined);
+  // Drop constraint-locked nodes that the imported `(ascendancyId, allocated)`
+  // pair doesn't satisfy — a hash crafted with mismatched gates would otherwise
+  // leak hidden nodes into the build.
+  const pruned = pruneConstraintLocked(new Set(allocatedKeys), ascendancyId, data);
 
   return {
     className: cls.name,
     ascendancyId,
-    allocated,
+    allocated: [...pruned],
   };
 }
 

@@ -1,5 +1,6 @@
 import type { TreeData } from '../data/types';
 import { stripStatsMarkup } from './statsMarkup';
+import { computeConstraintHiddenKeys } from '../data/normalize';
 
 /**
  * Search index for a single loaded tree (INSTRUCTIONS.md §10.1).
@@ -56,4 +57,20 @@ export function findMatches(query: string, index: readonly SearchEntry[]): strin
     if (entry.haystack.includes(q)) matches.push(entry.key);
   }
   return matches;
+}
+
+/** Drop matches whose `unlockConstraint` isn't currently satisfied — those
+ *  nodes are invisible in the canvas, so highlighting them with cyan rings
+ *  would point at empty space. Allocating "The Unseen Path" makes the gated
+ *  matches reappear on the next keystroke / allocation change. */
+export function filterConstraintHidden(
+  matches: readonly string[],
+  data: TreeData,
+  ascendancyId: string | null,
+  allocated: ReadonlySet<string>,
+): string[] {
+  if (data.constrainedNodeKeys.size === 0) return [...matches];
+  const hidden = computeConstraintHiddenKeys(data, ascendancyId, allocated);
+  if (hidden.size === 0) return [...matches];
+  return matches.filter((k) => !hidden.has(k));
 }

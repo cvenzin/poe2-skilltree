@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { TreeData } from '../data/types';
 import type { AtlasBundle } from '../render/atlas';
+import { pruneConstraintLocked } from '../data/normalize';
 
 /** Fixed budgets per PoE 2 rules — 123 passives at level 90 with quest
  *  rewards, 8 ascendancy points fully cleared. Not user-editable. */
@@ -225,7 +226,11 @@ export const useStore = create<AppState>()((set, get) => ({
 
   tryAllocate: (next, data) => {
     const s = get();
-    const counts = countBudgets(next, s.ascendancyId, data);
+    // Prune constraint-locked nodes first so the budget reflects the actual
+    // post-commit allocation: e.g. unallocating "The Unseen Path" implicitly
+    // drops every gated Forbidden Path node, freeing those passive points.
+    const pruned = pruneConstraintLocked(next, s.ascendancyId, data);
+    const counts = countBudgets(pruned, s.ascendancyId, data);
     if (counts.passive > PASSIVE_CAP) {
       set({ passiveRejectionTick: s.passiveRejectionTick + 1 });
       return false;
@@ -234,7 +239,7 @@ export const useStore = create<AppState>()((set, get) => ({
       set({ ascendancyRejectionTick: s.ascendancyRejectionTick + 1 });
       return false;
     }
-    s.commitAllocation(next);
+    s.commitAllocation(pruned);
     return true;
   },
 

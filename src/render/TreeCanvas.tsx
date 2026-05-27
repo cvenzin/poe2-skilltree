@@ -13,7 +13,7 @@ import { type AtlasBundle, getFrame } from './atlas';
 import { spritesForNode, type NodeState } from './frameForNode';
 import { drawMasteries, type MasteryRedraw } from './drawMasteries';
 import { useStore } from '../state/store';
-import { startNodeKeyForClass } from '../data/normalize';
+import { startNodeKeyForClass, pruneConstraintLocked, computeConstraintHiddenKeys } from '../data/normalize';
 import { bfsShortestPath, buildBlockedKeys, cascadeUnallocate } from '../interaction/pathing';
 
 interface TreeCanvasProps {
@@ -98,6 +98,7 @@ export default function TreeCanvas({
       viewport: null,
       observer: null,
       nodeWraps: new Map(),
+      constrainedWraps: new Set(),
       nodeStates: new Map(),
       redrawMainEdges: null,
       redrawOverlayEdges: null,
@@ -166,8 +167,17 @@ type EdgeRedraw = (allocated: ReadonlySet<string>, previewPath: readonly string[
  *  ascendancy — no node re-attachment needed. */
 interface PathingContext {
   classStartKey: string;
+  /** Currently selected ascendancy id (or null). Stashed here so the constraint
+   *  prune step at click-time can evaluate `unlockConstraint.ascendancy` without
+   *  re-reading the store inside the handler. */
+  ascendancyId: string | null;
   blockedKeys: ReadonlySet<string>;
   frontierKeys: ReadonlySet<string>;
+  /** Constraint-locked node keys that are currently hidden (e.g. Druid Oracle's
+   *  Forbidden Path nodes when "The Unseen Path" isn't allocated). Renderer
+   *  uses this to toggle wrap.visible and filter edges; pathing already has
+   *  these blocked via blockedKeys. */
+  hiddenKeys: ReadonlySet<string>;
 }
 
 interface MountContext {
@@ -178,6 +188,10 @@ interface MountContext {
   /** Every drawn node wrap, keyed by node key. Used by the store-subscription
    *  to swap atlas textures when state changes (idle → preview → allocated). */
   nodeWraps: Map<string, Container>;
+  /** Keys of drawn main-tree wraps that carry an `unlockConstraint`. Iterated
+   *  on every allocation change to toggle visibility/interactivity in
+   *  {@link applyConstraintVisibility}. Built once in {@link drawNodes}. */
+  constrainedWraps: Set<string>;
   /** Last applied state per node — drives the rebuild diff in
    *  {@link applyNodeStates}. Updated atomically with the wrap's children. */
   nodeStates: Map<string, NodeState>;
@@ -282,6 +296,43 @@ function computeNodeState(
   return 'idle';
 }
 
+/** Recompute the constraint-derived parts of `ctx.pathing` from the latest
+ *  allocation. Cheap (O(constrained-node count + main-tree node count)); called
+ *  on every allocation change because constraints can flip when a gate node is
+ *  added or removed. Preserves the existing `ascendancyId` and `classStartKey`
+ *  — those only change in {@link swapContext}. */
+function refreshConstraintState(
+  ctx: MountContext,
+  data: TreeData,
+  allocated: ReadonlySet<string>,
+): void {
+  if (!ctx.pathing) return;
+  const { classStartKey, ascendancyId, frontierKeys } = ctx.pathing;
+  ctx.pathing = {
+    classStartKey,
+    ascendancyId,
+    frontierKeys,
+    blockedKeys: buildBlockedKeys(data, classStartKey, ascendancyId, allocated),
+    hiddenKeys: computeConstraintHiddenKeys(data, ascendancyId, allocated),
+  };
+}
+
+/** Toggle wrap visibility for constraint-locked nodes. Hidden wraps lose all
+ *  interactivity (`eventMode = 'none'`) so they can't intercept pointer events
+ *  meant for the empty space they occupy. Constraint-locked nodes never reach
+ *  the visible/interactive state unless their gate is allocated. */
+function applyConstraintVisibility(ctx: MountContext): void {
+  const hidden = ctx.pathing?.hiddenKeys;
+  if (!hidden) return;
+  for (const key of ctx.constrainedWraps) {
+    const wrap = ctx.nodeWraps.get(key);
+    if (!wrap) continue;
+    const isHidden = hidden.has(key);
+    wrap.visible = !isHidden;
+    wrap.eventMode = isHidden ? 'none' : 'static';
+  }
+}
+
 /**
  * Per-tree-state visuals for search (INSTRUCTIONS.md §6 search-overlay block):
  *   - Cyan ring sprites around every matched node, pulsed via the ticker
@@ -314,6 +365,10 @@ function applySearchHighlight(
   for (const key of matches) {
     const wrap = wraps.get(key);
     if (!wrap) continue;
+    // Defence in depth — SearchInput already pre-filters constraint-hidden
+    // matches, but if a stale match leaks through (race between allocation
+    // change and search re-run) don't ring an invisible node.
+    if (!wrap.visible) continue;
     const isFocused = key === focusedKey;
     const pos = worldContainer.toLocal(wrap.getGlobalPosition());
     // Size the ring to the node's own visual bounds (notables, keystones,
@@ -418,6 +473,8 @@ function applyJewelOverlay(
     if (!key) continue;
     const kWrap = wraps.get(key);
     if (!kWrap) continue;
+    if (!kWrap.visible) continue; // skip constraint-hidden keystones
+
     const kPos = worldContainer.toLocal(kWrap.getGlobalPosition());
     const highlight = new Graphics()
       .circle(kPos.x, kPos.y, ringRadiusForWrap(kWrap))
@@ -638,7 +695,9 @@ async function mount(
   // every wrap and edge layer is registered. The subscription unsubs in the
   // useEffect cleanup via `ctx.unsubscribeStore`.
   const applyAll = (allocated: ReadonlySet<string>, previewPath: readonly string[] | null) => {
+    refreshConstraintState(ctx, data, allocated);
     applyNodeStates(data, atlases, ctx.nodeWraps, ctx.nodeStates, allocated, previewPath);
+    applyConstraintVisibility(ctx);
     ctx.redrawMainEdges?.(allocated, previewPath);
     ctx.redrawOverlayEdges?.(allocated, previewPath);
     ctx.redrawMasteries?.(allocated);
@@ -757,13 +816,17 @@ function swapContext(
 
   // Recompute pathing — `attachNodeInteraction` and the main-tree edge redraw
   // read these values live, so updating the ref is enough to refresh BFS
-  // behaviour across every existing node.
+  // behaviour across every existing node. `blockedKeys` and `hiddenKeys` also
+  // depend on `allocated` (constraint gates like "The Unseen Path"); applyAll
+  // rebuilds them on every allocation change via {@link refreshConstraintState}.
   const classStartKey = startNodeKeyForClass(className, data);
-  const blockedKeys = buildBlockedKeys(data, classStartKey, ascendancyId);
+  const allocated = useStore.getState().allocated;
+  const blockedKeys = buildBlockedKeys(data, classStartKey, ascendancyId, allocated);
+  const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, allocated);
   const frontierKeys = new Set<string>([classStartKey]);
   const ascStartKey = findAscendancyStartKey(data, ascendancyId);
   if (ascStartKey) frontierKeys.add(ascStartKey);
-  ctx.pathing = { classStartKey, blockedKeys, frontierKeys };
+  ctx.pathing = { classStartKey, ascendancyId, blockedKeys, frontierKeys, hiddenKeys };
 
   if (ctx.backdropLayer) drawCentralBackdrop(ctx.backdropLayer, atlases, data, className, ascendancyId);
   if (ctx.mainCircleLayer) drawMainCircle(ctx.mainCircleLayer, atlases, data, className);
@@ -1104,8 +1167,7 @@ function drawOverlayEdges(
   const shouldDraw = (pair: DrawableEdge): boolean =>
     pair.a.ascendancyId === ascId && pair.b.ascendancyId === ascId;
   return (allocated, previewPath) => {
-    const frontierKeys = ctx.pathing?.frontierKeys ?? EMPTY_SET;
-    redrawEdgeLayers(layers, data, allocated, previewPath, frontierKeys, t, shouldDraw);
+    redrawEdgeLayers(layers, data, allocated, previewPath, edgeCtxFrom(ctx), t, shouldDraw);
   };
 }
 
@@ -1144,8 +1206,14 @@ function drawEdges(
 ): EdgeRedraw {
   const layers = makeEdgeLayers(parent);
   return (allocated, previewPath) => {
-    const frontierKeys = ctx.pathing?.frontierKeys ?? EMPTY_SET;
-    redrawEdgeLayers(layers, data, allocated, previewPath, frontierKeys, identityTransform, isMainTreeEdge);
+    redrawEdgeLayers(layers, data, allocated, previewPath, edgeCtxFrom(ctx), identityTransform, isMainTreeEdge);
+  };
+}
+
+function edgeCtxFrom(ctx: MountContext): EdgeRedrawContext {
+  return {
+    frontierKeys: ctx.pathing?.frontierKeys ?? EMPTY_SET,
+    hiddenKeys: ctx.pathing?.hiddenKeys ?? EMPTY_SET,
   };
 }
 
@@ -1166,12 +1234,19 @@ function makeEdgeLayers(parent: Container): Record<NodeState, Graphics> {
   return { idle, allocated, preview };
 }
 
+/** Per-redraw state derived from the current pathing context. Bundled so the
+ *  edge redraw stays under the parameter-count lint cap. */
+interface EdgeRedrawContext {
+  frontierKeys: ReadonlySet<string>;
+  hiddenKeys: ReadonlySet<string>;
+}
+
 function redrawEdgeLayers(
   layers: Record<NodeState, Graphics>,
   data: TreeData,
   allocated: ReadonlySet<string>,
   previewPath: readonly string[] | null,
-  frontierKeys: ReadonlySet<string>,
+  edgeCtx: EdgeRedrawContext,
   transform: CoordTransform,
   shouldDraw: (pair: DrawableEdge) => boolean
 ): void {
@@ -1181,9 +1256,13 @@ function redrawEdgeLayers(
   const previewSet = previewPath ? new Set(previewPath) : null;
 
   for (const edge of data.edges) {
+    // Drop edges that touch a constraint-hidden node (e.g. Druid Oracle's
+    // Forbidden Path clusters when "The Unseen Path" isn't allocated) so we
+    // don't render line stubs reaching into empty space.
+    if (edgeCtx.hiddenKeys.has(edge.from) || edgeCtx.hiddenKeys.has(edge.to)) continue;
     const pair = resolveDrawableEdge(data.nodes[edge.from], data.nodes[edge.to]);
     if (!pair || !shouldDraw(pair)) continue;
-    const state = edgeState(edge.from, edge.to, allocated, frontierKeys, previewSet);
+    const state = edgeState(edge.from, edge.to, allocated, edgeCtx.frontierKeys, previewSet);
     traceEdge(layers[state], pair.a, pair.b, edge, transform);
   }
 
@@ -1348,6 +1427,7 @@ function drawNodes(
     wrap.position.set(node.x, node.y);
     attachNodeInteraction(wrap, key, data, ctx);
     ctx.nodeWraps.set(key, wrap);
+    if (node.unlockConstraint) ctx.constrainedWraps.add(key);
     layer.addChild(wrap);
     drawn++;
   }
@@ -1460,7 +1540,12 @@ function attachNodeInteraction(
       return;
     }
     if (state.allocated.has(nodeKey)) {
-      const next = cascadeUnallocate(data, state.allocated, pathing.frontierKeys, nodeKey);
+      const cascaded = cascadeUnallocate(data, state.allocated, pathing.frontierKeys, nodeKey);
+      // If the cascade removes the gate of constraint-locked nodes (e.g. Druid
+      // Oracle's "The Unseen Path"), those Forbidden Path nodes aren't graph-
+      // reachable from the class start, so cascadeUnallocate won't catch them.
+      // Prune by constraint so they drop in the same commit.
+      const next = pruneConstraintLocked(cascaded, ctx.pathing?.ascendancyId ?? null, data);
       state.commitAllocation(next);
       return;
     }

@@ -1,5 +1,6 @@
 import { useStore, type BuildSnapshot } from './store';
 import type { TreeData } from '../data/types';
+import { pruneConstraintLocked } from '../data/normalize';
 
 /** localStorage key (INSTRUCTIONS.md §10.5). */
 const STORAGE_KEY = 'poe2-tree:last';
@@ -29,11 +30,15 @@ export function reconcileSnapshot(snap: BuildSnapshot, data: TreeData): Omit<Bui
     snap.ascendancyId && data.playableAscendancyIds.has(snap.ascendancyId)
       ? snap.ascendancyId
       : null;
-  const allocated = snap.allocated.filter((k) => data.nodes[k] !== undefined);
+  const allocatedKeys = snap.allocated.filter((k) => data.nodes[k] !== undefined);
+  // Drop nodes whose `unlockConstraint` isn't satisfied by the snapshot — e.g.
+  // a build saved on Druid Oracle with "The Unseen Path" allocated, then
+  // imported on a different ascendancy, must lose the Forbidden Path nodes.
+  const pruned = pruneConstraintLocked(new Set(allocatedKeys), ascendancyId, data);
   return {
     className: snap.className,
     ascendancyId,
-    allocated,
+    allocated: [...pruned],
   };
 }
 

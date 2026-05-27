@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import type { TreeData } from '../data/types';
-import { buildSearchIndex, findMatches } from '../interaction/search';
+import { buildSearchIndex, findMatches, filterConstraintHidden } from '../interaction/search';
 
 const DEBOUNCE_MS = 120;
 
@@ -26,6 +26,8 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
   const query = useStore((s) => s.searchQuery);
   const matches = useStore((s) => s.searchMatches);
   const cursor = useStore((s) => s.searchCursor);
+  const ascendancyId = useStore((s) => s.ascendancyId);
+  const allocated = useStore((s) => s.allocated);
   const setSearch = useStore((s) => s.setSearch);
   const clearSearch = useStore((s) => s.clearSearch);
   const stepSearch = useStore((s) => s.stepSearch);
@@ -45,15 +47,23 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
   }
 
   // Debounced commit: every time `draft` changes, schedule a commit; clear
-  // any pending one so only the last keystroke wins.
+  // any pending one so only the last keystroke wins. Also re-runs when the
+  // constraint-gate state changes (`ascendancyId`, `allocated`) so toggling
+  // "The Unseen Path" reveals/hides matching gated nodes without forcing the
+  // user to retype.
   useEffect(() => {
     const timer = globalThis.setTimeout(() => {
-      if (draft === query) return;
-      const ms = draft.trim().length === 0 ? [] : findMatches(draft, index);
+      if (draft.trim().length === 0) {
+        if (matches.length === 0 && draft === query) return;
+        setSearch(draft, []);
+        return;
+      }
+      const raw = findMatches(draft, index);
+      const ms = filterConstraintHidden(raw, data, ascendancyId, allocated);
       setSearch(draft, ms);
     }, DEBOUNCE_MS);
     return () => { globalThis.clearTimeout(timer); };
-  }, [draft, query, index, setSearch]);
+  }, [draft, query, index, data, ascendancyId, allocated, matches.length, setSearch]);
 
   // Focus the input on global Ctrl/Cmd+F (dispatched by useKeyboardShortcuts).
   useEffect(() => {
