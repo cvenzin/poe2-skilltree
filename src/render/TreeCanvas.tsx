@@ -13,7 +13,7 @@ import { type AtlasBundle, getFrame } from './atlas';
 import { spritesForNode, type NodeState } from './frameForNode';
 import { drawMasteries, type MasteryRedraw } from './drawMasteries';
 import { useStore } from '../state/store';
-import { startNodeKeyForClass, pruneConstraintLocked, computeConstraintHiddenKeys } from '../data/normalize';
+import { startNodeKeyForClass, pruneConstraintLocked, computeConstraintHiddenKeys, isUnlockConstraintSatisfied } from '../data/normalize';
 import { bfsShortestPath, buildBlockedKeys, cascadeUnallocate } from '../interaction/pathing';
 
 interface TreeCanvasProps {
@@ -105,6 +105,7 @@ export default function TreeCanvas({
       redrawMasteries: null,
       searchMatchLayer: null,
       jewelOverlay: null,
+      unlockHighlightLayer: null,
       hoverScaledWrap: null,
       worldContainer: null,
       fitScale: 1,
@@ -210,6 +211,11 @@ interface MountContext {
    *  a circle showing the socket's radius and highlights any nodes listed in
    *  `keystonesInRadius`. Empty when nothing relevant is hovered. */
   jewelOverlay: Container | null;
+  /** Violet rings around the active constraint gate and every node it unlocks.
+   *  Currently driven by Druid Oracle's "The Unseen Path" + its 200 Forbidden
+   *  Path nodes. Empty when no gate is satisfied. Rebuilt on every allocation
+   *  change via {@link applyUnlockHighlight}. */
+  unlockHighlightLayer: Container | null;
   /** The wrap currently scaled up as the hover-target (1.05×). Reset to 1.0
    *  when hover moves to a different node so we don't leave stale-scaled
    *  wraps behind. */
@@ -435,6 +441,13 @@ const JEWEL_RADIUS = 1200;
 const JEWEL_RING_COLOR = 0xa0e0ff;
 const KEYSTONE_RING_COLOR = 0xffd66a;
 
+/** Bright violet for the constraint-gate / unlocked-node highlight. Chosen to
+ *  contrast with the gold allocated-node frames and the cyan search rings, so
+ *  the relationship is unambiguous at a glance. */
+const UNLOCK_RING_COLOR = 0xc060ff;
+const UNLOCK_RING_WIDTH = 5;
+const UNLOCK_RING_ALPHA = 0.95;
+
 /**
  * Draw the radius preview around a hovered jewel socket. When the socket has
  * `keystonesInRadius`, also draw a small ring around each affected keystone
@@ -481,6 +494,51 @@ function applyJewelOverlay(
       .stroke({ color: KEYSTONE_RING_COLOR, width: 6, alpha: 0.95 });
     highlight.eventMode = 'none';
     layer.addChild(highlight);
+  }
+}
+
+/** Paint violet rings around constraint-gate nodes and every node they unlock,
+ *  whenever the gate is satisfied. Driven by Druid Oracle's "The Unseen Path"
+ *  in 0.5.0 — the notable plus the 200 Forbidden Path nodes it reveals all
+ *  get the same ring, making the relationship obvious at a glance.
+ *
+ *  Idempotent on layer contents: clears and rebuilds every call. Cheap — at
+ *  most ~201 single-stroke Graphics in 0.5.0. */
+function applyUnlockHighlight(
+  ctx: MountContext,
+  data: TreeData,
+  allocated: ReadonlySet<string>,
+): void {
+  const layer = ctx.unlockHighlightLayer;
+  const worldContainer = ctx.worldContainer;
+  if (!layer || !worldContainer) return;
+  destroyChildren(layer);
+
+  const ascendancyId = ctx.pathing?.ascendancyId ?? null;
+  if (data.constrainedNodeKeys.size === 0) return;
+
+  const ringKeys = new Set<string>();
+  for (const key of data.constrainedNodeKeys) {
+    const constraint = data.nodes[key]?.unlockConstraint;
+    if (!constraint) continue;
+    if (!isUnlockConstraintSatisfied(constraint, ascendancyId, allocated, data)) continue;
+    ringKeys.add(key);
+    for (const skillId of constraint.nodes) {
+      const gateKey = data.nodeBySkillId.get(skillId);
+      if (gateKey) ringKeys.add(gateKey);
+    }
+  }
+  if (ringKeys.size === 0) return;
+
+  for (const key of ringKeys) {
+    const wrap = ctx.nodeWraps.get(key);
+    if (!wrap || !wrap.visible) continue;
+    const pos = worldContainer.toLocal(wrap.getGlobalPosition());
+    const ring = new Graphics()
+      .circle(pos.x, pos.y, ringRadiusForWrap(wrap))
+      .stroke({ color: UNLOCK_RING_COLOR, width: UNLOCK_RING_WIDTH, alpha: UNLOCK_RING_ALPHA });
+    ring.eventMode = 'none';
+    layer.addChild(ring);
   }
 }
 
@@ -654,6 +712,15 @@ async function mount(
   worldContainer.addChild(ascendancyLayer);
   ctx.ascendancyLayer = ascendancyLayer;
 
+  // Unlock-highlight overlay — violet rings around the active gate and the
+  // nodes it unlocks. Sits above the ascendancy overlay so the gate (an
+  // ascendancy notable) is highlighted too, and below jewel/search so those
+  // transient overlays paint on top.
+  const unlockHighlightLayer = new Container();
+  unlockHighlightLayer.eventMode = 'none';
+  worldContainer.addChild(unlockHighlightLayer);
+  ctx.unlockHighlightLayer = unlockHighlightLayer;
+
   // Jewel-radius overlay sits below the search-match layer but above nodes.
   // Redrawn whenever the hovered node changes (transient; cleared on hover-out).
   const jewelOverlay = new Container();
@@ -701,6 +768,7 @@ async function mount(
     ctx.redrawMainEdges?.(allocated, previewPath);
     ctx.redrawOverlayEdges?.(allocated, previewPath);
     ctx.redrawMasteries?.(allocated);
+    applyUnlockHighlight(ctx, data, allocated);
   };
   ctx.applyAll = applyAll;
   ctx.swapContext = (nextClassName, nextAscendancyId) => {
