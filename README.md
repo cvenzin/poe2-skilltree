@@ -15,7 +15,7 @@ Live: <https://cvenzin.github.io/poe2-skilltree/>
   start; click again to allocate.
 - Click an allocated node to cascade-unallocate every node that depended on
   it.
-- Passive and ascendancy budgets with editable caps.
+- Passive (123) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red.
 - Undo / redo and a one-click reset.
 - Shareable URL hash encodes class, ascendancy, allocations, and version.
 - Pan, wheel-zoom, and pinch-zoom on touch.

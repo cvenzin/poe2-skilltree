@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, countBudgets } from '../state/store';
+import { useStore, countBudgets, PASSIVE_CAP, ASCENDANCY_CAP } from '../state/store';
 import type { TreeData } from '../data/types';
 import { VERSIONS } from '../data/versions';
 import BudgetChip from './BudgetChip';
@@ -28,13 +28,9 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const allocated = useStore((s) => s.allocated);
-  const passiveCap = useStore((s) => s.passiveCap);
-  const ascendancyCap = useStore((s) => s.ascendancyCap);
   const activeVersion = useStore((s) => s.activeVersion);
   const setClass = useStore((s) => s.setClass);
   const setAscendancy = useStore((s) => s.setAscendancy);
-  const setPassiveCap = useStore((s) => s.setPassiveCap);
-  const setAscendancyCap = useStore((s) => s.setAscendancyCap);
   const setActiveVersion = useStore((s) => s.setActiveVersion);
 
   const isMobile = useIsMobile();
@@ -130,20 +126,14 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
           kind="passive"
           label="Passives"
           count={counts.passive}
-          cap={passiveCap}
-          onCapChange={setPassiveCap}
-          minCap={1}
-          maxCap={200}
+          cap={PASSIVE_CAP}
         />
         {ascendancyId && (
           <BudgetChip
             kind="ascendancy"
             label="Ascendancy"
             count={counts.ascendancy}
-            cap={ascendancyCap}
-            onCapChange={setAscendancyCap}
-            minCap={1}
-            maxCap={16}
+            cap={ASCENDANCY_CAP}
           />
         )}
         <div style={spacerStyle} />

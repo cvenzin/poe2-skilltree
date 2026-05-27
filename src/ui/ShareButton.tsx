@@ -22,8 +22,6 @@ export default function ShareButton({ data }: Readonly<ShareButtonProps>) {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const allocated = useStore((s) => s.allocated);
-  const passiveCap = useStore((s) => s.passiveCap);
-  const ascendancyCap = useStore((s) => s.ascendancyCap);
   const activeVersion = useStore((s) => s.activeVersion);
 
   const [toast, setToast] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -41,8 +39,6 @@ export default function ShareButton({ data }: Readonly<ShareButtonProps>) {
       version: activeVersion,
       classIdx,
       ascendancyIdx,
-      passiveCap,
-      ascendancyCap,
       allocatedKeys: [...allocated],
     });
 

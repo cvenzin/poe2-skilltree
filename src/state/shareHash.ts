@@ -1,33 +1,26 @@
 import type { TreeData } from '../data/types';
-import {
-  DEFAULT_PASSIVE_CAP,
-  DEFAULT_ASCENDANCY_CAP,
-  type BuildSnapshot,
-} from './store';
+import type { BuildSnapshot } from './store';
 
 /**
  * URL share-hash format (INSTRUCTIONS.md §10.4):
  *
- *   #v=<version>&c=<classIdx>&a=<ascIdx>&p=<passiveCap>&ap=<ascCap>&n=<base64url(varint deltas)>
+ *   #v=<version>&c=<classIdx>&a=<ascIdx>&n=<base64url(varint deltas)>
  *
  *   v   version string (e.g. "0.5.0")
  *   c   integer index into data.classes[] — robust to renames
  *   a   integer index into the selected class's ascendancies[], or -1 for none
- *   p   passiveCap — omitted if equal to default (123)
- *   ap  ascendancyCap — omitted if equal to default (8)
  *   n   sorted-ascending list of numeric allocated node keys, delta-encoded
  *       LEB128 varints, base64url
  *
+ * Legacy `p=` / `ap=` cap params from earlier builds are silently ignored —
+ * caps are fixed at game-rule values now (see PASSIVE_CAP / ASCENDANCY_CAP).
  * Masteries (`m`) are out of scope — PoE 2 doesn't have a mastery system.
- * Glossary stays empty until a future export reintroduces them.
  */
 
 export interface ShareHashRaw {
   version: string;
   classIdx: number;
   ascendancyIdx: number; // -1 = no ascendancy
-  passiveCap: number;
-  ascendancyCap: number;
   allocatedKeys: string[];
 }
 
@@ -36,8 +29,6 @@ export function encodeShareHash(s: Readonly<ShareHashRaw>): string {
   parts.push(`v=${encodeURIComponent(s.version)}`);
   parts.push(`c=${s.classIdx}`);
   parts.push(`a=${s.ascendancyIdx}`);
-  if (s.passiveCap !== DEFAULT_PASSIVE_CAP) parts.push(`p=${s.passiveCap}`);
-  if (s.ascendancyCap !== DEFAULT_ASCENDANCY_CAP) parts.push(`ap=${s.ascendancyCap}`);
   if (s.allocatedKeys.length > 0) parts.push(`n=${encodeNodeKeys(s.allocatedKeys)}`);
   return `#${parts.join('&')}`;
 }
@@ -55,8 +46,6 @@ export function decodeShareHash(hash: string): ShareHashRaw | null {
     version,
     classIdx,
     ascendancyIdx: parseIntOr(params.get('a'), -1),
-    passiveCap: clampCap(parseIntOr(params.get('p'), DEFAULT_PASSIVE_CAP), 1, 200, DEFAULT_PASSIVE_CAP),
-    ascendancyCap: clampCap(parseIntOr(params.get('ap'), DEFAULT_ASCENDANCY_CAP), 1, 16, DEFAULT_ASCENDANCY_CAP),
     allocatedKeys: decodeNodeKeys(params.get('n') ?? ''),
   };
 }
@@ -81,8 +70,6 @@ export function reconcileShareHash(
     className: cls.name,
     ascendancyId,
     allocated,
-    passiveCap: raw.passiveCap,
-    ascendancyCap: raw.ascendancyCap,
   };
 }
 
@@ -165,9 +152,4 @@ function parseIntOr(s: string | null, fallback: number): number {
   if (s === null) return fallback;
   const n = Number.parseInt(s, 10);
   return Number.isFinite(n) ? n : fallback;
-}
-
-function clampCap(n: number, lo: number, hi: number, fallback: number): number {
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(lo, Math.min(hi, Math.round(n)));
 }

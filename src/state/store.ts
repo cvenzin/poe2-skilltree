@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import type { TreeData } from '../data/types';
 import type { AtlasBundle } from '../render/atlas';
 
-/** Soft-budget defaults from INSTRUCTIONS.md §9 rule 7 — 123 passives at level 90
- *  with quest rewards, 8 ascendancy points fully cleared. User-editable. */
-export const DEFAULT_PASSIVE_CAP = 123;
-export const DEFAULT_ASCENDANCY_CAP = 8;
+/** Fixed budgets per PoE 2 rules — 123 passives at level 90 with quest
+ *  rewards, 8 ascendancy points fully cleared. Not user-editable. */
+export const PASSIVE_CAP = 123;
+export const ASCENDANCY_CAP = 8;
 /** Linear single-stack history (INSTRUCTIONS.md §9.1). Each entry is a
  *  `Set<string>` snapshot — small enough that storing snapshots is cheaper
  *  than a command pattern. */
@@ -34,8 +34,6 @@ export interface BuildSnapshot {
   className: string;
   ascendancyId: string | null;
   allocated: string[];
-  passiveCap: number;
-  ascendancyCap: number;
 }
 
 interface AppState {
@@ -56,8 +54,6 @@ interface AppState {
   previewPath: readonly string[] | null;
 
   // --- 10a: budgets + undo/redo ---
-  passiveCap: number;
-  ascendancyCap: number;
   /** Snapshot history of `allocated`, oldest → newest, capped at UNDO_LIMIT. */
   past: ReadonlySet<string>[];
   /** Redo stack, top = most recently undone. */
@@ -113,8 +109,6 @@ interface AppState {
   undo: () => void;
   redo: () => void;
 
-  setPassiveCap: (n: number) => void;
-  setAscendancyCap: (n: number) => void;
   setResetConfirmOpen: (open: boolean) => void;
 
   /** Update the query AND the precomputed matches in one transition. Pass an
@@ -176,8 +170,6 @@ export const useStore = create<AppState>()((set, get) => ({
   allocated: new Set<string>(),
   previewPath: null,
 
-  passiveCap: DEFAULT_PASSIVE_CAP,
-  ascendancyCap: DEFAULT_ASCENDANCY_CAP,
   past: [],
   future: [],
   passiveRejectionTick: 0,
@@ -234,11 +226,11 @@ export const useStore = create<AppState>()((set, get) => ({
   tryAllocate: (next, data) => {
     const s = get();
     const counts = countBudgets(next, s.ascendancyId, data);
-    if (counts.passive > s.passiveCap) {
+    if (counts.passive > PASSIVE_CAP) {
       set({ passiveRejectionTick: s.passiveRejectionTick + 1 });
       return false;
     }
-    if (counts.ascendancy > s.ascendancyCap) {
+    if (counts.ascendancy > ASCENDANCY_CAP) {
       set({ ascendancyRejectionTick: s.ascendancyRejectionTick + 1 });
       return false;
     }
@@ -275,8 +267,6 @@ export const useStore = create<AppState>()((set, get) => ({
     };
   }),
 
-  setPassiveCap: (n) => set({ passiveCap: clampCap(n, 1, 200) }),
-  setAscendancyCap: (n) => set({ ascendancyCap: clampCap(n, 1, 16) }),
   setResetConfirmOpen: (open) => set({ resetConfirmOpen: open }),
 
   setSearch: (query, matches) => set((s) => ({
@@ -311,15 +301,8 @@ export const useStore = create<AppState>()((set, get) => ({
     className: snap.className,
     ascendancyId: snap.ascendancyId,
     allocated: new Set(snap.allocated),
-    passiveCap: snap.passiveCap,
-    ascendancyCap: snap.ascendancyCap,
     past: [],
     future: [],
     previewPath: null,
   }),
 }));
-
-function clampCap(n: number, lo: number, hi: number): number {
-  if (!Number.isFinite(n)) return lo;
-  return Math.max(lo, Math.min(hi, Math.round(n)));
-}

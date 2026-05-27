@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useStore } from '../state/store';
 
 interface BudgetChipProps {
@@ -8,17 +7,12 @@ interface BudgetChipProps {
   /** Which budget this chip represents — picks the per-budget rejection tick
    *  to key the shake animation on. */
   kind: 'passive' | 'ascendancy';
-  onCapChange: (n: number) => void;
-  /** Editable cap range, per INSTRUCTIONS.md §10. */
-  minCap: number;
-  maxCap: number;
 }
 
 /**
- * Single budget chip: `<Label> N / cap`. Cap is inline-editable (click
- * number → input, blur/Enter commits). Over-cap clicks are always rejected;
- * the chip can still go over visually if the user lowers the cap below the
- * current count.
+ * Single budget chip: `<Label> N / cap`. The cap is fixed per game rules
+ * (123 passives, 8 ascendancy) and rendered as static text. Over-cap clicks
+ * are always rejected.
  *
  * Shake animation: the wrapper's React `key` is bound to this budget's
  * rejection counter from the store. When the counter increments (a commit
@@ -27,7 +21,7 @@ interface BudgetChipProps {
  * other chip doesn't remount.
  */
 export default function BudgetChip({
-  label, count, cap, kind, onCapChange, minCap, maxCap,
+  label, count, cap, kind,
 }: Readonly<BudgetChipProps>) {
   const tick = useStore((s) =>
     kind === 'passive' ? s.passiveRejectionTick : s.ascendancyRejectionTick
@@ -44,56 +38,8 @@ export default function BudgetChip({
       <span style={chipLabelStyle}>{label}</span>
       <span style={over ? chipCountOverStyle : chipCountStyle}>{count}</span>
       <span style={chipSlashStyle}>/</span>
-      <CapEditor cap={cap} minCap={minCap} maxCap={maxCap} onCapChange={onCapChange} />
+      <span style={capStyle}>{cap}</span>
     </div>
-  );
-}
-
-interface CapEditorProps {
-  cap: number;
-  minCap: number;
-  maxCap: number;
-  onCapChange: (n: number) => void;
-}
-
-function CapEditor({ cap, minCap, maxCap, onCapChange }: Readonly<CapEditorProps>) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(cap));
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        style={capButtonStyle}
-        onClick={() => { setDraft(String(cap)); setEditing(true); }}
-        title="Click to edit cap"
-      >
-        {cap}
-      </button>
-    );
-  }
-
-  const commit = () => {
-    const n = Number.parseInt(draft, 10);
-    if (Number.isFinite(n)) onCapChange(n);
-    setEditing(false);
-  };
-
-  return (
-    <input
-      type="number"
-      value={draft}
-      autoFocus
-      min={minCap}
-      max={maxCap}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') commit();
-        if (e.key === 'Escape') { setDraft(String(cap)); setEditing(false); }
-      }}
-      style={capInputStyle}
-    />
   );
 }
 
@@ -140,22 +86,4 @@ const numStyle: React.CSSProperties = {
 const chipCountStyle: React.CSSProperties = numStyle;
 const chipCountOverStyle: React.CSSProperties = { ...numStyle, color: '#ff8080', fontWeight: 700 };
 const chipSlashStyle: React.CSSProperties = { ...numStyle, opacity: 0.4 };
-
-const capButtonStyle: React.CSSProperties = {
-  ...numStyle,
-  background: 'transparent',
-  border: 'none',
-  padding: 0,
-  margin: 0,
-  cursor: 'pointer',
-  font: 'inherit',
-};
-
-const capInputStyle: React.CSSProperties = {
-  ...numStyle,
-  background: '#0f0c08',
-  border: '1px solid #6b5a3a',
-  borderRadius: 2,
-  width: 44,
-  padding: '0 2px',
-};
+const capStyle: React.CSSProperties = numStyle;

@@ -15,8 +15,6 @@ export function readSnapshot(version: string): BuildSnapshot | null {
     className: s.className,
     ascendancyId: s.ascendancyId,
     allocated: [...s.allocated],
-    passiveCap: s.passiveCap,
-    ascendancyCap: s.ascendancyCap,
   };
 }
 
@@ -36,14 +34,7 @@ export function reconcileSnapshot(snap: BuildSnapshot, data: TreeData): Omit<Bui
     className: snap.className,
     ascendancyId,
     allocated,
-    passiveCap: clampNumber(snap.passiveCap, 1, 200, 123),
-    ascendancyCap: clampNumber(snap.ascendancyCap, 1, 16, 8),
   };
-}
-
-function clampNumber(n: unknown, lo: number, hi: number, fallback: number): number {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return fallback;
-  return Math.max(lo, Math.min(hi, Math.round(n)));
 }
 
 /** Read the persisted snapshot for the given version. Returns null on absent,
@@ -61,8 +52,6 @@ export function loadPersistedSnapshot(version: string): BuildSnapshot | null {
       className: parsed.className,
       ascendancyId: typeof parsed.ascendancyId === 'string' ? parsed.ascendancyId : null,
       allocated: parsed.allocated.filter((k): k is string => typeof k === 'string'),
-      passiveCap: clampNumber(parsed.passiveCap, 1, 200, 123),
-      ascendancyCap: clampNumber(parsed.ascendancyCap, 1, 16, 8),
     };
   } catch {
     // Corrupt JSON or storage disabled — start fresh.
@@ -105,9 +94,7 @@ export function startPersistence(version: string): () => void {
     if (
       s.allocated !== prev.allocated ||
       s.className !== prev.className ||
-      s.ascendancyId !== prev.ascendancyId ||
-      s.passiveCap !== prev.passiveCap ||
-      s.ascendancyCap !== prev.ascendancyCap
+      s.ascendancyId !== prev.ascendancyId
     ) {
       schedule();
     }
