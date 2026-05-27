@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useStore, countBudgets } from '../state/store';
 import type { TreeData } from '../data/types';
 import { VERSIONS } from '../data/versions';
@@ -6,6 +7,7 @@ import UndoRedoButtons from './UndoRedoButtons';
 import ResetButton from './ResetButton';
 import SearchInput from './SearchInput';
 import ShareButton from './ShareButton';
+import { useIsMobile } from './useIsMobile';
 
 /**
  * Top-left toolbar (INSTRUCTIONS.md §10):
@@ -35,6 +37,12 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   const setAscendancyCap = useStore((s) => s.setAscendancyCap);
   const setActiveVersion = useStore((s) => s.setActiveVersion);
 
+  const isMobile = useIsMobile();
+  // Mobile-only collapse state. Desktop ignores this entirely and always
+  // renders the full toolbar. Defaults to collapsed because the toolbar
+  // wraps to 3-4 rows on phones and obscures too much of the canvas.
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+
   const playableClasses = data.playableClassIndices
     .map((i) => data.classes[i])
     .filter((c): c is NonNullable<typeof c> => c !== undefined);
@@ -42,8 +50,34 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
 
   const counts = countBudgets(allocated, ascendancyId, data);
 
+  // Collapsed on mobile: render just the toggle button in the top-left.
+  if (isMobile && !mobileExpanded) {
+    return (
+      <button
+        type="button"
+        aria-label="Open toolbar"
+        onClick={() => setMobileExpanded(true)}
+        style={toggleButtonStyle}
+      >
+        ≡
+      </button>
+    );
+  }
+
   return (
     <div style={containerStyle}>
+      {isMobile && (
+        <div style={headerRowStyle}>
+          <button
+            type="button"
+            aria-label="Close toolbar"
+            onClick={() => setMobileExpanded(false)}
+            style={closeButtonStyle}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div style={rowStyle}>
         <SearchInput data={data} />
         {VERSIONS.length > 1 && (
@@ -173,4 +207,48 @@ const selectStyle: React.CSSProperties = {
 /** Pushes Undo/Reset to the right edge of the bottom row. */
 const spacerStyle: React.CSSProperties = {
   flex: 1,
+};
+
+// Standalone toggle button shown when the toolbar is collapsed on mobile.
+// Same visual language as the container so it reads as the toolbar's
+// minimised state rather than a stray icon.
+const toggleButtonStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 16,
+  left: 16,
+  width: 40,
+  height: 40,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(20, 16, 10, 0.85)',
+  border: '1px solid #6b5a3a',
+  borderRadius: 6,
+  color: '#ddd',
+  fontSize: 22,
+  lineHeight: 1,
+  cursor: 'pointer',
+  zIndex: 10,
+  pointerEvents: 'auto',
+};
+
+const headerRowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+};
+
+const closeButtonStyle: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'transparent',
+  border: '1px solid #4a3f28',
+  borderRadius: 4,
+  color: '#ddd',
+  fontSize: 18,
+  lineHeight: 1,
+  cursor: 'pointer',
+  padding: 0,
 };

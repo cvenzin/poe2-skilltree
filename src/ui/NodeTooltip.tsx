@@ -1,10 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { stripStatsMarkup } from '../interaction/statsMarkup';
+import { useIsMobile } from './useIsMobile';
 import type { TreeNode } from '../data/types';
 
 const TOOLTIP_OFFSET = 16;
 const VIEWPORT_MARGIN = 8;
+const MOBILE_MARGIN = 12;
 
 /**
  * DOM-overlay tooltip anchored near the cursor at the hovered node's client
@@ -20,15 +22,16 @@ export default function NodeTooltip() {
   const data = useStore((s) =>
     s.status.kind === 'ready' ? s.status.data : null
   );
+  const isMobile = useIsMobile();
   const ref = useRef<HTMLDivElement | null>(null);
-  // Tentative position; the layout effect below clamps it to the viewport
-  // once the tooltip's real size is known (varies per node — some are 1 line,
-  // some are 10+). Two-pass render is fine: tooltip re-renders on every
-  // hover change anyway.
+  // Desktop only: tentative position is committed by the layout effect once
+  // the tooltip's real size is known so the clamp can keep it on-screen.
+  // Mobile skips this — the tooltip is CSS-anchored to bottom-left so the
+  // finger never covers it.
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
   useLayoutEffect(() => {
-    if (!hovered || !ref.current) {
+    if (!hovered || !ref.current || isMobile) {
       setPosition(null);
       return;
     }
@@ -46,18 +49,31 @@ export default function NodeTooltip() {
       top = Math.max(VIEWPORT_MARGIN, vh - rect.height - VIEWPORT_MARGIN);
     }
     setPosition({ left, top });
-  }, [hovered]);
+  }, [hovered, isMobile]);
 
   if (!hovered || !data) return null;
   const node = data.nodes[hovered.nodeKey];
   if (!node?.name) return null;
 
-  // First render places the tooltip off-screen so it can be measured without
-  // a visible flash at the wrong position; the layout effect then commits
-  // the clamped coordinates synchronously before paint.
-  const style: React.CSSProperties = position
-    ? { ...containerStyle, left: position.left, top: position.top }
-    : { ...containerStyle, left: -9999, top: -9999, visibility: 'hidden' };
+  // Mobile: anchor to bottom-left so the finger doesn't cover the tooltip;
+  //   the element grows upward via `bottom` and rightward up to maxWidth.
+  // Desktop: cursor-following with viewport clamp (see layout effect above);
+  //   first paint is hidden off-screen until the clamp commits.
+  let style: React.CSSProperties;
+  if (isMobile) {
+    style = {
+      ...containerStyle,
+      left: MOBILE_MARGIN,
+      bottom: MOBILE_MARGIN,
+      maxWidth: `calc(100vw - ${MOBILE_MARGIN * 2}px)`,
+      maxHeight: `calc(100vh - ${MOBILE_MARGIN * 2}px)`,
+      overflowY: 'auto',
+    };
+  } else if (position) {
+    style = { ...containerStyle, left: position.left, top: position.top };
+  } else {
+    style = { ...containerStyle, left: -9999, top: -9999, visibility: 'hidden' };
+  }
 
   return (
     <div ref={ref} style={style}>
