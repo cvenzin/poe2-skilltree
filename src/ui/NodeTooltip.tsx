@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
-import { stripStatsMarkup } from '../interaction/statsMarkup';
+import { tokenizeStatLine } from '../interaction/statsMarkup';
 import { useIsMobile } from './useIsMobile';
 import type { TreeNode } from '../data/types';
 
@@ -91,7 +91,7 @@ function NodeTooltipContents({ node }: Readonly<{ node: TreeNode }>) {
         <ul style={statsListStyle}>
           {stats.map((s) => (
             <li key={s} style={statLineStyle}>
-              <StatBody text={stripStatsMarkup(s)} />
+              <StatBody text={s} />
             </li>
           ))}
         </ul>
@@ -105,7 +105,8 @@ function NodeTooltipContents({ node }: Readonly<{ node: TreeNode }>) {
 // `• ` sub-bullets (see Hollow Palm Technique, Runic Meridians, etc.).
 // Render plain lines as paragraphs and bullet-prefixed lines as a nested
 // list with hanging indent so wrapped text aligns under the text, not the
-// bullet character.
+// bullet character. Each line is tokenized for `<underline>{...}` markup
+// (e.g. "Grants Skill: <underline>{Fire Spell on Hit}").
 function StatBody({ text }: Readonly<{ text: string }>) {
   const lines = text.split('\n').map((line) => {
     const m = /^•\s*(.*)$/.exec(line);
@@ -120,15 +121,34 @@ function StatBody({ text }: Readonly<{ text: string }>) {
         return line.kind === 'bullet' ? (
           <div key={key} style={subBulletStyle}>
             <span style={subBulletMarkStyle} aria-hidden>•</span>
-            <span>{line.text}</span>
+            <span><StatTokens text={line.text} /></span>
           </div>
         ) : (
-          <div key={key}>{line.text}</div>
+          <div key={key}><StatTokens text={line.text} /></div>
         );
       })}
     </div>
   );
 }
+
+/** Render a single stat line, wrapping `<underline>{...}` segments in an
+ *  underlined span. The tokenizer also strips `[Tag|Display]` markup to
+ *  display text, so the consumer doesn't have to pre-strip. */
+function StatTokens({ text }: Readonly<{ text: string }>) {
+  const tokens = tokenizeStatLine(text);
+  return (
+    <>
+      {tokens.map((tok, i) => {
+        const key = `${i}:${tok.kind}`;
+        return tok.kind === 'underline'
+          ? <span key={key} style={underlineStyle}>{tok.text}</span>
+          : <span key={key}>{tok.text}</span>;
+      })}
+    </>
+  );
+}
+
+const underlineStyle: React.CSSProperties = { textDecoration: 'underline' };
 
 // PoE-style frame: container holds no padding so the header band can span
 // full width with its own background. Header and body each pad themselves.
