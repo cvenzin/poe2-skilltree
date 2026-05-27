@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { useStore } from '../state/store';
 
 const REPO_URL = 'https://github.com/cvenzin/poe2-skilltree';
 
 export default function Attribution() {
   const [showInfo, setShowInfo] = useState(false);
+  const activeVersion = useStore((s) => s.activeVersion);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Close the popover when the user clicks/taps anywhere else on the page.
@@ -31,6 +33,11 @@ export default function Attribution() {
           <div style={popoverLineStyle}>
             Created by cvenzin · MIT licensed
           </div>
+          {activeVersion && (
+            <div style={popoverLineStyle}>
+              Tree data: v{activeVersion}
+            </div>
+          )}
           <div style={popoverDisclaimerStyle}>
             Path of Exile 2 is a trademark of Grinding Gear Games Ltd.
             This product isn&apos;t affiliated with or endorsed by Grinding
@@ -46,15 +53,22 @@ export default function Attribution() {
           </a>
         </div>
       )}
-      <button
-        type="button"
-        aria-label="About this site"
-        aria-expanded={showInfo}
-        onClick={() => setShowInfo((v) => !v)}
-        style={infoButtonStyle}
-      >
-        i
-      </button>
+      <div style={chipRowStyle}>
+        {activeVersion && (
+          <span style={versionStyle} aria-label={`Tree data version ${activeVersion}`}>
+            v{activeVersion}
+          </span>
+        )}
+        <button
+          type="button"
+          aria-label="About this site"
+          aria-expanded={showInfo}
+          onClick={() => setShowInfo((v) => !v)}
+          style={infoButtonStyle}
+        >
+          i
+        </button>
+      </div>
     </div>
   );
 }
@@ -70,6 +84,24 @@ const wrapperStyle: React.CSSProperties = {
   zIndex: 50,
   pointerEvents: 'auto',
   fontFamily: 'system-ui, sans-serif',
+};
+
+const chipRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+};
+
+const versionStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontVariantNumeric: 'tabular-nums',
+  color: '#bdb289',
+  background: 'rgba(20, 16, 10, 0.75)',
+  border: '1px solid #4a3f28',
+  borderRadius: 999,
+  padding: '3px 8px',
+  opacity: 0.7,
+  letterSpacing: 0.3,
 };
 
 const infoButtonStyle: React.CSSProperties = {
