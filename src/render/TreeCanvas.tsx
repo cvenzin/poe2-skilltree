@@ -1430,8 +1430,24 @@ function attachNodeInteraction(
   wrap.on('pointermove', onHover);
   wrap.on('pointerout', () => useStore.getState().setHovered(null));
 
+  // Distinguish quick tap (intentional allocation) from long press (the
+  // user dwelling on a node to read the tooltip). Mouse clicks are always
+  // honoured — only touch needs the duration filter.
+  let pointerDownAt = 0;
+  let pointerDownType: string | null = null;
+  wrap.on('pointerdown', (e: import('pixi.js').FederatedPointerEvent) => {
+    pointerDownAt = performance.now();
+    pointerDownType = e.pointerType;
+  });
+
   wrap.on('pointertap', () => {
     if (isAscStart) return; // ascendancy start is implicit, not allocatable
+    // 300ms matches the threshold most mobile UIs treat as "quick tap"
+    // (Android's onClick fires up to ~500ms, iOS double-tap window is 300ms).
+    // Anything longer reads as a deliberate hold for inspection, not a commit.
+    if (pointerDownType === 'touch' && performance.now() - pointerDownAt > 300) {
+      return;
+    }
     const pathing = ctx.pathing;
     if (!pathing) return;
     const state = useStore.getState();
