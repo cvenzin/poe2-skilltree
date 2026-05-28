@@ -21,10 +21,10 @@ import {
   computeEntwinedAllocatableKeys,
   isEntwinedRealitiesActive,
   MEDIUM_RADIUS,
-  validatePathThroughMcHubs,
-  isLeafMcOption,
-  hubOfLeafOption,
-  leafOptionsOfHub,
+  autoOptionsForPath,
+  isMcOption,
+  hubOfOption,
+  optionsOfHub,
 } from '../interaction/pathing';
 
 interface TreeCanvasProps {
@@ -1647,12 +1647,14 @@ function attachNodeInteraction(
       return;
     }
     const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);
-    // MC-hub rule: a path that traverses an MC hub must commit to one of its
-    // leaves (either pre-allocated or the click target itself). Reject the
-    // preview if the path tries to skim past the hub without a choice — the
-    // click handler will refuse identically, so the preview should match.
-    if (path && !validatePathThroughMcHubs(data, path, state.allocated)) {
-      state.setPreviewPath(null);
+    // MC-hub rule: whenever the path crosses an MC hub without a committed
+    // option, default to the hub's first option so the user can route past
+    // the hub without picking first. The auto-pick is included in the
+    // preview alongside the path so the player can see what'll be allocated;
+    // they can swap it later by clicking the alternative.
+    if (path) {
+      const autoOptions = autoOptionsForPath(data, path, state.allocated);
+      state.setPreviewPath(autoOptions.length > 0 ? [...path, ...autoOptions] : path);
       return;
     }
     state.setPreviewPath(path);
@@ -1721,11 +1723,12 @@ function attachNodeInteraction(
     }
     const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);
     if (!path || path.length === 0) return;
-    // MC-hub rule (b): traversing the hub requires a leaf to be chosen.
-    // Refuse the click if the path passes through a hub without one — the
-    // user must allocate a leaf first.
-    if (!validatePathThroughMcHubs(data, path, state.allocated)) return;
+    // MC-hub rule (b): traversing the hub requires an option to be chosen.
+    // Auto-pick the first option of any uncommitted hub on the path so the
+    // click goes through; the user can switch options afterward.
+    const autoOptions = autoOptionsForPath(data, path, state.allocated);
     const next = new Set(state.allocated);
+    for (const option of autoOptions) next.add(option);
     // Skip the ascendancy start if the BFS routed the path through it —
     // it's implicit, never stored in `allocated`, never counted toward the
     // budget. BFS still traverses it so deeper ascendancy nodes remain
@@ -1733,12 +1736,12 @@ function attachNodeInteraction(
     for (const key of path) {
       if (data.nodes[key]?.isAscendancyStart) continue;
       next.add(key);
-      // MC-hub rule (c): only one leaf per hub. Adding a leaf evicts any
-      // previously-allocated leaf sibling of the same hub.
-      if (isLeafMcOption(data, key)) {
-        const hubKey = hubOfLeafOption(data, key);
+      // MC-hub rule (c): only one option per hub. Adding an option evicts
+      // any previously-allocated option sibling of the same hub.
+      if (isMcOption(data, key)) {
+        const hubKey = hubOfOption(data, key);
         if (hubKey) {
-          for (const sibling of leafOptionsOfHub(data, hubKey)) {
+          for (const sibling of optionsOfHub(data, hubKey)) {
             if (sibling !== key && state.allocated.has(sibling)) next.delete(sibling);
           }
         }

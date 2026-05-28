@@ -244,74 +244,70 @@ function isWithinAnyRadius(x: number, y: number, points: readonly { x: number; y
   return false;
 }
 
-function optionNeighbours(node: TreeNode): readonly string[] {
+function nodeNeighbours(node: TreeNode): readonly string[] {
   return [...(node.in ?? []), ...(node.out ?? [])];
 }
 
-/** Leaf option of a multiple-choice hub: an option whose ONLY graph neighbour
- *  is the hub itself (e.g. Far Shot, Point Blank — they have no other tree
- *  connections). Routing options (Projectile Speed) reach external nodes too
- *  and are NOT leaves — they're normal ascendancy passives that happen to
- *  border the hub. */
-export function isLeafMcOption(
+/** Option of a multiple-choice hub. Driven by the explicit
+ *  `isMultipleChoiceOption` flag in the data — NOT graph topology — because
+ *  some options have onward connections (Path Seeker's Path of the
+ *  Warrior/Sorceress route into other tree regions) and a topology-based
+ *  check would silently exclude them. */
+export function isMcOption(
   data: Pick<TreeData, 'nodes'>,
   key: string,
 ): boolean {
-  const node = data.nodes[key];
-  if (!node) return false;
-  const neighbours = optionNeighbours(node);
-  if (neighbours.length !== 1) return false;
-  return data.nodes[neighbours[0]!]?.isMultipleChoice === true;
+  return data.nodes[key]?.isMultipleChoiceOption === true;
 }
 
-/** Leaf options of the given MC hub. Empty for hubs whose options all carry
- *  external connections (Path Seeker in 0.5.0). */
-export function leafOptionsOfHub(
+/** Options of the given MC hub. */
+export function optionsOfHub(
   data: Pick<TreeData, 'nodes'>,
   hubKey: string,
 ): string[] {
   const hub = data.nodes[hubKey];
   if (!hub?.isMultipleChoice) return [];
   const out: string[] = [];
-  for (const nbr of optionNeighbours(hub)) {
-    if (isLeafMcOption(data, nbr)) out.push(nbr);
+  for (const nbr of nodeNeighbours(hub)) {
+    if (isMcOption(data, nbr)) out.push(nbr);
   }
   return out;
 }
 
-/** The MC hub a leaf option belongs to. Null if the node isn't a leaf option
- *  (i.e. isn't graph-attached only to an `isMultipleChoice` neighbour). */
-export function hubOfLeafOption(
+/** The MC hub an option belongs to. Null if the node isn't an MC option or
+ *  has no MC-hub neighbour. */
+export function hubOfOption(
   data: Pick<TreeData, 'nodes'>,
-  leafKey: string,
+  optionKey: string,
 ): string | null {
-  const node = data.nodes[leafKey];
-  if (!node) return null;
-  const neighbours = optionNeighbours(node);
-  if (neighbours.length !== 1) return null;
-  const candidate = neighbours[0]!;
-  return data.nodes[candidate]?.isMultipleChoice ? candidate : null;
+  const node = data.nodes[optionKey];
+  if (!node?.isMultipleChoiceOption) return null;
+  for (const nbr of nodeNeighbours(node)) {
+    if (data.nodes[nbr]?.isMultipleChoice) return nbr;
+  }
+  return null;
 }
 
-/** Validate that a BFS path obeys the MC-hub rule: whenever the path crosses
- *  an MC hub that has leaf options, at least one of its leaves must already be
- *  allocated OR be present in the path itself (i.e. the click target IS the
- *  choice). Hubs without any leaves (Path Seeker) are exempt — their options
- *  are all routing-style and don't need a choice. */
-export function validatePathThroughMcHubs(
+/** Options that must be auto-allocated to satisfy the MC-hub rule for the
+ *  given path. For each MC hub the path crosses without a committed option,
+ *  picks the hub's first option (data order) as a default — the user can
+ *  swap it later by clicking the alternative. Empty when the path already
+ *  satisfies the rule. */
+export function autoOptionsForPath(
   data: Pick<TreeData, 'nodes'>,
   path: readonly string[],
   allocated: ReadonlySet<string>,
-): boolean {
+): string[] {
+  const picks: string[] = [];
   for (const key of path) {
     const node = data.nodes[key];
     if (!node?.isMultipleChoice) continue;
-    const leaves = leafOptionsOfHub(data, key);
-    if (leaves.length === 0) continue;
-    const hasLeaf = leaves.some((l) => allocated.has(l) || path.includes(l));
-    if (!hasLeaf) return false;
+    const options = optionsOfHub(data, key);
+    if (options.length === 0) continue;
+    if (options.some((o) => allocated.has(o) || path.includes(o) || picks.includes(o))) continue;
+    picks.push(options[0]!);
   }
-  return true;
+  return picks;
 }
 
 /**
@@ -344,14 +340,14 @@ export function cascadeUnallocate(
   let current = new Set(allocated);
   current.delete(removed);
 
-  // Iterate: walk reachability, then drop any MC hub that has leaf options
-  // but none currently allocated (rule a + b — the hub is implicit, valid
-  // only when a leaf decision is held). Dropping a hub can orphan whatever
-  // sits past it, so re-walk until the set is stable.
+  // Iterate: walk reachability, then drop any MC hub that has options but
+  // none currently allocated (rule a + b — the hub is implicit, valid only
+  // when an option is held). Dropping a hub can orphan whatever sits past
+  // it, so re-walk until the set is stable.
   for (;;) {
     const seeds = collectCascadeSeeds(data, current, frontierKeys, ascendancyId, hiddenKeys);
     const reachable = walkAllocated(data, current, seeds);
-    const droppedHub = dropLeaflessMcHubs(data, reachable);
+    const droppedHub = dropOptionlessMcHubs(data, reachable);
     if (!droppedHub) {
       for (const key of frontierKeys) reachable.delete(key);
       return reachable;
@@ -360,10 +356,10 @@ export function cascadeUnallocate(
   }
 }
 
-/** Drop any MC hub in `set` whose leaf options exist but none are present.
+/** Drop any MC hub in `set` whose options exist but none are present.
  *  Mutates `set`. Returns true if anything was removed (caller re-walks since
  *  removing a hub can orphan nodes past it). */
-function dropLeaflessMcHubs(
+function dropOptionlessMcHubs(
   data: Pick<TreeData, 'nodes'>,
   set: Set<string>,
 ): boolean {
@@ -371,9 +367,9 @@ function dropLeaflessMcHubs(
   for (const key of [...set]) {
     const node = data.nodes[key];
     if (!node?.isMultipleChoice) continue;
-    const leaves = leafOptionsOfHub(data, key);
-    if (leaves.length === 0) continue;
-    if (leaves.some((l) => set.has(l))) continue;
+    const options = optionsOfHub(data, key);
+    if (options.length === 0) continue;
+    if (options.some((o) => set.has(o))) continue;
     set.delete(key);
     changed = true;
   }
