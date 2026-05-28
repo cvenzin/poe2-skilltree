@@ -381,6 +381,7 @@ function applySearchHighlight(
   wraps: ReadonlyMap<string, Container>,
   layer: Container,
   worldContainer: Container,
+  viewportScale: number,
 ): void {
   const matchSet = new Set(matches);
   const dim = matchSet.size > 0;
@@ -405,9 +406,11 @@ function applySearchHighlight(
     // and jewel sockets are all different diameters) plus a small visible
     // gap outside the frame.
     const radius = ringRadiusForWrap(wrap);
-    const ring = new Graphics()
-      .circle(pos.x, pos.y, radius)
-      .stroke({ color: 0x40e0e0, width: isFocused ? 11 : 7, alpha: 1 });
+    const ring = new Graphics() as SearchRing;
+    // Stash the geometry so the zoom listener can redraw the stroke without
+    // re-measuring bounds or re-resolving the focused match.
+    ring._ringMeta = { x: pos.x, y: pos.y, radius, focused: isFocused };
+    drawSearchRing(ring, viewportScale);
     // Don't let the ring intercept clicks meant for the node underneath.
     ring.eventMode = 'none';
     layer.addChild(ring);
@@ -415,6 +418,33 @@ function applySearchHighlight(
 
   // Reset alpha so the pulse re-takes effect on the next ticker tick.
   layer.alpha = 1;
+}
+
+/** Base stroke widths in *screen* pixels. The world-space width is divided by
+ *  the current viewport scale on draw so the ring stays equally visible at
+ *  every zoom level (otherwise it would shrink to a hairline when zoomed out). */
+const SEARCH_RING_WIDTH = 3;
+const SEARCH_RING_FOCUSED_WIDTH = 5;
+
+type SearchRing = Graphics & {
+  _ringMeta: { x: number; y: number; radius: number; focused: boolean };
+};
+
+function drawSearchRing(ring: SearchRing, viewportScale: number): void {
+  const { x, y, radius, focused } = ring._ringMeta;
+  const baseWidth = focused ? SEARCH_RING_FOCUSED_WIDTH : SEARCH_RING_WIDTH;
+  ring.clear()
+    .circle(x, y, radius)
+    .stroke({ color: 0x40e0e0, width: baseWidth / viewportScale, alpha: 1 });
+}
+
+/** Redraw every ring's stroke for the current zoom. Called from the pulse
+ *  ticker whenever `viewport.scale.x` changes so the rings keep a constant
+ *  on-screen thickness regardless of zoom level. */
+function refreshSearchRingStrokes(layer: Container, viewportScale: number): void {
+  for (const child of layer.children) {
+    drawSearchRing(child as SearchRing, viewportScale);
+  }
 }
 
 /** Distance from a node's centre to where its cyan search-match ring should
@@ -797,8 +827,17 @@ async function mount(
   ctx.fitScale = computeFitScale(app, world);
 
   const pulseStart = performance.now();
+  let lastRingScale = viewport.scale.x;
   const tickerCb = () => {
     if (searchMatchLayer.children.length === 0) return;
+    // Keep the ring stroke a constant *screen* width across zoom. Doing this
+    // in the ticker covers every path that can change scale (wheel/pinch,
+    // search framing animation, initial fit, resize) without per-event hooks.
+    const scale = viewport.scale.x;
+    if (scale !== lastRingScale) {
+      refreshSearchRingStrokes(searchMatchLayer, scale);
+      lastRingScale = scale;
+    }
     if (ctx.reduceMotion) { searchMatchLayer.alpha = 1; return; }
     // 1 Hz sine, alpha 0.6 ↔ 1.0
     const t = (performance.now() - pulseStart) / 1000;
@@ -849,6 +888,7 @@ async function mount(
     ctx.nodeWraps,
     searchMatchLayer,
     worldContainer,
+    viewport.scale.x,
   );
 
   // Initial jewel overlay (nothing hovered yet — clears the layer).
@@ -859,7 +899,7 @@ async function mount(
       applyAll(s.allocated, s.previewPath);
     }
     if (s.searchMatches !== prev.searchMatches || s.searchCursor !== prev.searchCursor) {
-      applySearchHighlight(s.searchMatches, s.searchCursor, ctx.nodeWraps, searchMatchLayer, worldContainer);
+      applySearchHighlight(s.searchMatches, s.searchCursor, ctx.nodeWraps, searchMatchLayer, worldContainer, viewport.scale.x);
     }
     // Redraw the radius overlay when either the hovered node OR the Entwined-
     // active flag flips. The pathing context is already refreshed by applyAll
@@ -972,8 +1012,8 @@ function swapContext(
   if (ctx.jewelOverlay && ctx.worldContainer) {
     applyJewelOverlay(state.hovered, data, ctx.nodeWraps, ctx.jewelOverlay, ctx.worldContainer, ctx.pathing);
   }
-  if (ctx.searchMatchLayer && ctx.worldContainer) {
-    applySearchHighlight(state.searchMatches, state.searchCursor, ctx.nodeWraps, ctx.searchMatchLayer, ctx.worldContainer);
+  if (ctx.searchMatchLayer && ctx.worldContainer && ctx.viewport) {
+    applySearchHighlight(state.searchMatches, state.searchCursor, ctx.nodeWraps, ctx.searchMatchLayer, ctx.worldContainer, ctx.viewport.scale.x);
   }
 }
 
