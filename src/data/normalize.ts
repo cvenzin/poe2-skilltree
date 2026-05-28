@@ -12,10 +12,23 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
     orbitY: e.orbitY,
   }));
 
+  // Drop the "Voices" Sinister Jewel Sockets (ids `voices_jewel_slot1..5`).
+  // They're placed on the tree but graph-disconnected (no in/out/edges): in
+  // game they only activate when the Voices unique jewel is socketed (it
+  // "Allocates 2-4 Sinister Jewel sockets"). This planner doesn't model
+  // jewels/items, so they can never be pathed to or filled — leaving them in
+  // would render five unreachable sockets, pollute search ("Sinister Jewel
+  // Socket"), and show empty radius rings on hover. Removing them here keeps
+  // render / search / pathing / hover consistent from one place. Safe because
+  // nothing connects to them (no edge references their keys).
+  const nodes = Object.fromEntries(
+    Object.entries(raw.nodes).filter(([, n]) => !n.id?.startsWith('voices_jewel_slot'))
+  );
+
   // skill (numeric) → node key. The key is often the same string, but not
   // guaranteed — always look up via this map when you only have the skill id.
   const nodeBySkillId = new Map<number, string>();
-  for (const [key, node] of Object.entries(raw.nodes)) {
+  for (const [key, node] of Object.entries(nodes)) {
     if (typeof node.skill === 'number') {
       nodeBySkillId.set(node.skill, key);
     }
@@ -24,7 +37,7 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
   // class index (into raw.classes[]) → start node key.
   // The six start nodes carry `classStartIndex: [a, b]` (PoE 1 + PoE 2 share).
   const startNodeByClassIndex = new Map<number, string>();
-  for (const [key, node] of Object.entries(raw.nodes)) {
+  for (const [key, node] of Object.entries(nodes)) {
     if (node.classStartIndex) {
       for (const idx of node.classStartIndex) startNodeByClassIndex.set(idx, key);
     }
@@ -33,7 +46,7 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
   // Which ascendancyIds have at least one node in the data? Used to filter
   // empty-tree ascendancies like Witch3b (Abyssal Lich in 0.5.0).
   const ascIdsWithNodes = new Set<string>();
-  for (const node of Object.values(raw.nodes)) {
+  for (const node of Object.values(nodes)) {
     if (node.ascendancyId) ascIdsWithNodes.add(node.ascendancyId);
   }
 
@@ -42,7 +55,7 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
   // 200 main-tree "Forbidden Path" nodes. Iterated by pathing/render whenever
   // allocation changes — keep the set hot so we don't re-scan ~5000 nodes.
   const constrainedNodeKeys = new Set<string>();
-  for (const [key, node] of Object.entries(raw.nodes)) {
+  for (const [key, node] of Object.entries(nodes)) {
     if (node.unlockConstraint) constrainedNodeKeys.add(key);
   }
 
@@ -70,6 +83,7 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
 
   return {
     ...raw,
+    nodes,
     edges,
     nodeBySkillId,
     startNodeByClassIndex,
