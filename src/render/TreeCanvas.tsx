@@ -105,6 +105,8 @@ export default function TreeCanvas({
 
     const ctx: MountContext = {
       cancelled: false,
+      gestureActive: false,
+      lastGestureEndAt: 0,
       app: null,
       viewport: null,
       observer: null,
@@ -204,6 +206,14 @@ interface PathingContext {
 
 interface MountContext {
   cancelled: boolean;
+  /** True while the viewport is being actively panned (drag) or pinch-zoomed.
+   *  Gates node hit-detection so finger gestures don't flicker the tooltip,
+   *  recompute preview paths, or fire an accidental allocate/unallocate. */
+  gestureActive: boolean;
+  /** performance.now() of the last drag/pinch end. A brief tap-suppression
+   *  window after a gesture catches the pointertap a finger-lift can fire on
+   *  the node under the release point. */
+  lastGestureEndAt: number;
   app: Application | null;
   viewport: Viewport | null;
   observer: ResizeObserver | null;
@@ -915,6 +925,7 @@ async function mount(
   console.log(`[TreeCanvas] drew ${drawn} main-tree nodes, ${data.edges.length} edges; initial ascendancy=${propsRef.current.ascendancyId ?? '(none)'}`);
 
   configureViewport(viewport, app, world, ctx.reduceMotion);
+  attachGestureSuppression(viewport, ctx);
   setInitialCamera(viewport, app, world, computeMainTreeBounds(data), savedCamera);
   ctx.observer = attachResizeObserver(host, app, viewport, world, ctx);
 }
@@ -1663,6 +1674,10 @@ function attachNodeInteraction(
   wrap.cursor = isAscStart || isMcHub ? 'default' : 'pointer';
 
   const onHover = (e: import('pixi.js').FederatedPointerEvent) => {
+    // While the user is panning/pinching, ignore the pointermove stream so the
+    // tooltip doesn't flicker across every node the finger slides over and we
+    // don't burn cycles recomputing preview paths mid-gesture.
+    if (ctx.gestureActive) return;
     const state = useStore.getState();
     state.setHovered({
       nodeKey,
@@ -1715,6 +1730,10 @@ function attachNodeInteraction(
   });
 
   wrap.on('pointertap', () => {
+    // A pan/pinch is in progress, or just ended — don't let the finger-lift
+    // commit an allocation on whatever node sits under the release point.
+    if (ctx.gestureActive) return;
+    if (performance.now() - ctx.lastGestureEndAt < TAP_SUPPRESS_AFTER_GESTURE_MS) return;
     if (isAscStart) return; // ascendancy start is implicit, not allocatable
     if (isMcHub) return;    // multiple-choice hub — players click an option, not the hub
     // 300ms matches the threshold most mobile UIs treat as "quick tap"
@@ -1810,6 +1829,35 @@ function addSprite(
 
 function placeholderDot(): Graphics {
   return new Graphics().circle(0, 0, 12).fill({ color: 0x666666 });
+}
+
+/** How long after a pan/pinch ends to keep ignoring node taps — covers the
+ *  pointertap a finger-lift fires on whatever node sits under the release
+ *  point. Short enough that a deliberate tap right after panning still lands. */
+const TAP_SUPPRESS_AFTER_GESTURE_MS = 180;
+
+/**
+ * Suppress node hit-detection during viewport gestures. pixi-viewport emits
+ * `drag-start` / `pinch-start` only once real movement begins (a plain tap
+ * never triggers them), so this flips `ctx.gestureActive` for genuine pans and
+ * pinches without blocking ordinary taps. Clearing hover/preview on gesture
+ * start also kills any tooltip the gesture would otherwise leave flickering.
+ */
+function attachGestureSuppression(vp: Viewport, ctx: MountContext): void {
+  const begin = () => {
+    ctx.gestureActive = true;
+    const s = useStore.getState();
+    if (s.hovered) s.setHovered(null);
+    if (s.previewPath) s.setPreviewPath(null);
+  };
+  const end = () => {
+    ctx.gestureActive = false;
+    ctx.lastGestureEndAt = performance.now();
+  };
+  vp.on('drag-start', begin);
+  vp.on('pinch-start', begin);
+  vp.on('drag-end', end);
+  vp.on('pinch-end', end);
 }
 
 function configureViewport(vp: Viewport, app: Application, world: WorldSize, reduceMotion: boolean): void {
