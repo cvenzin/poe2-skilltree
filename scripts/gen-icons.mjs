@@ -32,7 +32,7 @@ for (const { name, size } of targets) {
 // onto a dark canvas matching the app palette. Platforms draw the title/
 // description text from the og:title / og:description tags separately, so
 // the image itself only needs the icon.
-const OG_BG = { r: 0x14, g: 0x10, b: 0x0a };
+const OG_BG = { r: 0x14, g: 0x1a, b: 0x24 };
 const ogBg = await sharp({
   create: { width: 1200, height: 630, channels: 3, background: OG_BG },
 }).png().toBuffer();

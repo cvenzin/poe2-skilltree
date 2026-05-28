@@ -1,4 +1,4 @@
-# PoE 2 Skill Tree Viewer
+# PoE 2 Skill Tree
 
 A web-based viewer and planner for the Path of Exile 2 passive skill tree.
 Lets you pick a class and ascendancy, search nodes, preview pathing, allocate
@@ -73,3 +73,10 @@ MIT — see [LICENSE](LICENSE).
 
 Path of Exile 2 is a trademark of Grinding Gear Games Ltd. This product
 isn't affiliated with or endorsed by Grinding Gear Games in any way.
+
+### Fonts
+
+UI titles use **OptimusPrinceps SemiBold** by Manfred Klein
+(self-hosted at `public/fonts/`, free for personal and commercial use,
+redistribution allowed) with **Cinzel** (Google Fonts, SIL OFL) as the
+loading fallback.

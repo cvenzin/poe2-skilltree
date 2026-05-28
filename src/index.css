@@ -1,3 +1,15 @@
+/* OptimusPrinceps SemiBold — carved Roman display face for the runic UI
+ * titles. By Manfred Klein, free for personal + commercial use (redistribution
+ * allowed). Self-hosted so it renders for every visitor; `swap` shows the
+ * Cinzel fallback until it loads. See src/ui/theme.ts `fontDisplay`. */
+@font-face {
+  font-family: 'OptimusPrincepsSemiBold';
+  src: url('/fonts/OptimusPrincepsSemiBold.ttf') format('truetype');
+  font-weight: 600 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;

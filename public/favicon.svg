@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="10" ry="10" fill="#14100a"/>
-  <g stroke="#8a6f3e" stroke-width="3" stroke-linecap="round" fill="none">
+  <rect width="64" height="64" rx="10" ry="10" fill="#141a24"/>
+  <g stroke="#4f6b8a" stroke-width="3" stroke-linecap="round" fill="none">
     <line x1="32" y1="32" x2="14" y2="14"/>
     <line x1="32" y1="32" x2="50" y2="14"/>
     <line x1="32" y1="32" x2="50" y2="50"/>
     <line x1="32" y1="32" x2="14" y2="50"/>
   </g>
-  <g fill="#2a2418" stroke="#a78648" stroke-width="2">
+  <g fill="#1a212d" stroke="#577494" stroke-width="2">
     <circle cx="14" cy="14" r="4.5"/>
     <circle cx="50" cy="14" r="4.5"/>
     <circle cx="50" cy="50" r="4.5"/>
     <circle cx="14" cy="50" r="4.5"/>
   </g>
-  <circle cx="32" cy="32" r="11" fill="#1c1812" stroke="#d4a44a" stroke-width="2.5"/>
-  <circle cx="32" cy="32" r="4.5" fill="#d4a44a"/>
+  <circle cx="32" cy="32" r="11" fill="#1a212d" stroke="#5db4ff" stroke-width="2.5"/>
+  <circle cx="32" cy="32" r="4.5" fill="#5db4ff"/>
 </svg>

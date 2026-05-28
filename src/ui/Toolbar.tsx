@@ -8,6 +8,7 @@ import ResetButton from './ResetButton';
 import SearchInput from './SearchInput';
 import ShareButton from './ShareButton';
 import { useIsMobile } from './useIsMobile';
+import { palette, fontBody, fontDisplay, controlHeight } from './theme';
 
 /**
  * Top-left toolbar (INSTRUCTIONS.md §10):
@@ -63,22 +64,35 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   return (
     <div style={containerStyle}>
       {isMobile && (
-        <div style={headerRowStyle}>
-          <button
-            type="button"
-            aria-label="Close toolbar"
-            onClick={() => setMobileExpanded(false)}
-            style={closeButtonStyle}
+        <button
+          type="button"
+          aria-label="Collapse toolbar"
+          onClick={() => setMobileExpanded(false)}
+          style={collapseTabStyle}
+        >
+          <svg
+            aria-hidden
+            width="14"
+            height="9"
+            viewBox="0 0 14 9"
+            fill="none"
+            style={{ display: 'block' }}
           >
-            ×
-          </button>
-        </div>
+            <path
+              d="M1 8 L7 2 L13 8"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
       )}
       <div style={rowStyle}>
         <SearchInput data={data} />
         {VERSIONS.length > 1 && (
           <label style={labelStyle}>
-            <span>Version</span>
+            <span style={labelTitleStyle}>Version</span>
             <select
               value={activeVersion ?? ''}
               onChange={(e) => setActiveVersion(e.target.value)}
@@ -91,7 +105,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
           </label>
         )}
         <label style={labelStyle}>
-          <span>Class</span>
+          <span style={labelTitleStyle}>Class</span>
           <select
             value={className ?? ''}
             onChange={(e) => setClass(e.target.value)}
@@ -104,7 +118,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
         </label>
 
         <label style={labelStyle}>
-          <span>Ascendancy</span>
+          <span style={labelTitleStyle}>Ascendancy</span>
           <select
             value={ascendancyId ?? ''}
             onChange={(e) => setAscendancy(e.target.value || null)}
@@ -156,12 +170,13 @@ const containerStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: 8,
   padding: '8px 12px',
-  background: 'rgba(20, 16, 10, 0.85)',
-  border: '1px solid #6b5a3a',
+  background: palette.panelBg,
+  border: `1px solid ${palette.border}`,
   borderRadius: 6,
-  fontFamily: 'system-ui, sans-serif',
+  fontFamily: fontBody,
   fontSize: 13,
-  color: '#ddd',
+  color: palette.textPrimary,
+  boxShadow: '0 6px 18px rgba(0, 0, 0, 0.55)',
   zIndex: 10,
   pointerEvents: 'auto',
 };
@@ -173,22 +188,36 @@ const rowStyle: React.CSSProperties = {
   alignItems: 'flex-end',
 };
 
+
+// The label is just the column layout; the typographic styling lives on the
+// title span (below) so the rune glow and display font don't inherit down
+// onto the <select> value text.
 const labelStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 3,
-  fontSize: 11,
-  opacity: 0.7,
+  gap: 4,
+};
+
+// Dropdown title — carved display font, glyph-blue, with the same rune-glow
+// shine as the tooltip header.
+const labelTitleStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontFamily: fontDisplay,
+  color: palette.textTitle,
   textTransform: 'uppercase',
-  letterSpacing: 0.5,
+  letterSpacing: 1.5,
+  textShadow: `0 0 8px ${palette.runeGlow}, 0 1px 2px rgba(0, 0, 0, 0.8)`,
 };
 
 const selectStyle: React.CSSProperties = {
-  background: '#1c1812',
-  color: '#ddd',
-  border: '1px solid #4a3f28',
+  background: palette.fieldBg,
+  color: palette.textPrimary,
+  fontFamily: fontBody,
+  border: `1px solid ${palette.border}`,
   borderRadius: 3,
-  padding: '4px 6px',
+  height: controlHeight,
+  boxSizing: 'border-box',
+  padding: '0 8px',
   fontSize: 13,
   minWidth: 140,
   cursor: 'pointer',
@@ -211,10 +240,10 @@ const toggleButtonStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(20, 16, 10, 0.85)',
-  border: '1px solid #6b5a3a',
+  background: palette.panelBg,
+  border: `1px solid ${palette.border}`,
   borderRadius: 6,
-  color: '#ddd',
+  color: palette.textMetal,
   fontSize: 22,
   lineHeight: 1,
   cursor: 'pointer',
@@ -222,23 +251,24 @@ const toggleButtonStyle: React.CSSProperties = {
   pointerEvents: 'auto',
 };
 
-const headerRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-};
-
-const closeButtonStyle: React.CSSProperties = {
-  width: 28,
+// Collapse handle (mobile only): a small tab hanging off the panel's
+// bottom-right edge, with an up-chevron hinting the toolbar folds away
+// upward. Lives outside the box so it costs no layout space inside it.
+const collapseTabStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: -27,
+  right: 14,
+  width: 52,
   height: 28,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'transparent',
-  border: '1px solid #4a3f28',
-  borderRadius: 4,
-  color: '#ddd',
-  fontSize: 18,
-  lineHeight: 1,
+  background: palette.panelBg,
+  border: `1px solid ${palette.border}`,
+  borderTop: 'none',
+  borderRadius: '0 0 6px 6px',
+  color: palette.textMetal,
   cursor: 'pointer',
   padding: 0,
+  pointerEvents: 'auto',
 };

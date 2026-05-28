@@ -1,4 +1,5 @@
 import { useStore } from '../state/store';
+import { palette, controlHeight } from './theme';
 
 /** Undo/redo pair — buttons disable when the corresponding stack is empty so
  *  the user gets a visual cue. Hotkeys (Ctrl/Cmd+Z, Ctrl/Cmd+Y) live in
@@ -36,15 +37,20 @@ export default function UndoRedoButtons() {
 }
 
 const buttonStyle: React.CSSProperties = {
-  background: '#1c1812',
-  color: '#ddd',
-  border: '1px solid #4a3f28',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: palette.fieldBg,
+  color: palette.textMetal,
+  border: `1px solid ${palette.border}`,
   borderRadius: 3,
-  padding: '3px 8px',
+  height: controlHeight,
+  boxSizing: 'border-box',
+  padding: '0 8px',
   fontSize: 16,
   lineHeight: 1,
   cursor: 'pointer',
-  minWidth: 28,
+  minWidth: 32,
 };
 
 const disabledStyle: React.CSSProperties = {

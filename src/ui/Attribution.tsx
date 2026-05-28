@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
+import { palette, fontBody, fontDisplay, panelShadow } from './theme';
 
 const REPO_URL = 'https://github.com/cvenzin/poe2-skilltree';
 
@@ -29,7 +30,7 @@ export default function Attribution() {
     <div ref={containerRef} style={wrapperStyle}>
       {showInfo && (
         <div style={popoverStyle}>
-          <div style={popoverTitleStyle}>PoE 2 Skill Tree Viewer</div>
+          <div style={popoverTitleStyle}>PoE 2 Skill Tree</div>
           <div style={popoverLineStyle}>
             Created by cvenzin · MIT licensed
           </div>
@@ -83,7 +84,7 @@ const wrapperStyle: React.CSSProperties = {
   gap: 8,
   zIndex: 50,
   pointerEvents: 'auto',
-  fontFamily: 'system-ui, sans-serif',
+  fontFamily: fontBody,
 };
 
 const chipRowStyle: React.CSSProperties = {
@@ -95,12 +96,12 @@ const chipRowStyle: React.CSSProperties = {
 const versionStyle: React.CSSProperties = {
   fontSize: 11,
   fontVariantNumeric: 'tabular-nums',
-  color: '#bdb289',
-  background: 'rgba(20, 16, 10, 0.75)',
-  border: '1px solid #4a3f28',
+  color: palette.textMetal,
+  background: palette.panelBg,
+  border: `1px solid ${palette.border}`,
   borderRadius: 999,
   padding: '3px 8px',
-  opacity: 0.7,
+  opacity: 0.85,
   letterSpacing: 0.3,
 };
 
@@ -110,10 +111,10 @@ const infoButtonStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(20, 16, 10, 0.75)',
-  border: '1px solid #6b5a3a',
+  background: palette.panelBg,
+  border: `1px solid ${palette.border}`,
   borderRadius: '50%',
-  color: '#ddd',
+  color: palette.textMetal,
   fontSize: 15,
   fontFamily: 'Georgia, serif',
   fontStyle: 'italic',
@@ -121,28 +122,31 @@ const infoButtonStyle: React.CSSProperties = {
   lineHeight: 1,
   padding: 0,
   cursor: 'pointer',
-  opacity: 0.7,
+  opacity: 0.85,
 };
 
 const popoverStyle: React.CSSProperties = {
   maxWidth: 280,
   padding: '10px 14px',
-  background: 'rgba(8, 6, 10, 0.96)',
-  border: '1px solid #6b5a3a',
+  background: palette.panelBgSolid,
+  border: `1px solid ${palette.border}`,
   borderRadius: 6,
-  color: '#ddd',
+  color: palette.textPrimary,
   fontSize: 12,
   lineHeight: 1.5,
-  boxShadow: '0 8px 22px rgba(0, 0, 0, 0.6)',
+  boxShadow: panelShadow,
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
 };
 
 const popoverTitleStyle: React.CSSProperties = {
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 600,
-  color: '#ffffff',
+  fontFamily: fontDisplay,
+  color: palette.textTitle,
+  letterSpacing: 0.5,
+  textShadow: `0 0 8px ${palette.runeGlow}`,
 };
 
 const popoverLineStyle: React.CSSProperties = {
@@ -152,12 +156,12 @@ const popoverLineStyle: React.CSSProperties = {
 const popoverDisclaimerStyle: React.CSSProperties = {
   opacity: 0.65,
   fontSize: 11,
-  borderTop: '1px solid #2a2418',
+  borderTop: `1px solid ${palette.divider}`,
   paddingTop: 6,
 };
 
 const popoverLinkStyle: React.CSSProperties = {
-  color: '#d4a44a',
+  color: palette.rune,
   textDecoration: 'none',
   alignSelf: 'flex-start',
 };

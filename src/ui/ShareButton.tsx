@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../state/store';
 import type { TreeData } from '../data/types';
 import { encodeShareHash } from '../state/shareHash';
+import { palette, controlHeight } from './theme';
 
 const TOAST_MS = 1500;
 
@@ -78,11 +79,16 @@ export default function ShareButton({ data }: Readonly<ShareButtonProps>) {
 }
 
 const buttonStyle: React.CSSProperties = {
-  background: '#1c1812',
-  color: '#ddd',
-  border: '1px solid #4a3f28',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: palette.fieldBg,
+  color: palette.textPrimary,
+  border: `1px solid ${palette.border}`,
   borderRadius: 3,
-  padding: '4px 10px',
+  height: controlHeight,
+  boxSizing: 'border-box',
+  padding: '0 12px',
   fontSize: 13,
   cursor: 'pointer',
 };
@@ -100,14 +106,14 @@ const toastBaseStyle: React.CSSProperties = {
 
 const toastSuccessStyle: React.CSSProperties = {
   ...toastBaseStyle,
-  background: '#1a3a1a',
-  color: '#9eea9e',
-  border: '1px solid #3a6a3a',
+  background: palette.successBg,
+  color: palette.successText,
+  border: `1px solid ${palette.successBorder}`,
 };
 
 const toastErrorStyle: React.CSSProperties = {
   ...toastBaseStyle,
-  background: '#3a1a1a',
-  color: '#eea9a9',
-  border: '1px solid #6a3a3a',
+  background: palette.dangerBg,
+  color: palette.dangerText,
+  border: `1px solid ${palette.dangerBorder}`,
 };

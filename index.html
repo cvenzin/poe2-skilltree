@@ -3,27 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>PoE 2 Skill Tree Viewer — browser-based passive tree planner</title>
+    <title>PoE 2 Skill Tree — browser-based passive tree planner</title>
     <meta name="description" content="Free, open-source Path of Exile 2 passive skill tree viewer and planner. Pick a class and ascendancy, preview pathing, allocate within budget, and share builds via URL. Runs entirely in the browser, no account required." />
     <link rel="canonical" href="https://cvenzin.github.io/poe2-skilltree/" />
     <meta name="robots" content="index, follow" />
 
+    <!-- Cinzel: carved-stone display face for the runic UI titles (tooltip
+         header, attribution). Body text stays on the system stack. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#14100a" />
+    <meta name="theme-color" content="#141a24" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="PoE 2 Skill Tree Viewer" />
+    <meta property="og:title" content="PoE 2 Skill Tree" />
     <meta property="og:description" content="Free, open-source Path of Exile 2 passive skill tree viewer and planner. Share builds via URL, mobile-friendly, no account required." />
     <meta property="og:url" content="https://cvenzin.github.io/poe2-skilltree/" />
     <meta property="og:image" content="https://cvenzin.github.io/poe2-skilltree/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="PoE 2 Skill Tree Viewer" />
+    <meta property="og:site_name" content="PoE 2 Skill Tree" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="PoE 2 Skill Tree Viewer" />
+    <meta name="twitter:title" content="PoE 2 Skill Tree" />
     <meta name="twitter:description" content="Free, open-source Path of Exile 2 passive skill tree viewer and planner." />
     <meta name="twitter:image" content="https://cvenzin.github.io/poe2-skilltree/og-image.png" />
 
@@ -31,7 +37,7 @@
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "PoE 2 Skill Tree Viewer",
+      "name": "PoE 2 Skill Tree",
       "url": "https://cvenzin.github.io/poe2-skilltree/",
       "description": "Free, open-source Path of Exile 2 passive skill tree viewer and planner. Pick a class and ascendancy, preview pathing, allocate within budget, and share builds via URL.",
       "applicationCategory": "GameApplication",
@@ -47,7 +53,7 @@
     <div id="root">
       <noscript>
         <main style="max-width: 720px; margin: 4em auto; padding: 0 1.5em; font-family: system-ui, sans-serif; color: #ddd;">
-          <h1>PoE 2 Skill Tree Viewer</h1>
+          <h1>PoE 2 Skill Tree</h1>
           <p>
             A browser-based passive skill tree viewer and planner for
             Path of Exile 2. Pick a class and ascendancy, preview pathing,

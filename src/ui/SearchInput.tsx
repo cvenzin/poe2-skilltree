@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import type { TreeData } from '../data/types';
 import { buildSearchIndex, findMatches, filterConstraintHidden } from '../interaction/search';
+import { palette, controlHeight } from './theme';
 
 const DEBOUNCE_MS = 120;
 
@@ -81,7 +82,6 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
 
   return (
     <div style={containerStyle}>
-      <span style={iconStyle} aria-hidden>🔍</span>
       <input
         ref={inputRef}
         type="search"
@@ -130,48 +130,46 @@ function computeDisplayIndex(cursor: number, total: number): number {
 }
 
 const containerStyle: React.CSSProperties = {
-  display: 'inline-flex',
+  // Grow to absorb spare width in the toolbar's first row so it lines up with
+  // the (often wider) controls row below. `flex-basis: 160` keeps a sane
+  // minimum before it starts expanding.
+  display: 'flex',
+  flex: '1 1 160px',
   alignItems: 'center',
   gap: 4,
-  padding: '2px 6px',
-  background: '#1c1812',
-  border: '1px solid #4a3f28',
+  padding: '0 8px',
+  background: palette.fieldBg,
+  border: `1px solid ${palette.border}`,
   borderRadius: 3,
-  height: 28,
-};
-
-const iconStyle: React.CSSProperties = {
-  fontSize: 12,
-  opacity: 0.55,
-  paddingTop: 2,
+  height: controlHeight,
+  boxSizing: 'border-box',
 };
 
 const inputStyle: React.CSSProperties = {
   background: 'transparent',
-  color: '#ddd',
+  color: palette.textPrimary,
   border: 'none',
   outline: 'none',
   fontSize: 13,
   fontFamily: 'inherit',
-  width: 160,
+  flex: 1,
+  minWidth: 0,
   padding: 0,
 };
 
 const chipStyle: React.CSSProperties = {
   fontSize: 11,
-  color: '#e4d8b8',
-  opacity: 0.75,
+  color: palette.textStat,
   fontVariantNumeric: 'tabular-nums',
   whiteSpace: 'nowrap',
 };
 
 const clearButtonStyle: React.CSSProperties = {
   background: 'transparent',
-  color: '#ddd',
+  color: palette.textMuted,
   border: 'none',
   fontSize: 16,
   lineHeight: 1,
   cursor: 'pointer',
   padding: '0 2px',
-  opacity: 0.7,
 };

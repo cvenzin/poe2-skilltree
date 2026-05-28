@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { tokenizeStatLine } from '../interaction/statsMarkup';
 import { useIsMobile } from './useIsMobile';
+import { palette, fontBody, fontDisplay, panelShadow } from './theme';
 import type { TreeNode } from '../data/types';
 
 const TOOLTIP_OFFSET = 16;
@@ -151,35 +152,40 @@ function StatTokens({ text }: Readonly<{ text: string }>) {
   );
 }
 
-const underlineStyle: React.CSSProperties = { textDecoration: 'underline' };
+const underlineStyle: React.CSSProperties = {
+  textDecoration: 'underline',
+  textDecorationColor: palette.rune,
+};
 
-// PoE-style frame: container holds no padding so the header band can span
-// full width with its own background. Header and body each pad themselves.
+// Runic frame: container holds no padding so the header band can span full
+// width with its own background. Header and body each pad themselves.
 const containerStyle: React.CSSProperties = {
   position: 'fixed',
   pointerEvents: 'none',
-  background: 'rgba(8, 6, 10, 0.96)',
-  border: '1px solid #6b5a3a',
-  borderRadius: 4,
+  background: palette.panelBg,
+  border: `1px solid ${palette.border}`,
+  borderRadius: 6,
   overflow: 'hidden',
-  color: '#c8c8ff',
-  fontFamily: 'system-ui, sans-serif',
+  color: palette.textPrimary,
+  fontFamily: fontBody,
   fontSize: 13,
   lineHeight: 1.45,
   maxWidth: 'min(420px, calc(100vw - 16px))',
-  boxShadow: '0 8px 22px rgba(0, 0, 0, 0.6)',
+  boxShadow: panelShadow,
   zIndex: 100,
 };
 
 const headerStyle: React.CSSProperties = {
   textAlign: 'center',
-  fontSize: 16,
+  fontSize: 17,
   fontWeight: 700,
-  color: '#ffffff',
-  background: 'rgba(0, 0, 0, 0.55)',
+  fontFamily: fontDisplay,
+  color: palette.textTitle,
+  background: palette.headerBg,
   padding: '8px 14px',
-  borderBottom: '1px solid #2a2418',
-  letterSpacing: 0.3,
+  borderBottom: `1px solid ${palette.border}`,
+  letterSpacing: 0.6,
+  textShadow: `0 0 8px ${palette.runeGlow}, 0 1px 2px rgba(0, 0, 0, 0.8)`,
 };
 
 const statsListStyle: React.CSSProperties = {
@@ -195,8 +201,8 @@ const statsListStyle: React.CSSProperties = {
 // stay visually distinct even when one entry wraps to multiple lines or
 // contains an embedded sub-bullet list. The stripe is the entry boundary.
 const statLineStyle: React.CSSProperties = {
-  color: '#8787ff',
-  borderLeft: '2px solid #4a3f28',
+  color: palette.textMetal,
+  borderLeft: `2px solid ${palette.runeDark}`,
   paddingLeft: 8,
 };
 
@@ -216,6 +222,6 @@ const subBulletStyle: React.CSSProperties = {
 };
 
 const subBulletMarkStyle: React.CSSProperties = {
-  color: '#8787ff',
+  color: palette.rune,
   textAlign: 'center',
 };

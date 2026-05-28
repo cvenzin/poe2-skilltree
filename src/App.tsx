@@ -11,6 +11,7 @@ import Toolbar from './ui/Toolbar';
 import NodeTooltip from './ui/NodeTooltip';
 import Attribution from './ui/Attribution';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
+import { palette, fontDisplay, fontBody } from './ui/theme';
 
 export default function App() {
   const status = useStore((s) => s.status);
@@ -150,8 +151,8 @@ export default function App() {
 
   return (
     <div style={overlayStyle}>
-      <h1 style={{ margin: 0, fontWeight: 400 }}>PoE 2 Skill Tree Viewer</h1>
-      <p style={{ opacity: 0.6, marginTop: '0.5rem' }}>
+      <h1 style={loadingTitleStyle}>PoE 2 Skill Tree</h1>
+      <p style={loadingSubtitleStyle}>
         {status.kind === 'idle' && 'Initialising…'}
         {status.kind === 'loading' &&
           `Loading tree ${status.version} · ${status.stage === 'data' ? 'data.json' : 'atlases'}…`}
@@ -190,9 +191,26 @@ const overlayStyle: React.CSSProperties = {
   flexDirection: 'column',
   justifyContent: 'center',
   alignItems: 'center',
-  fontFamily: 'system-ui, sans-serif',
-  color: '#ddd',
-  background: '#111',
+  fontFamily: fontBody,
+  color: palette.textPrimary,
+  background: palette.panelBgSolid,
+};
+
+// Loader title — same carved display font, glyph-blue, and rune glow as the
+// tooltip header, scaled up for the splash.
+const loadingTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: fontDisplay,
+  fontWeight: 700,
+  fontSize: 30,
+  letterSpacing: 1,
+  color: palette.textTitle,
+  textShadow: `0 0 12px ${palette.runeGlow}, 0 1px 2px rgba(0, 0, 0, 0.8)`,
+};
+
+const loadingSubtitleStyle: React.CSSProperties = {
+  marginTop: '0.6rem',
+  color: palette.textMuted,
 };
 
 const errCardStyle: React.CSSProperties = {

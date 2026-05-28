@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
+import { palette, controlHeight } from './theme';
 
 /** Threshold for showing a confirmation popover (INSTRUCTIONS.md §9.1).
  *  Below this, reset is one-click — undo still recovers it. */
@@ -73,11 +74,16 @@ export default function ResetButton() {
 }
 
 const buttonStyle: React.CSSProperties = {
-  background: '#1c1812',
-  color: '#ddd',
-  border: '1px solid #4a3f28',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: palette.fieldBg,
+  color: palette.textPrimary,
+  border: `1px solid ${palette.border}`,
   borderRadius: 3,
-  padding: '4px 10px',
+  height: controlHeight,
+  boxSizing: 'border-box',
+  padding: '0 12px',
   fontSize: 13,
   cursor: 'pointer',
 };
@@ -87,30 +93,30 @@ const popoverStyle: React.CSSProperties = {
   top: '100%',
   marginTop: 6,
   left: 0,
-  background: '#1c1812',
-  border: '1px solid #6b5a3a',
+  background: palette.panelBgSolid,
+  border: `1px solid ${palette.border}`,
   borderRadius: 4,
   padding: 10,
   minWidth: 220,
   fontSize: 13,
-  color: '#ddd',
+  color: palette.textPrimary,
   boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
   zIndex: 20,
 };
 
 const cancelStyle: React.CSSProperties = {
   background: 'transparent',
-  color: '#ddd',
-  border: '1px solid #4a3f28',
+  color: palette.textPrimary,
+  border: `1px solid ${palette.border}`,
   borderRadius: 3,
   padding: '3px 10px',
   cursor: 'pointer',
 };
 
 const confirmStyle: React.CSSProperties = {
-  background: '#5a3a3a',
-  color: '#fff',
-  border: '1px solid #8a4a4a',
+  background: palette.dangerBg,
+  color: palette.dangerText,
+  border: `1px solid ${palette.dangerBorder}`,
   borderRadius: 3,
   padding: '3px 10px',
   cursor: 'pointer',

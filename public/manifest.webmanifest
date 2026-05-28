@@ -1,13 +1,13 @@
 {
-  "name": "PoE 2 Skill Tree Viewer",
+  "name": "PoE 2 Skill Tree",
   "short_name": "PoE2 Tree",
   "description": "Path of Exile 2 passive skill tree viewer and planner.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#14100a",
-  "theme_color": "#14100a",
+  "background_color": "#141a24",
+  "theme_color": "#141a24",
   "icons": [
     { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
