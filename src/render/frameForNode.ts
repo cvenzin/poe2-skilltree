@@ -47,6 +47,16 @@ export function spritesForNode(node: TreeNode, state: NodeState = 'idle'): NodeS
   };
 }
 
+/** Whether a node draws any sprite at all. Mirrors {@link spritesForNode}:
+ *  masteries (PoE 1 leftover) and icon-less placeholder/connector nodes (e.g.
+ *  the dangling stubs off some ascendancy notables like Acolyte of Chayula's
+ *  "Chayula's Gift") render nothing. Edges touching such a node are suppressed
+ *  in TreeCanvas so we never draw a connection line into empty space. */
+export function nodeHasVisual(node: TreeNode): boolean {
+  const { icon, frame } = spritesForNode(node);
+  return icon !== null || frame !== null;
+}
+
 function pickFrameKey(node: TreeNode, state: NodeState): string | null {
   // Ascendancy start has a single bespoke frame regardless of state.
   if (node.isAscendancyStart) return 'frame:AscendancyStartNode';

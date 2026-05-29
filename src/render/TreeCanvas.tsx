@@ -10,7 +10,7 @@ import {
 import { Viewport } from 'pixi-viewport';
 import type { Edge, TreeData, TreeNode } from '../data/types';
 import { type AtlasBundle, getFrame, classBackgroundName } from './atlas';
-import { spritesForNode, type NodeState } from './frameForNode';
+import { spritesForNode, nodeHasVisual, type NodeState } from './frameForNode';
 import { drawMasteries, type MasteryRedraw } from './drawMasteries';
 import { useStore } from '../state/store';
 import {
@@ -1545,15 +1545,16 @@ interface DrawableEdge {
 }
 
 /** Resolve an edge's endpoints into a drawable pair, or null if either is missing
- *  positions, is a hidden mastery (PoE 1 leftover), or carries `hideConnection`
- *  (the 12 tribute/cluster-jewel nodes that PoE doesn't draw connection lines for). */
+ *  positions, renders no sprite (hidden masteries + icon-less placeholder nodes),
+ *  or carries `hideConnection` (the 12 tribute/cluster-jewel nodes that PoE doesn't
+ *  draw connection lines for). Never draw an edge into a node the user can't see. */
 function resolveDrawableEdge(
   a: TreeNode | undefined,
   b: TreeNode | undefined
 ): DrawableEdge | null {
   if (!a || !b) return null;
   if (a.x === undefined || a.y === undefined || b.x === undefined || b.y === undefined) return null;
-  if (a.isMastery || b.isMastery) return null;
+  if (!nodeHasVisual(a) || !nodeHasVisual(b)) return null;
   if (a.hideConnection || b.hideConnection) return null;
   return { a: a as DrawableEdge['a'], b: b as DrawableEdge['b'] };
 }
