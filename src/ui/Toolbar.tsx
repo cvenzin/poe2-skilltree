@@ -39,10 +39,12 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   const setWeaponSetsEnabled = useStore((s) => s.setWeaponSetsEnabled);
 
   const isMobile = useIsMobile();
-  // Mobile-only collapse state. Desktop ignores this entirely and always
-  // renders the full toolbar. Defaults to collapsed because the toolbar
-  // wraps to 3-4 rows on phones and obscures too much of the canvas.
-  const [mobileExpanded, setMobileExpanded] = useState(false);
+  // Collapse state for both viewports. The hamburger/collapse-tab pair works
+  // the same everywhere; only the *default* differs: open on desktop, collapsed
+  // on mobile (where the toolbar wraps to 3-4 rows and obscures too much of the
+  // canvas). The lazy initialiser reads `isMobile` once on first render, so the
+  // default tracks the initial viewport without re-collapsing on later resizes.
+  const [expanded, setExpanded] = useState(() => !isMobile);
 
   const playableClasses = data.playableClassIndices
     .map((i) => data.classes[i])
@@ -55,13 +57,13 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   // that uses sets flips it on (see loadSnapshot), but it's always toggleable.
   const showSets = weaponSetsEnabled;
 
-  // Collapsed on mobile: render just the toggle button in the top-left.
-  if (isMobile && !mobileExpanded) {
+  // Collapsed: render just the hamburger toggle button in the top-left.
+  if (!expanded) {
     return (
       <button
         type="button"
         aria-label="Open toolbar"
-        onClick={() => setMobileExpanded(true)}
+        onClick={() => setExpanded(true)}
         style={toggleButtonStyle}
       >
         ≡
@@ -71,13 +73,12 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
 
   return (
     <div style={containerStyle}>
-      {isMobile && (
-        <button
-          type="button"
-          aria-label="Collapse toolbar"
-          onClick={() => setMobileExpanded(false)}
-          style={collapseTabStyle}
-        >
+      <button
+        type="button"
+        aria-label="Collapse toolbar"
+        onClick={() => setExpanded(false)}
+        style={collapseTabStyle}
+      >
           <svg
             aria-hidden
             width="14"
@@ -95,7 +96,6 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
             />
           </svg>
         </button>
-      )}
       {/* Row 1 — lookup / config */}
       <div style={rowStyle}>
         <SearchInput data={data} />
@@ -405,9 +405,9 @@ const segmentSelectedStyle: React.CSSProperties = {
   fontWeight: 600,
 };
 
-// Standalone toggle button shown when the toolbar is collapsed on mobile.
-// Same visual language as the container so it reads as the toolbar's
-// minimised state rather than a stray icon.
+// Standalone hamburger button shown when the toolbar is collapsed (either
+// viewport). Same visual language as the container so it reads as the
+// toolbar's minimised state rather than a stray icon.
 const toggleButtonStyle: React.CSSProperties = {
   position: 'absolute',
   top: 16,
@@ -428,9 +428,9 @@ const toggleButtonStyle: React.CSSProperties = {
   pointerEvents: 'auto',
 };
 
-// Collapse handle (mobile only): a small tab hanging off the panel's
-// bottom-right edge, with an up-chevron hinting the toolbar folds away
-// upward. Lives outside the box so it costs no layout space inside it.
+// Collapse handle: a small tab hanging off the panel's bottom-right edge,
+// with an up-chevron hinting the toolbar folds away upward. Lives outside the
+// box so it costs no layout space inside it.
 const collapseTabStyle: React.CSSProperties = {
   position: 'absolute',
   bottom: -27,
