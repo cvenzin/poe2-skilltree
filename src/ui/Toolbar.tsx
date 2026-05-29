@@ -153,7 +153,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
         <div style={spacerStyle} />
         <UndoRedoButtons />
         <ResetButton />
-        <ShareButton data={data} />
+        <ShareButton />
       </div>
     </div>
   );

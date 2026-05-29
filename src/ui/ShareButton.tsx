@@ -1,14 +1,9 @@
 import { useState } from 'react';
 import { useStore } from '../state/store';
-import type { TreeData } from '../data/types';
 import { encodeShareHash } from '../state/shareHash';
 import { palette, controlHeight } from './theme';
 
 const TOAST_MS = 1500;
-
-interface ShareButtonProps {
-  data: TreeData;
-}
 
 /**
  * Serialises the current build into the URL share-hash format (§10.4),
@@ -19,7 +14,7 @@ interface ShareButtonProps {
  * decodes and applies — for the same build that produced the hash, this
  * is a no-op (state already matches), so the round-trip is safe.
  */
-export default function ShareButton({ data }: Readonly<ShareButtonProps>) {
+export default function ShareButton() {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const allocated = useStore((s) => s.allocated);
@@ -30,16 +25,10 @@ export default function ShareButton({ data }: Readonly<ShareButtonProps>) {
   const onClick = async () => {
     if (!activeVersion || !className) return;
 
-    const classIdx = data.classes.findIndex((c) => c.name === className);
-    if (classIdx < 0) return;
-    const ascendancyIdx = ascendancyId
-      ? (data.classes[classIdx]?.ascendancies.findIndex((a) => a.id === ascendancyId) ?? -1)
-      : -1;
-
     const hash = encodeShareHash({
       version: activeVersion,
-      classIdx,
-      ascendancyIdx,
+      className,
+      ascendancyId,
       allocatedKeys: [...allocated],
     });
 
