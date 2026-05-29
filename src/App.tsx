@@ -14,6 +14,7 @@ import type { TreeData } from './data/types';
 import TreeCanvas from './render/TreeCanvas';
 import Toolbar from './ui/Toolbar';
 import NodeTooltip from './ui/NodeTooltip';
+import ValidationToast from './ui/ValidationToast';
 import Attribution from './ui/Attribution';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
 import { palette, fontDisplay, fontBody } from './ui/theme';
@@ -177,6 +178,7 @@ export default function App() {
         />
         <Toolbar data={status.data} />
         <NodeTooltip />
+        <ValidationToast />
         <Attribution />
       </>
     );

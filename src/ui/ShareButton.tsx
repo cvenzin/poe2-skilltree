@@ -17,7 +17,7 @@ const TOAST_MS = 1500;
 export default function ShareButton() {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
-  const allocated = useStore((s) => s.allocated);
+  const allocation = useStore((s) => s.allocation);
   const activeVersion = useStore((s) => s.activeVersion);
 
   const [toast, setToast] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -29,7 +29,9 @@ export default function ShareButton() {
       version: activeVersion,
       className,
       ascendancyId,
-      allocatedKeys: [...allocated],
+      sharedKeys: [...allocation.shared],
+      set1Keys: [...allocation.set1],
+      set2Keys: [...allocation.set2],
     });
 
     // Update the URL without history pollution. `replaceState` doesn't fire

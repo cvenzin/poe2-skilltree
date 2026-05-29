@@ -1,5 +1,12 @@
 import type { TreeData, TreeNode } from '../data/types';
 import { computeConstraintHiddenKeys } from '../data/normalize';
+import {
+  type Allocation,
+  type AllocationMode,
+  addKeysToBucket,
+  isAllocated,
+  removeKey,
+} from '../state/allocation';
 
 /**
  * Nodes the BFS must never traverse. `"root"` is the synthetic central node
@@ -137,7 +144,12 @@ function expandFrom(ctx: BfsContext, current: string): boolean {
  *  has a legitimate bridge (which is the future-work case).
  *
  *  Strict blocking: blocked nodes are never traversed AND never targetable
- *  AND never seeded as frontier even if stale state has them in `allocated`. */
+ *  AND never seeded as frontier even if stale state has them in `allocated`.
+ *
+ *  This is the *base* block set (class / ascendancy / mastery / constraint).
+ *  Weapon-set exclusions are mode-dependent and added at edit time by the
+ *  caller (see {@link blockedForMode}) — the main tree can't route through
+ *  weapon-set nodes, and the two sets can't route through each other. */
 export function buildBlockedKeys(
   data: TreeData,
   selectedClassStartKey: string,
@@ -311,39 +323,79 @@ export function autoOptionsForPath(
 }
 
 /**
- * Compute the new `allocated` set after a node is removed (clicked while
- * already allocated). Cascades — any allocated node that no longer has a
- * connected route back to a frontier root is also removed.
+ * Build the new {@link Allocation} after committing a BFS path in a given
+ * allocation mode. The freshly-added main-tree nodes go into `mode`'s bucket;
+ * ascendancy nodes (including multiple-choice options) always go to `shared`,
+ * because ascendancy points are not weapon-set-split. Ascendancy start nodes
+ * are skipped — they're implicit.
  *
- * Multi-source BFS from every key in `frontierKeys` (the main class start
- * plus the selected ascendancy start, if any) over `allocated \ {removed}`;
- * everything not visited drops out of the new allocated set. The removed node
- * itself is never re-added.
- *
- * Why multi-source: ascendancy nodes connect to the ascendancy start, which
- * is implicit and never stored in `allocated`. A BFS seeded only from the
- * main class start would hit the ascendancy start as a neighbour, see it
- * isn't in `remaining`, and stop — judging the entire ascendancy branch
- * unreachable and dropping it on every click. Seeding from both starts lets
- * BFS treat each as its own implicit root.
+ * Enforces the MC-hub "one option per hub" rule (rule c): adding an option
+ * evicts a previously-held sibling of the same hub from whichever bucket it was
+ * in. `path` and `autoOptions` are the BFS result and its auto-picked hub
+ * options ({@link autoOptionsForPath}).
  */
-export function cascadeUnallocate(
+export function applyPathAllocation(
   data: TreeData,
-  allocated: ReadonlySet<string>,
+  allocation: Allocation,
+  path: readonly string[],
+  autoOptions: readonly string[],
+  mode: AllocationMode,
+): Allocation {
+  const ascKeys: string[] = [];
+  const mainKeys: string[] = [];
+  const newKeys = [...path, ...autoOptions];
+  for (const key of newKeys) {
+    const node = data.nodes[key];
+    if (!node) continue;
+    if (node.isAscendancyStart) continue;     // implicit, never stored
+    if (node.ascendancyId) ascKeys.push(key); // ascendancy → always shared
+    else mainKeys.push(key);
+  }
+  let next = addKeysToBucket(allocation, ascKeys, 'shared');
+  next = addKeysToBucket(next, mainKeys, mode);
+  return evictReplacedMcSiblings(next, data, newKeys, allocation);
+}
+
+/** Remove previously-held MC-option siblings of any option just added (one
+ *  option per hub). Evaluates membership against the pre-commit allocation. */
+function evictReplacedMcSiblings(
+  next: Allocation,
+  data: Pick<TreeData, 'nodes'>,
+  newKeys: readonly string[],
+  prev: Allocation,
+): Allocation {
+  let result = next;
+  for (const key of newKeys) {
+    if (!isMcOption(data, key)) continue;
+    const hubKey = hubOfOption(data, key);
+    if (!hubKey) continue;
+    for (const sibling of optionsOfHub(data, hubKey)) {
+      if (sibling !== key && isAllocated(prev, sibling)) {
+        result = removeKey(result, sibling);
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Prune a single allocated tree down to the nodes still reachable from the
+ * frontier, then drop MC hubs left without an option — iterated to a fixed
+ * point because dropping a hub can orphan whatever sat past it.
+ *
+ * Walk reachability, then drop any MC hub that has options but none currently
+ * allocated (rule a + b — the hub is implicit, valid only when an option is
+ * held). Frontier keys (class / ascendancy starts) are removed from the result
+ * — they're implicit roots, never stored in the allocation.
+ */
+function pruneTreeToReachable(
+  data: TreeData,
+  tree: ReadonlySet<string>,
   frontierKeys: ReadonlySet<string>,
-  removed: string,
-  ascendancyId: string | null = null,
-  hiddenKeys: ReadonlySet<string> = EMPTY_SET,
+  ascendancyId: string | null,
+  hiddenKeys: ReadonlySet<string>,
 ): Set<string> {
-  if (!allocated.has(removed)) return new Set(allocated);
-
-  let current = new Set(allocated);
-  current.delete(removed);
-
-  // Iterate: walk reachability, then drop any MC hub that has options but
-  // none currently allocated (rule a + b — the hub is implicit, valid only
-  // when an option is held). Dropping a hub can orphan whatever sits past
-  // it, so re-walk until the set is stable.
+  let current = new Set(tree);
   for (;;) {
     const seeds = collectCascadeSeeds(data, current, frontierKeys, ascendancyId, hiddenKeys);
     const reachable = walkAllocated(data, current, seeds);
@@ -354,6 +406,65 @@ export function cascadeUnallocate(
     }
     current = reachable;
   }
+}
+
+/**
+ * Revalidate a weapon-set {@link Allocation} after an edit (a node was added to
+ * or removed from one tree), enforcing the leaf-branch connectivity model:
+ *
+ *   - The **main tree** (`shared`) connects to the class start through shared
+ *     nodes only — it never routes through a weapon-set node.
+ *   - **Set 1** is a branch off the main tree: a `set1` node survives iff it's
+ *     reachable over `shared ∪ set1`.
+ *   - **Set 2** likewise survives iff reachable over `shared ∪ set2`.
+ *
+ * The main tree is pruned first (independent of the sets), then each set is
+ * pruned against the *surviving* main tree — so removing a shared node that a
+ * branch hung off correctly drops that branch. No outer fixed point is needed:
+ * shared doesn't depend on the sets, and each set's internal reachability /
+ * MC-hub pruning already settles inside {@link pruneTreeToReachable}.
+ *
+ * Returns the same instance when nothing changed, so callers can skip a no-op
+ * commit / undo push.
+ */
+export function resolveCascade(
+  data: TreeData,
+  allocation: Allocation,
+  frontierKeys: ReadonlySet<string>,
+  ascendancyId: string | null = null,
+  hiddenKeys: ReadonlySet<string> = EMPTY_SET,
+): Allocation {
+  const sharedSurvive = pruneTreeToReachable(data, allocation.shared, frontierKeys, ascendancyId, hiddenKeys);
+  const set1Survive = intersect(
+    allocation.set1,
+    pruneTreeToReachable(data, union(sharedSurvive, allocation.set1), frontierKeys, ascendancyId, hiddenKeys),
+  );
+  const set2Survive = intersect(
+    allocation.set2,
+    pruneTreeToReachable(data, union(sharedSurvive, allocation.set2), frontierKeys, ascendancyId, hiddenKeys),
+  );
+  if (
+    sharedSurvive.size === allocation.shared.size &&
+    set1Survive.size === allocation.set1.size &&
+    set2Survive.size === allocation.set2.size
+  ) {
+    return allocation;
+  }
+  return { shared: sharedSurvive, set1: set1Survive, set2: set2Survive };
+}
+
+/** `a ∩ b` as a new Set. */
+function intersect(a: ReadonlySet<string>, b: ReadonlySet<string>): Set<string> {
+  const out = new Set<string>();
+  for (const k of a) if (b.has(k)) out.add(k);
+  return out;
+}
+
+/** `a ∪ b` as a new Set. */
+function union(a: ReadonlySet<string>, b: ReadonlySet<string>): Set<string> {
+  const out = new Set<string>(a);
+  for (const k of b) out.add(k);
+  return out;
 }
 
 /** Drop any MC hub in `set` whose options exist but none are present.

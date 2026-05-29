@@ -347,3 +347,23 @@ export function startNodeKeyForClass(className: string, data: TreeData): string 
   if (!key) throw new Error(`No start node for class index ${idx} (${className})`);
   return key;
 }
+
+/** Node key of the start node for the given ascendancy, or null if none
+ *  matches (or no ascendancy is selected). */
+export function ascendancyStartKey(data: Pick<TreeData, 'nodes'>, ascendancyId: string | null): string | null {
+  if (!ascendancyId) return null;
+  for (const [key, node] of Object.entries(data.nodes)) {
+    if (node.isAscendancyStart && node.ascendancyId === ascendancyId) return key;
+  }
+  return null;
+}
+
+/** Implicit allocation roots for a build: the class start plus the selected
+ *  ascendancy start (if any). These are never stored in the allocation but seed
+ *  every reachability walk (see pathing.ts). */
+export function frontierKeysFor(data: TreeData, className: string, ascendancyId: string | null): Set<string> {
+  const frontier = new Set<string>([startNodeKeyForClass(className, data)]);
+  const ascStart = ascendancyStartKey(data, ascendancyId);
+  if (ascStart) frontier.add(ascStart);
+  return frontier;
+}

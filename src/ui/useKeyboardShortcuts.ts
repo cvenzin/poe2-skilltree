@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useStore } from '../state/store';
+import { allocationSize } from '../state/allocation';
 import { RESET_CONFIRM_THRESHOLD } from './ResetButton';
 
 /**
@@ -71,9 +72,9 @@ function handleReset(e: KeyboardEvent): void {
     // Second R while popover open → confirm.
     s.resetAllocation();
     s.setResetConfirmOpen(false);
-  } else if (s.allocated.size > RESET_CONFIRM_THRESHOLD) {
+  } else if (allocationSize(s.allocation) > RESET_CONFIRM_THRESHOLD) {
     s.setResetConfirmOpen(true);
-  } else if (s.allocated.size > 0) {
+  } else if (allocationSize(s.allocation) > 0) {
     s.resetAllocation();
   }
 }

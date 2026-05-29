@@ -1,11 +1,11 @@
 import type { TreeData } from '../data/types';
 import type { BuildSnapshot } from './store';
-import { pruneConstraintLocked } from '../data/normalize';
+import { buildAllocation, pruneAllocation } from './allocation';
 
 /**
  * URL share-hash format (INSTRUCTIONS.md §10.4):
  *
- *   #v=<version>&c=<className>&a=<ascendancyId>&n=<base64url(varint deltas)>
+ *   #v=<version>&c=<className>&a=<ascendancyId>&n=<…>&w1=<…>&w2=<…>&ws=<1|2>
  *
  *   v   version string (e.g. "0.5.0")
  *   c   class name (e.g. "Witch"). Position-independent (survives export
@@ -13,8 +13,15 @@ import { pruneConstraintLocked } from '../data/normalize';
  *       class is known before the data loads (App.tsx eager background load).
  *   a   ascendancy id (e.g. "Witch3"), omitted when none is selected. The
  *       internal id — not the display name — so it survives ascendancy reworks.
- *   n   sorted-ascending list of numeric allocated node keys, delta-encoded
+ *   n   shared allocations — sorted-ascending numeric node keys, delta-encoded
  *       LEB128 varints, base64url
+ *   w1  Weapon Set 1-only allocations (same encoding), omitted when empty
+ *   w2  Weapon Set 2-only allocations (same encoding), omitted when empty
+ *   ws  active weapon set (1 or 2), omitted when 1
+ *
+ * Backward compatibility: pre-weapon-set links carry only `n=` (the full
+ * allocation). Those decode as shared-only — `n` → shared, `w1`/`w2` empty,
+ * Weapon Set 1 active.
  *
  * Names/ids instead of indices: class names + ascendancy ids are the app's own
  * stable identifiers (the store keys off them), so they don't shift when the
@@ -27,7 +34,9 @@ export interface ShareHashRaw {
   version: string;
   className: string;
   ascendancyId: string | null; // null = no ascendancy
-  allocatedKeys: string[];
+  sharedKeys: string[];
+  set1Keys: string[];
+  set2Keys: string[];
 }
 
 export function encodeShareHash(s: Readonly<ShareHashRaw>): string {
@@ -36,7 +45,9 @@ export function encodeShareHash(s: Readonly<ShareHashRaw>): string {
     `c=${encodeURIComponent(s.className)}`,
   ];
   if (s.ascendancyId) parts.push(`a=${encodeURIComponent(s.ascendancyId)}`);
-  if (s.allocatedKeys.length > 0) parts.push(`n=${encodeNodeKeys(s.allocatedKeys)}`);
+  if (s.sharedKeys.length > 0) parts.push(`n=${encodeNodeKeys(s.sharedKeys)}`);
+  if (s.set1Keys.length > 0) parts.push(`w1=${encodeNodeKeys(s.set1Keys)}`);
+  if (s.set2Keys.length > 0) parts.push(`w2=${encodeNodeKeys(s.set2Keys)}`);
   return `#${parts.join('&')}`;
 }
 
@@ -54,7 +65,9 @@ export function decodeShareHash(hash: string): ShareHashRaw | null {
     version,
     className,
     ascendancyId: ascendancyId || null, // '' or absent → no ascendancy
-    allocatedKeys: decodeNodeKeys(params.get('n') ?? ''),
+    sharedKeys: decodeNodeKeys(params.get('n') ?? ''),
+    set1Keys: decodeNodeKeys(params.get('w1') ?? ''),
+    set2Keys: decodeNodeKeys(params.get('w2') ?? ''),
   };
 }
 
@@ -76,16 +89,27 @@ export function reconcileShareHash(
     data.playableAscendancyIds.has(raw.ascendancyId);
   const ascendancyId = ascValid ? raw.ascendancyId : null;
 
-  const allocatedKeys = raw.allocatedKeys.filter((k) => data.nodes[k] !== undefined);
-  // Drop constraint-locked nodes that the imported `(ascendancyId, allocated)`
-  // pair doesn't satisfy — a hash crafted with mismatched gates would otherwise
-  // leak hidden nodes into the build.
-  const pruned = pruneConstraintLocked(new Set(allocatedKeys), ascendancyId, data);
+  const exists = (k: string) => data.nodes[k] !== undefined;
+  // Normalize the three buckets (a key lives in exactly one), then drop
+  // constraint-locked nodes the imported `(ascendancyId, allocation)` pair
+  // doesn't satisfy — a hash crafted with mismatched gates would otherwise leak
+  // hidden nodes into the build.
+  const alloc = pruneAllocation(
+    buildAllocation(
+      raw.sharedKeys.filter(exists),
+      raw.set1Keys.filter(exists),
+      raw.set2Keys.filter(exists),
+    ),
+    ascendancyId,
+    data,
+  );
 
   return {
     className: cls.name,
     ascendancyId,
-    allocated: [...pruned],
+    shared: [...alloc.shared],
+    set1: [...alloc.set1],
+    set2: [...alloc.set2],
   };
 }
 

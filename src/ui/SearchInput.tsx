@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
+import { allAllocated } from '../state/allocation';
 import type { TreeData } from '../data/types';
 import { buildSearchIndex, findMatches, filterConstraintHidden } from '../interaction/search';
 import { palette, controlHeight } from './theme';
@@ -28,7 +29,7 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
   const matches = useStore((s) => s.searchMatches);
   const cursor = useStore((s) => s.searchCursor);
   const ascendancyId = useStore((s) => s.ascendancyId);
-  const allocated = useStore((s) => s.allocated);
+  const allocation = useStore((s) => s.allocation);
   const setSearch = useStore((s) => s.setSearch);
   const clearSearch = useStore((s) => s.clearSearch);
   const stepSearch = useStore((s) => s.stepSearch);
@@ -60,11 +61,13 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
         return;
       }
       const raw = findMatches(draft, index);
-      const ms = filterConstraintHidden(raw, data, ascendancyId, allocated);
+      // Filter against all allocated nodes so constraint-gated nodes hidden by
+      // the current build aren't offered as matches.
+      const ms = filterConstraintHidden(raw, data, ascendancyId, allAllocated(allocation));
       setSearch(draft, ms);
     }, DEBOUNCE_MS);
     return () => { globalThis.clearTimeout(timer); };
-  }, [draft, query, index, data, ascendancyId, allocated, matches.length, setSearch]);
+  }, [draft, query, index, data, ascendancyId, allocation, matches.length, setSearch]);
 
   // Focus the input on global Ctrl/Cmd+F (dispatched by useKeyboardShortcuts).
   useEffect(() => {

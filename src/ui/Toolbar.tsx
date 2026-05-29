@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, countBudgets, PASSIVE_CAP, ASCENDANCY_CAP } from '../state/store';
+import { useStore, countBudgets, PASSIVE_CAP, ASCENDANCY_CAP, WEAPON_SET_CAP } from '../state/store';
 import type { TreeData } from '../data/types';
 import { VERSIONS } from '../data/versions';
 import BudgetChip from './BudgetChip';
@@ -28,11 +28,15 @@ interface ToolbarProps {
 export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
-  const allocated = useStore((s) => s.allocated);
+  const allocation = useStore((s) => s.allocation);
+  const allocationMode = useStore((s) => s.allocationMode);
+  const weaponSetsEnabled = useStore((s) => s.weaponSetsEnabled);
   const activeVersion = useStore((s) => s.activeVersion);
   const setClass = useStore((s) => s.setClass);
   const setAscendancy = useStore((s) => s.setAscendancy);
   const setActiveVersion = useStore((s) => s.setActiveVersion);
+  const setAllocationMode = useStore((s) => s.setAllocationMode);
+  const setWeaponSetsEnabled = useStore((s) => s.setWeaponSetsEnabled);
 
   const isMobile = useIsMobile();
   // Mobile-only collapse state. Desktop ignores this entirely and always
@@ -45,7 +49,11 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
     .filter((c): c is NonNullable<typeof c> => c !== undefined);
   const activeClass = playableClasses.find((c) => c.name === className);
 
-  const counts = countBudgets(allocated, ascendancyId, data);
+  const counts = countBudgets(allocation, ascendancyId, data);
+
+  // The sets UI is a free user preference (off by default). Loading a build
+  // that uses sets flips it on (see loadSnapshot), but it's always toggleable.
+  const showSets = weaponSetsEnabled;
 
   // Collapsed on mobile: render just the toggle button in the top-left.
   if (isMobile && !mobileExpanded) {
@@ -88,6 +96,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
           </svg>
         </button>
       )}
+      {/* Row 1 — lookup / config */}
       <div style={rowStyle}>
         <SearchInput data={data} />
         {VERSIONS.length > 1 && (
@@ -104,6 +113,10 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
             </select>
           </label>
         )}
+      </div>
+
+      {/* Row 2 — character */}
+      <div style={rowStyle}>
         <label style={labelStyle}>
           <span style={labelTitleStyle}>Class</span>
           <select
@@ -133,15 +146,67 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
               ))}
           </select>
         </label>
+
+        {showSets && (
+          <Segmented
+            legend="Editing"
+            value={allocationMode}
+            options={[
+              { value: 'shared', label: 'Main' },
+              { value: 'set1', label: 'Set 1' },
+              { value: 'set2', label: 'Set 2' },
+            ]}
+            onChange={setAllocationMode}
+          />
+        )}
+        <label style={toggleStyle} title="Plan separate passives per weapon set">
+          <input
+            type="checkbox"
+            checked={showSets}
+            onChange={(e) => setWeaponSetsEnabled(e.target.checked)}
+            style={toggleInputStyle}
+          />
+          <span>Weapon Sets</span>
+        </label>
       </div>
 
+      {/* Row 3 — point counters */}
       <div style={rowStyle}>
-        <BudgetChip
-          kind="passive"
-          label="Passives"
-          count={counts.passive}
-          cap={PASSIVE_CAP}
-        />
+        {showSets ? (
+          <>
+            <BudgetChip kind="passive" label="Shared" count={counts.shared} />
+            <BudgetChip
+              kind="weaponSet1"
+              label="Set 1"
+              count={counts.set1}
+              cap={WEAPON_SET_CAP}
+            />
+            <BudgetChip
+              kind="weaponSet2"
+              label="Set 2"
+              count={counts.set2}
+              cap={WEAPON_SET_CAP}
+            />
+            <BudgetChip
+              kind="passive"
+              label="Active S1"
+              count={counts.activeIn1}
+              cap={PASSIVE_CAP}
+              note={unspentNote(PASSIVE_CAP - counts.activeIn1)}
+            />
+            <BudgetChip
+              kind="passive"
+              label="Active S2"
+              count={counts.activeIn2}
+              cap={PASSIVE_CAP}
+              note={unspentNote(PASSIVE_CAP - counts.activeIn2)}
+            />
+          </>
+        ) : (
+          // Sets off → one plain passives counter (shared == active when there
+          // are no weapon-set allocations).
+          <BudgetChip kind="passive" label="Passives" count={counts.shared} cap={PASSIVE_CAP} />
+        )}
         {ascendancyId && (
           <BudgetChip
             kind="ascendancy"
@@ -150,12 +215,58 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
             cap={ASCENDANCY_CAP}
           />
         )}
-        <div style={spacerStyle} />
+      </div>
+
+      {/* Row 4 — actions */}
+      <div style={rowStyle}>
         <UndoRedoButtons />
         <ResetButton />
         <ShareButton />
       </div>
     </div>
+  );
+}
+
+/** Render the unspent-points suffix for an active-points chip. Negative (over
+ *  cap) shows nothing — the chip's own over-cap styling carries that. */
+function unspentNote(unspent: number): string | undefined {
+  if (unspent < 0) return undefined;
+  return unspent === 0 ? 'full' : `${unspent} left`;
+}
+
+/** A small segmented button group for the allocation-mode (Main / Set 1 /
+ *  Set 2) selector. Generic over the value type. */
+function Segmented<T extends string | number>({
+  legend, value, options, onChange,
+}: Readonly<{
+  legend: string;
+  value: T;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  onChange: (v: T) => void;
+}>) {
+  return (
+    <fieldset style={segmentedWrapStyle}>
+      <legend style={segmentedLegendStyle}>{legend}</legend>
+      <div style={segmentedGroupStyle}>
+        {options.map((opt, i) => {
+          const selected = opt.value === value;
+          const base = selected ? segmentSelectedStyle : segmentStyle;
+          // The group's own border draws the left edge — only inner buttons
+          // get a divider, so the first button has no stray double line.
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(opt.value)}
+              style={i === 0 ? { ...base, borderLeft: 'none' } : base}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
@@ -223,9 +334,75 @@ const selectStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-/** Pushes Undo/Reset to the right edge of the bottom row. */
-const spacerStyle: React.CSSProperties = {
-  flex: 1,
+// "Weapon Sets" opt-in checkbox. Aligned to the bottom of row 1 so it sits on
+// the same baseline as the adjacent select controls.
+const toggleStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  height: controlHeight,
+  fontSize: 13,
+  color: palette.textMetal,
+  cursor: 'pointer',
+  userSelect: 'none',
+};
+
+// Tint the native checkbox to the signature rune blue so it matches the rest
+// of the toolbar instead of the browser's default green.
+const toggleInputStyle: React.CSSProperties = {
+  accentColor: palette.rune,
+  cursor: 'pointer',
+};
+
+// Segmented control (allocation-mode selector).
+// Rendered as a borderless fieldset so the legend labels the group for
+// screen readers without drawing the default fieldset chrome.
+const segmentedWrapStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  margin: 0,
+  padding: 0,
+  border: 'none',
+};
+
+const segmentedLegendStyle: React.CSSProperties = {
+  float: 'none',
+  width: 'auto',
+  padding: 0,
+  fontSize: 12,
+  fontFamily: fontDisplay,
+  color: palette.textTitle,
+  textTransform: 'uppercase',
+  letterSpacing: 1.2,
+  textShadow: `0 0 8px ${palette.runeGlow}, 0 1px 2px rgba(0, 0, 0, 0.8)`,
+};
+
+const segmentedGroupStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  border: `1px solid ${palette.border}`,
+  borderRadius: 3,
+  overflow: 'hidden',
+};
+
+const segmentStyle: React.CSSProperties = {
+  background: palette.fieldBg,
+  color: palette.textMuted,
+  border: 'none',
+  borderLeft: `1px solid ${palette.border}`,
+  height: controlHeight,
+  boxSizing: 'border-box',
+  padding: '0 10px',
+  fontSize: 13,
+  fontFamily: fontBody,
+  cursor: 'pointer',
+};
+
+const segmentSelectedStyle: React.CSSProperties = {
+  ...segmentStyle,
+  background: palette.headerBg,
+  color: palette.textTitle,
+  fontWeight: 600,
 };
 
 // Standalone toggle button shown when the toolbar is collapsed on mobile.

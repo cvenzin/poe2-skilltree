@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
+import { bucketOf, type AllocationMode } from '../state/allocation';
 import { tokenizeStatLine } from '../interaction/statsMarkup';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, panelShadow } from './theme';
@@ -20,6 +21,9 @@ const MOBILE_MARGIN = 12;
  */
 export default function NodeTooltip() {
   const hovered = useStore((s) => s.hovered);
+  const allocation = useStore((s) => s.allocation);
+  // When the sets UI is off, suppress all weapon-set vocabulary in the tooltip.
+  const showSets = useStore((s) => s.weaponSetsEnabled);
   const data = useStore((s) =>
     s.status.kind === 'ready' ? s.status.data : null
   );
@@ -55,6 +59,10 @@ export default function NodeTooltip() {
   if (!hovered || !data) return null;
   const node = data.nodes[hovered.nodeKey];
   if (!node?.name) return null;
+  // Ascendancy nodes aren't weapon-set-split — suppress the allocation-state
+  // block for them (always shared). Also suppress entirely when the sets UI is
+  // off, so new users never see weapon-set wording.
+  const bucket = (!showSets || node.ascendancyId) ? null : bucketOf(allocation, hovered.nodeKey);
 
   // Mobile: anchor to bottom-left so the finger doesn't cover the tooltip;
   //   the element grows upward via `bottom` and rightward up to maxWidth.
@@ -78,12 +86,12 @@ export default function NodeTooltip() {
 
   return (
     <div ref={ref} style={style}>
-      <NodeTooltipContents node={node} />
+      <NodeTooltipContents node={node} bucket={bucket} />
     </div>
   );
 }
 
-function NodeTooltipContents({ node }: Readonly<{ node: TreeNode }>) {
+function NodeTooltipContents({ node, bucket }: Readonly<{ node: TreeNode; bucket: AllocationMode | null }>) {
   const stats = node.stats ?? [];
   return (
     <>
@@ -97,9 +105,43 @@ function NodeTooltipContents({ node }: Readonly<{ node: TreeNode }>) {
           ))}
         </ul>
       )}
+      {bucket && <AllocationState bucket={bucket} />}
     </>
   );
 }
+
+/** Footer block showing the weapon-set allocation state of an allocated node:
+ *  which bucket it's in and which weapon sets it's active / inactive in. */
+function AllocationState({ bucket }: Readonly<{ bucket: AllocationMode }>) {
+  const lines = ALLOCATION_STATE_LINES[bucket];
+  return (
+    <div style={allocStateStyle}>
+      {lines.map((line) => (
+        <div key={line.label} style={allocLineStyle}>
+          <span style={allocLabelStyle}>{line.label}</span>
+          <span>{line.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const ALLOCATION_STATE_LINES: Record<AllocationMode, ReadonlyArray<{ label: string; value: string }>> = {
+  shared: [
+    { label: 'Allocated', value: 'Shared' },
+    { label: 'Active in', value: 'Weapon Set 1 and Weapon Set 2' },
+  ],
+  set1: [
+    { label: 'Allocated', value: 'Weapon Set 1 only' },
+    { label: 'Active in', value: 'Weapon Set 1' },
+    { label: 'Inactive in', value: 'Weapon Set 2' },
+  ],
+  set2: [
+    { label: 'Allocated', value: 'Weapon Set 2 only' },
+    { label: 'Active in', value: 'Weapon Set 2' },
+    { label: 'Inactive in', value: 'Weapon Set 1' },
+  ],
+};
 
 
 // A single stat string may itself contain `\n`-separated lines and embedded
@@ -155,6 +197,32 @@ function StatTokens({ text }: Readonly<{ text: string }>) {
 const underlineStyle: React.CSSProperties = {
   textDecoration: 'underline',
   textDecorationColor: palette.textMetal,
+};
+
+// Allocation-state footer: a separated block under the stats listing the
+// node's weapon-set bucket and active/inactive sets.
+const allocStateStyle: React.CSSProperties = {
+  padding: '8px 14px',
+  borderTop: `1px solid ${palette.border}`,
+  background: palette.headerBg,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 3,
+  fontSize: 12,
+};
+
+const allocLineStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  color: palette.textMetal,
+};
+
+const allocLabelStyle: React.CSSProperties = {
+  color: palette.textMuted,
+  textTransform: 'uppercase',
+  letterSpacing: 0.6,
+  fontSize: 11,
+  minWidth: 72,
 };
 
 // Runic frame: container holds no padding so the header band can span full

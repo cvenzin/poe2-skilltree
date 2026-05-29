@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store';
+import { allocationSize } from '../state/allocation';
 import { palette, controlHeight } from './theme';
 
 /** Threshold for showing a confirmation popover (INSTRUCTIONS.md §9.1).
@@ -13,7 +14,7 @@ export const RESET_CONFIRM_THRESHOLD = 10;
  * (R-while-open confirms; see useKeyboardShortcuts).
  */
 export default function ResetButton() {
-  const allocated = useStore((s) => s.allocated);
+  const allocCount = useStore((s) => allocationSize(s.allocation));
   const open = useStore((s) => s.resetConfirmOpen);
   const setOpen = useStore((s) => s.setResetConfirmOpen);
   const resetAllocation = useStore((s) => s.resetAllocation);
@@ -36,7 +37,7 @@ export default function ResetButton() {
   }, [open, setOpen]);
 
   const onClick = () => {
-    if (allocated.size > RESET_CONFIRM_THRESHOLD) {
+    if (allocCount > RESET_CONFIRM_THRESHOLD) {
       setOpen(true);
       return;
     }
@@ -55,14 +56,14 @@ export default function ResetButton() {
         type="button"
         onClick={onClick}
         style={buttonStyle}
-        disabled={allocated.size === 0}
+        disabled={allocCount === 0}
         title="Reset allocation (R)"
       >
         Reset
       </button>
       {open && (
         <div ref={popoverRef} style={popoverStyle} role="dialog" aria-modal="false">
-          <div style={{ marginBottom: 8 }}>Discard <strong>{allocated.size}</strong> allocated points?</div>
+          <div style={{ marginBottom: 8 }}>Discard <strong>{allocCount}</strong> allocated points?</div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => setOpen(false)} style={cancelStyle}>Cancel</button>
             <button type="button" onClick={onConfirm} style={confirmStyle} autoFocus>Confirm</button>

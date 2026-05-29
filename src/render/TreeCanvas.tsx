@@ -13,18 +13,27 @@ import { type AtlasBundle, getFrame, classBackgroundName } from './atlas';
 import { spritesForNode, type NodeState } from './frameForNode';
 import { drawMasteries, type MasteryRedraw } from './drawMasteries';
 import { useStore } from '../state/store';
-import { startNodeKeyForClass, pruneConstraintLocked, computeConstraintHiddenKeys, isUnlockConstraintSatisfied } from '../data/normalize';
+import {
+  type Allocation,
+  type AllocationMode,
+  allAllocated,
+  blockedForMode,
+  bucketOf,
+  frontierForMode,
+  isEmptyAllocation,
+  removeKey,
+  pruneAllocation,
+} from '../state/allocation';
+import { startNodeKeyForClass, computeConstraintHiddenKeys, isUnlockConstraintSatisfied } from '../data/normalize';
 import {
   bfsShortestPath,
   buildBlockedKeys,
-  cascadeUnallocate,
+  resolveCascade,
+  applyPathAllocation,
   computeEntwinedAllocatableKeys,
   isEntwinedRealitiesActive,
   MEDIUM_RADIUS,
   autoOptionsForPath,
-  isMcOption,
-  hubOfOption,
-  optionsOfHub,
 } from '../interaction/pathing';
 
 interface TreeCanvasProps {
@@ -171,10 +180,11 @@ export default function TreeCanvas({
   return <div ref={hostRef} style={{ position: 'absolute', inset: 0 }} />;
 }
 
-/** Repaints an edge group with three state-coloured Graphics layers. Bound
- *  to a specific group's container at creation time; call it whenever
- *  `allocated` / `previewPath` changes. */
-type EdgeRedraw = (allocated: ReadonlySet<string>, previewPath: readonly string[] | null) => void;
+/** Repaints an edge group, colouring each edge by the bucket of its endpoints
+ *  (shared/gold, set1/green, set2/red, plus idle/preview). Bound to a specific
+ *  group's container at creation time; call it whenever `allocation` /
+ *  `previewPath` changes. */
+type EdgeRedraw = (allocation: Allocation, previewPath: readonly string[] | null) => void;
 
 /** Class/ascendancy-derived state read live (via the ctx ref) by the
  *  permanent main-tree node interaction handlers and the main-tree edge
@@ -186,7 +196,14 @@ interface PathingContext {
    *  prune step at click-time can evaluate `unlockConstraint.ascendancy` without
    *  re-reading the store inside the handler. */
   ascendancyId: string | null;
-  blockedKeys: ReadonlySet<string>;
+  /** Every allocated node across the three buckets — what the renderer paints
+   *  as allocated (both weapon-set trees are always shown). */
+  allAllocated: ReadonlySet<string>;
+  /** Per edit-mode connectable frontier (`shared` / `shared∪set1` / `shared∪set2`). */
+  frontierByMode: Record<AllocationMode, ReadonlySet<string>>;
+  /** Per edit-mode blocked-key set — the base blocks plus the weapon-set nodes
+   *  that mode can't route through (see {@link blockedForMode}). */
+  blockedByMode: Record<AllocationMode, ReadonlySet<string>>;
   frontierKeys: ReadonlySet<string>;
   /** Constraint-locked node keys that are currently hidden (e.g. Druid Oracle's
    *  Forbidden Path nodes when "The Unseen Path" isn't allocated). Renderer
@@ -286,9 +303,10 @@ interface MountContext {
    *  previous ascendancy's keys don't leak into search / state updates. */
   ascendancyNodeKeys: Set<string>;
   /** Push-current-state to the renderer (node textures + all three edge
-   *  layers + masteries). Set after mount finishes so {@link swapContext}
-   *  can trigger a repaint with the new pathing context. */
-  applyAll: ((allocated: ReadonlySet<string>, previewPath: readonly string[] | null) => void) | null;
+   *  layers + masteries). Derives the active tree from the weapon-set
+   *  allocation. Set after mount finishes so {@link swapContext} can trigger a
+   *  repaint with the new pathing context. */
+  applyAll: ((allocation: Allocation, previewPath: readonly string[] | null) => void) | null;
   /** Imperatively re-applies the class/ascendancy-dependent layers — called
    *  by the second effect on prop changes. Null until mount finishes. */
   swapContext: ((className: string, ascendancyId: string | null) => void) | null;
@@ -338,28 +356,60 @@ function computeNodeState(
   return 'idle';
 }
 
-/** Recompute the constraint-derived parts of `ctx.pathing` from the latest
- *  allocation. Cheap (O(constrained-node count + main-tree node count)); called
- *  on every allocation change because constraints can flip when a gate node is
- *  added or removed. Preserves the existing `ascendancyId` and `classStartKey`
- *  — those only change in {@link swapContext}. */
-function refreshConstraintState(
-  ctx: MountContext,
+/** Build the full pathing context for the current allocation. Computes the
+ *  base block set once, then the per-edit-mode frontier and blocked sets (the
+ *  main tree can't route through weapon-set nodes; the sets can't route through
+ *  each other). Constraint / entwined state is evaluated against the union of
+ *  all allocated nodes (the constraint gate is a shared ascendancy node). */
+function buildPathingContext(
   data: TreeData,
-  allocated: ReadonlySet<string>,
-): void {
-  if (!ctx.pathing) return;
-  const { classStartKey, ascendancyId, frontierKeys } = ctx.pathing;
-  const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, allocated);
-  ctx.pathing = {
+  classStartKey: string,
+  ascendancyId: string | null,
+  frontierKeys: ReadonlySet<string>,
+  allocation: Allocation,
+): PathingContext {
+  const all = allAllocated(allocation);
+  const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, all);
+  const base = buildBlockedKeys(data, classStartKey, ascendancyId, all);
+  const withBlocked = (extra: ReadonlySet<string>): Set<string> => {
+    const out = new Set(base);
+    for (const k of extra) out.add(k);
+    return out;
+  };
+  return {
     classStartKey,
     ascendancyId,
     frontierKeys,
-    blockedKeys: buildBlockedKeys(data, classStartKey, ascendancyId, allocated),
+    allAllocated: all,
+    frontierByMode: {
+      shared: frontierForMode(allocation, 'shared'),
+      set1: frontierForMode(allocation, 'set1'),
+      set2: frontierForMode(allocation, 'set2'),
+    },
+    blockedByMode: {
+      shared: withBlocked(blockedForMode(allocation, 'shared')),
+      set1: withBlocked(blockedForMode(allocation, 'set1')),
+      set2: withBlocked(blockedForMode(allocation, 'set2')),
+    },
     hiddenKeys,
-    entwinedKeys: computeEntwinedAllocatableKeys(data, allocated, ascendancyId, hiddenKeys),
-    entwinedActive: isEntwinedRealitiesActive(data, allocated, ascendancyId),
+    entwinedKeys: computeEntwinedAllocatableKeys(data, all, ascendancyId, hiddenKeys),
+    entwinedActive: isEntwinedRealitiesActive(data, all, ascendancyId),
   };
+}
+
+/** Recompute the constraint-derived parts of `ctx.pathing` from the latest
+ *  allocation. Called on every allocation change because constraints (and the
+ *  per-mode block sets) flip when nodes are added or removed. Preserves the
+ *  existing `ascendancyId` / `classStartKey` — those only change in
+ *  {@link swapContext}. */
+function refreshConstraintState(
+  ctx: MountContext,
+  data: TreeData,
+  allocation: Allocation,
+): void {
+  if (!ctx.pathing) return;
+  const { classStartKey, ascendancyId, frontierKeys } = ctx.pathing;
+  ctx.pathing = buildPathingContext(data, classStartKey, ascendancyId, frontierKeys, allocation);
 }
 
 /** Toggle wrap visibility for constraint-locked nodes. Hidden wraps lose all
@@ -874,14 +924,17 @@ async function mount(
   // whenever allocation or preview changes. Subscribe AFTER the draws so
   // every wrap and edge layer is registered. The subscription unsubs in the
   // useEffect cleanup via `ctx.unsubscribeStore`.
-  const applyAll = (allocated: ReadonlySet<string>, previewPath: readonly string[] | null) => {
-    refreshConstraintState(ctx, data, allocated);
-    applyNodeStates(data, atlases, ctx.nodeWraps, ctx.nodeStates, allocated, previewPath);
+  const applyAll = (allocation: Allocation, previewPath: readonly string[] | null) => {
+    refreshConstraintState(ctx, data, allocation);
+    // Both weapon-set trees are always shown: every allocated node paints as
+    // allocated, and the edges carry the set colour (gold/green/red).
+    const all = ctx.pathing?.allAllocated ?? allAllocated(allocation);
+    applyNodeStates(data, atlases, ctx.nodeWraps, ctx.nodeStates, all, previewPath);
     applyConstraintVisibility(ctx);
-    ctx.redrawMainEdges?.(allocated, previewPath);
-    ctx.redrawOverlayEdges?.(allocated, previewPath);
-    ctx.redrawMasteries?.(allocated);
-    applyUnlockHighlight(ctx, data, allocated);
+    ctx.redrawMainEdges?.(allocation, previewPath);
+    ctx.redrawOverlayEdges?.(allocation, previewPath);
+    ctx.redrawMasteries?.(all);
+    applyUnlockHighlight(ctx, data, all);
   };
   ctx.applyAll = applyAll;
   ctx.swapContext = (nextClassName, nextAscendancyId) => {
@@ -910,8 +963,8 @@ async function mount(
   applyJewelOverlay(useStore.getState().hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
 
   ctx.unsubscribeStore = useStore.subscribe((s, prev) => {
-    if (s.allocated !== prev.allocated || s.previewPath !== prev.previewPath) {
-      applyAll(s.allocated, s.previewPath);
+    if (s.allocation !== prev.allocation || s.previewPath !== prev.previewPath) {
+      applyAll(s.allocation, s.previewPath);
     }
     if (s.searchMatches !== prev.searchMatches || s.searchCursor !== prev.searchCursor) {
       applySearchHighlight(s.searchMatches, s.searchCursor, ctx.nodeWraps, searchMatchLayer, worldContainer, viewport.scale.x);
@@ -919,7 +972,7 @@ async function mount(
     // Redraw the radius overlay when either the hovered node OR the Entwined-
     // active flag flips. The pathing context is already refreshed by applyAll
     // above, so `ctx.pathing.entwinedActive` is current.
-    if (s.hovered !== prev.hovered || s.allocated !== prev.allocated) {
+    if (s.hovered !== prev.hovered || s.allocation !== prev.allocation) {
       applyJewelOverlay(s.hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
     }
     if (s.hovered?.nodeKey !== prev.hovered?.nodeKey) {
@@ -1008,15 +1061,11 @@ function swapContext(
   // depend on `allocated` (constraint gates like "The Unseen Path"); applyAll
   // rebuilds them on every allocation change via {@link refreshConstraintState}.
   const classStartKey = startNodeKeyForClass(className, data);
-  const allocated = useStore.getState().allocated;
-  const blockedKeys = buildBlockedKeys(data, classStartKey, ascendancyId, allocated);
-  const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, allocated);
-  const entwinedKeys = computeEntwinedAllocatableKeys(data, allocated, ascendancyId, hiddenKeys);
-  const entwinedActive = isEntwinedRealitiesActive(data, allocated, ascendancyId);
+  const { allocation } = useStore.getState();
   const frontierKeys = new Set<string>([classStartKey]);
   const ascStartKey = findAscendancyStartKey(data, ascendancyId);
   if (ascStartKey) frontierKeys.add(ascStartKey);
-  ctx.pathing = { classStartKey, ascendancyId, blockedKeys, frontierKeys, hiddenKeys, entwinedKeys, entwinedActive };
+  ctx.pathing = buildPathingContext(data, classStartKey, ascendancyId, frontierKeys, allocation);
 
   if (ctx.backdropLayer) drawCentralBackdrop(ctx.backdropLayer, atlases, data, className, ascendancyId);
   if (ctx.mainCircleLayer) drawMainCircle(ctx.mainCircleLayer, atlases, data, className);
@@ -1038,7 +1087,7 @@ function swapContext(
   }
 
   const state = useStore.getState();
-  ctx.applyAll?.(state.allocated, state.previewPath);
+  ctx.applyAll?.(state.allocation, state.previewPath);
   // Clear any stale hover/search remnants tied to the old ascendancy's nodes.
   if (ctx.jewelOverlay && ctx.worldContainer) {
     applyJewelOverlay(state.hovered, data, ctx.nodeWraps, ctx.jewelOverlay, ctx.worldContainer, ctx.pathing);
@@ -1369,8 +1418,8 @@ function drawOverlayEdges(
   };
   const shouldDraw = (pair: DrawableEdge): boolean =>
     pair.a.ascendancyId === ascId && pair.b.ascendancyId === ascId;
-  return (allocated, previewPath) => {
-    redrawEdgeLayers(layers, data, allocated, previewPath, edgeCtxFrom(ctx), t, shouldDraw);
+  return (allocation, previewPath) => {
+    redrawEdgeLayers(layers, data, allocation, previewPath, edgeCtxFrom(ctx), t, shouldDraw);
   };
 }
 
@@ -1408,8 +1457,8 @@ function drawEdges(
   ctx: MountContext,
 ): EdgeRedraw {
   const layers = makeEdgeLayers(parent);
-  return (allocated, previewPath) => {
-    redrawEdgeLayers(layers, data, allocated, previewPath, edgeCtxFrom(ctx), identityTransform, isMainTreeEdge);
+  return (allocation, previewPath) => {
+    redrawEdgeLayers(layers, data, allocation, previewPath, edgeCtxFrom(ctx), identityTransform, isMainTreeEdge);
   };
 }
 
@@ -1426,15 +1475,17 @@ function isMainTreeEdge(pair: DrawableEdge): boolean {
   return !pair.a.ascendancyId && !pair.b.ascendancyId;
 }
 
-/** Allocate three Graphics in fixed z-order: idle (back) → allocated → preview
- *  (top). Preview is drawn last so its "intense blue" pops over allocated
- *  edges that share endpoints with the frontier. */
-function makeEdgeLayers(parent: Container): Record<NodeState, Graphics> {
+/** Allocate the edge Graphics in fixed z-order: idle (back) → allocated →
+ *  set1 → set2 → preview (top). Preview is drawn last so its "intense blue"
+ *  pops over allocated/branch edges that share endpoints with the frontier. */
+function makeEdgeLayers(parent: Container): Record<EdgeState, Graphics> {
   const idle = new Graphics();
   const allocated = new Graphics();
+  const set1 = new Graphics();
+  const set2 = new Graphics();
   const preview = new Graphics();
-  parent.addChild(idle, allocated, preview);
-  return { idle, allocated, preview };
+  parent.addChild(idle, allocated, set1, set2, preview);
+  return { idle, allocated, set1, set2, preview };
 }
 
 /** Per-redraw state derived from the current pathing context. Bundled so the
@@ -1445,9 +1496,9 @@ interface EdgeRedrawContext {
 }
 
 function redrawEdgeLayers(
-  layers: Record<NodeState, Graphics>,
+  layers: Record<EdgeState, Graphics>,
   data: TreeData,
-  allocated: ReadonlySet<string>,
+  allocation: Allocation,
   previewPath: readonly string[] | null,
   edgeCtx: EdgeRedrawContext,
   transform: CoordTransform,
@@ -1456,6 +1507,8 @@ function redrawEdgeLayers(
   layers.idle.clear();
   layers.preview.clear();
   layers.allocated.clear();
+  layers.set1.clear();
+  layers.set2.clear();
   const previewSet = previewPath ? new Set(previewPath) : null;
 
   for (const edge of data.edges) {
@@ -1465,12 +1518,14 @@ function redrawEdgeLayers(
     if (edgeCtx.hiddenKeys.has(edge.from) || edgeCtx.hiddenKeys.has(edge.to)) continue;
     const pair = resolveDrawableEdge(data.nodes[edge.from], data.nodes[edge.to]);
     if (!pair || !shouldDraw(pair)) continue;
-    const state = edgeState(edge.from, edge.to, allocated, edgeCtx.frontierKeys, previewSet);
+    const state = edgeState(edge.from, edge.to, allocation, edgeCtx.frontierKeys, previewSet);
     traceEdge(layers[state], pair.a, pair.b, edge, transform);
   }
 
   strokeEdges(layers.idle, 'idle');
   strokeEdges(layers.allocated, 'allocated');
+  strokeEdges(layers.set1, 'set1');
+  strokeEdges(layers.set2, 'set2');
   strokeEdges(layers.preview, 'preview');
 }
 
@@ -1565,13 +1620,24 @@ function tryDrawArc(
   return true;
 }
 
-/** Per-state edge colours matching the line atlas's pre-rendered variants:
- *  Normal (idle), Intermediate (can-allocate / preview), Active (allocated). */
-const EDGE_COLOR = { idle: 0x6e5e3c, preview: 0x5a8eff, allocated: 0xffd66a } as const;
+/** Edge colour states: the three base states plus the two weapon-set branch
+ *  colours (green for Set 1, red for Set 2). */
+type EdgeState = NodeState | 'set1' | 'set2';
+
+/** Per-state edge colours. idle/preview/allocated match the line atlas's
+ *  pre-rendered variants (Normal / can-allocate / Active); set1/set2 tint the
+ *  weapon-set branch edges so both trees read at a glance. */
+const EDGE_COLOR = {
+  idle: 0x6e5e3c,
+  preview: 0x5a8eff,
+  allocated: 0xffd66a,
+  set1: 0x57c46a, // green — Weapon Set 1 branch
+  set2: 0xe0594f, // red — Weapon Set 2 branch
+} as const;
 const EDGE_WIDTH = 6;
 const EDGE_ALPHA = 0.9;
 
-function strokeEdges(layer: Graphics, state: NodeState): void {
+function strokeEdges(layer: Graphics, state: EdgeState): void {
   layer.stroke({ color: EDGE_COLOR[state], width: EDGE_WIDTH, alpha: EDGE_ALPHA });
 }
 
@@ -1586,26 +1652,42 @@ function findAscendancyStartKey(data: TreeData, ascendancyId: string | null): st
   return null;
 }
 
-/** Edge state derived from the states of its two endpoints plus implicit
- *  frontier nodes (class start, currently-selected ascendancy start).
- *  Allocated > preview > idle, mirroring node-state precedence. */
+/** Edge colour state derived from the bucket membership of its two endpoints
+ *  (frontier nodes — class / ascendancy starts — count as main/shared):
+ *    - both in the main tree → `allocated` (gold)
+ *    - within the Set 1 branch (both in shared∪set1, ≥1 set1) → `set1` (green)
+ *    - within the Set 2 branch → `set2` (red)
+ *    - a Set 1↔Set 2 edge belongs to neither tree → falls through to idle
+ *  Preview (a click would commit this edge) is checked last. */
 function edgeState(
   a: string,
   b: string,
-  allocated: ReadonlySet<string>,
+  allocation: Allocation,
   frontierKeys: ReadonlySet<string>,
   previewSet: ReadonlySet<string> | null
-): NodeState {
-  const aAllocated = frontierKeys.has(a) || allocated.has(a);
-  const bAllocated = frontierKeys.has(b) || allocated.has(b);
-  if (aAllocated && bAllocated) return 'allocated';
-  if (!previewSet) return 'idle';
-  const aPreview = previewSet.has(a);
-  const bPreview = previewSet.has(b);
-  // Both on the preview path, OR one on the preview path and the other in
-  // the frontier — this edge is part of what would be committed by a click.
-  if ((aPreview || aAllocated) && (bPreview || bAllocated) && (aPreview || bPreview)) {
-    return 'preview';
+): EdgeState {
+  const aMain = frontierKeys.has(a) || allocation.shared.has(a);
+  const bMain = frontierKeys.has(b) || allocation.shared.has(b);
+  const a1 = allocation.set1.has(a);
+  const b1 = allocation.set1.has(b);
+  const a2 = allocation.set2.has(a);
+  const b2 = allocation.set2.has(b);
+  const aActive = aMain || a1 || a2;
+  const bActive = bMain || b1 || b2;
+
+  if (aActive && bActive) {
+    if (aMain && bMain) return 'allocated';
+    if ((aMain || a1) && (bMain || b1) && (a1 || b1)) return 'set1';
+    if ((aMain || a2) && (bMain || b2) && (a2 || b2)) return 'set2';
+    // Mixed Set 1 ↔ Set 2 edge — not part of either weapon-set tree.
+  }
+
+  if (previewSet) {
+    const aPreview = previewSet.has(a);
+    const bPreview = previewSet.has(b);
+    if ((aPreview || aActive) && (bPreview || bActive) && (aPreview || bPreview)) {
+      return 'preview';
+    }
   }
   return 'idle';
 }
@@ -1704,31 +1786,29 @@ function attachNodeInteraction(
       clientX: e.client.x,
       clientY: e.client.y,
     });
+    const pathing = ctx.pathing;
+    if (!pathing) return;
+    const mode = state.allocationMode;
     // No preview for: ascendancy start, multiple-choice hub (both
-    // unallocatable), already-allocated (preview-as-cascade is later polish).
-    if (isAscStart || isMcHub || state.allocated.has(nodeKey)) {
+    // unallocatable), or any already-allocated node (a click there removes or
+    // is a no-op, not an add).
+    if (isAscStart || isMcHub || pathing.allAllocated.has(nodeKey)) {
       state.setPreviewPath(null);
       return;
     }
-    const pathing = ctx.pathing;
-    if (!pathing) return;
     // Entwined Realities short-circuits the connecting-path cost: any
     // Entwined-eligible target previews as a single-node addition, regardless
-    // of whether BFS could route through the rest of the tree. The fallback
-    // is what makes the notable worth taking — otherwise the player still
-    // pays for the chain.
+    // of whether BFS could route through the rest of the tree.
     if (pathing.entwinedKeys.has(nodeKey)) {
       state.setPreviewPath([nodeKey]);
       return;
     }
-    const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);
-    // MC-hub rule: whenever the path crosses an MC hub without a committed
-    // option, default to the hub's first option so the user can route past
-    // the hub without picking first. The auto-pick is included in the
-    // preview alongside the path so the player can see what'll be allocated;
-    // they can swap it later by clicking the alternative.
+    // Preview the path in the tree currently being edited (Main / Set 1 / Set 2):
+    // its frontier and the nodes it may not route through.
+    const frontier = pathing.frontierByMode[mode];
+    const path = bfsShortestPath(data, frontier, pathing.classStartKey, nodeKey, pathing.blockedByMode[mode]);
     if (path) {
-      const autoOptions = autoOptionsForPath(data, path, state.allocated);
+      const autoOptions = autoOptionsForPath(data, path, frontier);
       state.setPreviewPath(autoOptions.length > 0 ? [...path, ...autoOptions] : path);
       return;
     }
@@ -1765,68 +1845,43 @@ function attachNodeInteraction(
     const pathing = ctx.pathing;
     if (!pathing) return;
     const state = useStore.getState();
-    // Clicking the selected class's own start cascades everything away —
-    // every allocated node ultimately roots back to this node, so removing
-    // it orphans the whole tree. Lets the user zero-out without reaching
-    // for the Reset button; undo still recovers it.
+    const alloc = state.allocation;
+    const mode = state.allocationMode;
+    // Clicking the class start while editing the Main tree zeroes everything
+    // out (every node ultimately roots here). In a weapon-set edit mode it's a
+    // no-op — the start belongs to the main tree.
     if (nodeKey === pathing.classStartKey) {
-      if (state.allocated.size > 0) state.resetAllocation();
+      if (mode === 'shared' && !isEmptyAllocation(alloc)) state.resetAllocation();
       return;
     }
-    if (state.allocated.has(nodeKey)) {
-      const cascaded = cascadeUnallocate(
-        data,
-        state.allocated,
-        pathing.frontierKeys,
-        nodeKey,
-        pathing.ascendancyId,
-        pathing.hiddenKeys,
-      );
-      // If the cascade removes the gate of constraint-locked nodes (e.g. Druid
-      // Oracle's "The Unseen Path"), those Forbidden Path nodes aren't graph-
-      // reachable from the class start, so cascadeUnallocate won't catch them.
-      // Prune by constraint so they drop in the same commit.
-      const next = pruneConstraintLocked(cascaded, ctx.pathing?.ascendancyId ?? null, data);
-      state.commitAllocation(next);
+    const bucket = bucketOf(alloc, nodeKey);
+    // The node belongs to a different tree than the one being edited — editing
+    // is scoped to the selected tree, so this is a no-op.
+    if (bucket !== null && bucket !== mode) return;
+    // Allocated in the tree being edited → unallocate it and revalidate. The
+    // main tree is shared-only; removing a shared node can orphan weapon-set
+    // branches that hung off it (resolveCascade drops them).
+    if (bucket === mode) {
+      const resolved = resolveCascade(data, removeKey(alloc, nodeKey), pathing.frontierKeys, pathing.ascendancyId, pathing.hiddenKeys);
+      // If the cascade removes a constraint gate (e.g. Druid Oracle's "The
+      // Unseen Path"), its Forbidden Path nodes aren't graph-reachable, so
+      // prune by constraint so they drop in the same commit.
+      state.commitAllocation(pruneAllocation(resolved, pathing.ascendancyId, data));
       return;
     }
-    // Entwined Realities: any eligible target allocates as a single node,
-    // bypassing BFS entirely. Otherwise BFS would still find a long route
-    // through the tree and charge the player for the connecting chain,
-    // defeating the whole point of the notable.
+    // Entwined Realities: any eligible target allocates as a single node into
+    // the current tree, bypassing BFS entirely.
     if (pathing.entwinedKeys.has(nodeKey)) {
-      const direct = new Set(state.allocated);
-      direct.add(nodeKey);
-      state.tryAllocate(direct, data);
+      state.tryAllocate(applyPathAllocation(data, alloc, [nodeKey], [], mode), data);
       return;
     }
-    const path = bfsShortestPath(data, state.allocated, pathing.classStartKey, nodeKey, pathing.blockedKeys);
+    // Path the new nodes through the current tree's frontier, not routing
+    // through nodes that tree can't use (other set, or — in Main — either set).
+    const frontier = pathing.frontierByMode[mode];
+    const path = bfsShortestPath(data, frontier, pathing.classStartKey, nodeKey, pathing.blockedByMode[mode]);
     if (!path || path.length === 0) return;
-    // MC-hub rule (b): traversing the hub requires an option to be chosen.
-    // Auto-pick the first option of any uncommitted hub on the path so the
-    // click goes through; the user can switch options afterward.
-    const autoOptions = autoOptionsForPath(data, path, state.allocated);
-    const next = new Set(state.allocated);
-    for (const option of autoOptions) next.add(option);
-    // Skip the ascendancy start if the BFS routed the path through it —
-    // it's implicit, never stored in `allocated`, never counted toward the
-    // budget. BFS still traverses it so deeper ascendancy nodes remain
-    // reachable.
-    for (const key of path) {
-      if (data.nodes[key]?.isAscendancyStart) continue;
-      next.add(key);
-      // MC-hub rule (c): only one option per hub. Adding an option evicts
-      // any previously-allocated option sibling of the same hub.
-      if (isMcOption(data, key)) {
-        const hubKey = hubOfOption(data, key);
-        if (hubKey) {
-          for (const sibling of optionsOfHub(data, hubKey)) {
-            if (sibling !== key && state.allocated.has(sibling)) next.delete(sibling);
-          }
-        }
-      }
-    }
-    state.tryAllocate(next, data);
+    const autoOptions = autoOptionsForPath(data, path, frontier);
+    state.tryAllocate(applyPathAllocation(data, alloc, path, autoOptions, mode), data);
   });
 }
 

@@ -1,13 +1,34 @@
 import { useStore } from '../state/store';
 import { palette, fontDisplay, controlHeight } from './theme';
 
+interface RejectionTicks {
+  passiveRejectionTick: number;
+  ascendancyRejectionTick: number;
+  weaponSet1RejectionTick: number;
+  weaponSet2RejectionTick: number;
+}
+
+/** Pick the per-budget rejection counter that keys this chip's shake. */
+function rejectionTickFor(s: RejectionTicks, kind: BudgetChipProps['kind']): number {
+  switch (kind) {
+    case 'passive': return s.passiveRejectionTick;
+    case 'ascendancy': return s.ascendancyRejectionTick;
+    case 'weaponSet1': return s.weaponSet1RejectionTick;
+    case 'weaponSet2': return s.weaponSet2RejectionTick;
+  }
+}
+
 interface BudgetChipProps {
   label: string;
   count: number;
-  cap: number;
+  /** Cap for the `N / cap` form. Omit for a plain count (e.g. Shared, whose
+   *  real headroom is bound by the per-set active totals, not a cap of its own). */
+  cap?: number;
   /** Which budget this chip represents — picks the per-budget rejection tick
    *  to key the shake animation on. */
-  kind: 'passive' | 'ascendancy';
+  kind: 'passive' | 'ascendancy' | 'weaponSet1' | 'weaponSet2';
+  /** Optional muted suffix after the cap (e.g. "18 left"). */
+  note?: string;
 }
 
 /**
@@ -22,18 +43,20 @@ interface BudgetChipProps {
  * other chip doesn't remount.
  */
 export default function BudgetChip({
-  label, count, cap, kind,
+  label, count, cap, kind, note,
 }: Readonly<BudgetChipProps>) {
-  const tick = useStore((s) =>
-    kind === 'passive' ? s.passiveRejectionTick : s.ascendancyRejectionTick
-  );
+  const tick = useStore((s) => rejectionTickFor(s, kind));
 
-  const over = count > cap;
+  const over = cap !== undefined && count > cap;
 
   return (
     <div
       key={tick}
-      style={{ ...chipStyle, ...(over ? chipOverStyle : null), ...(tick > 0 ? chipShakeStyle : null) }}
+      style={{
+        ...chipStyle,
+        ...(over ? chipOverStyle : null),
+        ...(tick > 0 ? chipShakeStyle : null),
+      }}
       data-kind={kind}
     >
       {/* Inner row aligns the display-font label and the body-font numbers on
@@ -42,8 +65,9 @@ export default function BudgetChip({
       <span style={chipInnerStyle}>
         <span style={chipLabelStyle}>{label}</span>
         <span style={over ? chipCountOverStyle : chipCountStyle}>{count}</span>
-        <span style={chipSlashStyle}>/</span>
-        <span style={capStyle}>{cap}</span>
+        {cap !== undefined && <span style={chipSlashStyle}>/</span>}
+        {cap !== undefined && <span style={capStyle}>{cap}</span>}
+        {note && <span style={chipNoteStyle}>{note}</span>}
       </span>
     </div>
   );
@@ -101,3 +125,13 @@ const chipCountStyle: React.CSSProperties = numStyle;
 const chipCountOverStyle: React.CSSProperties = { ...numStyle, color: palette.dangerText, fontWeight: 700 };
 const chipSlashStyle: React.CSSProperties = { ...numStyle, opacity: 0.4 };
 const capStyle: React.CSSProperties = numStyle;
+
+// Muted trailing note (e.g. unspent points) — set apart with a thin divider.
+const chipNoteStyle: React.CSSProperties = {
+  marginLeft: 4,
+  paddingLeft: 6,
+  borderLeft: `1px solid ${palette.border}`,
+  fontSize: 12,
+  color: palette.textMuted,
+  fontVariantNumeric: 'tabular-nums',
+};
