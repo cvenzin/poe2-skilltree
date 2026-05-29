@@ -1,12 +1,10 @@
 import { useEffect } from 'react';
 import { useStore } from './state/store';
 import { loadTreeData } from './data/loader';
-import { VERSIONS, DEFAULT_VERSION } from './data/versions';
+import { VERSIONS, DEFAULT_VERSION, DEFAULT_CLASS } from './data/versions';
 import {
-  loadAtlases,
   buildAtlasBundle,
-  destroyAtlases,
-  classBackgroundNames,
+  classBackgroundName,
   STATIC_ATLAS_NAMES,
   type AtlasBundle,
 } from './render/atlas';
@@ -56,25 +54,40 @@ export default function App() {
       try {
         setStatus({ kind: 'loading', version: activeVersion });
 
-        // The static atlases don't depend on the data, so start downloading
-        // them in parallel with `data.json` instead of waiting for it. On
-        // mobile this overlaps the slow WebP decode with the JSON fetch/parse.
-        const staticAtlasesP = loadAtlases(activeVersion, STATIC_ATLAS_NAMES);
-        staticAtlasesP.catch(() => { /* settled below; avoid unhandled rejection */ });
+        // Build the bundle now and load every atlas through it, so the bundle
+        // owns all texture lifecycle — cleanup below just calls destroy(), and
+        // in-flight loads that land after teardown free themselves. Nothing
+        // reads the bundle until `ready`, so starting empty is safe.
+        const atlases = buildAtlasBundle(activeVersion, []);
+        loadedBundle = atlases;
+
+        // Static atlases don't depend on the data — load them in parallel with
+        // `data.json` so the slow WebP decode overlaps the JSON fetch/parse.
+        // Critical: a failure here means we can't render, so it propagates.
+        const staticReady = Promise.all(STATIC_ATLAS_NAMES.map((n) => atlases.ensure(n)));
+        staticReady.catch(() => { /* real handling at the await below */ });
+
+        // The boot class is known without the parsed data — the share hash now
+        // carries the class name, localStorage the saved name, else the default
+        // — so start its background (the single biggest asset) right now, before
+        // data.json even downloads. Best-effort; the authoritative ensure after
+        // parse corrects any mismatch (e.g. a hash with a bogus class name).
+        const earlyClass = bootClassNameWithoutData(activeVersion);
+        atlases.ensure(classBackgroundName(earlyClass)).catch(() => { /* covered below */ });
 
         const data = await loadTreeData(activeVersion);
-        if (cancelled) { destroyAtlases(await staticAtlasesP.catch(() => [])); return; }
+        if (cancelled) return; // cleanup's destroy() frees the bundle + in-flight loads
 
-        // Only the per-class backgrounds need the data (which classes exist),
-        // but they load quickly, so we don't bother with a separate status.
-        const [staticAtlases, bgAtlases] = await Promise.all([
-          staticAtlasesP,
-          loadAtlases(activeVersion, classBackgroundNames(data)),
-        ]);
-        if (cancelled) { destroyAtlases([...staticAtlases, ...bgAtlases]); return; }
+        await staticReady; // throws → error screen if a static atlas failed
+        if (cancelled) return;
 
-        const atlases = buildAtlasBundle(activeVersion, [...staticAtlases, ...bgAtlases]);
-        loadedBundle = atlases;
+        // Authoritative boot class (covers hash + first-playable). Dedupes with
+        // the early load when they agree; otherwise the lazy swapContext path
+        // repaints the backdrop once this lands.
+        const bootClass = resolveBootClassName(activeVersion, data);
+        if (bootClass) {
+          atlases.ensure(classBackgroundName(bootClass)).catch(() => { /* lazy path retries */ });
+        }
 
         setStatus({ kind: 'ready', version: activeVersion, data, atlases });
         applyBootSnapshot(activeVersion, data, loadSnapshot, setClass);
@@ -198,10 +211,45 @@ function applyBootSnapshot(
   const reconciledLs = persisted ? reconcileSnapshot(persisted, data) : null;
   if (reconciledLs) { loadSnapshot(reconciledLs); return; }
 
-  const firstPlayableIdx = data.playableClassIndices[0];
-  const firstPlayable =
-    firstPlayableIdx === undefined ? undefined : data.classes[firstPlayableIdx];
+  const firstPlayable = firstPlayableClass(data);
   if (firstPlayable) setClass(firstPlayable.name);
+}
+
+/** The class `applyBootSnapshot` will end up selecting, resolved *without*
+ *  mutating store state — so the loader can eager-load that class's background
+ *  before the first render. Must mirror `applyBootSnapshot`'s precedence
+ *  (hash → localStorage → first playable). A wrong guess is harmless: the lazy
+ *  swapContext path loads whatever class actually renders. */
+function resolveBootClassName(version: string, data: TreeData): string | null {
+  const hashRaw = decodeShareHash(globalThis.location.hash);
+  if (hashRaw && hashRaw.version === version) {
+    const reconciled = reconcileShareHash(hashRaw, data);
+    if (reconciled) return reconciled.className;
+  }
+  const persisted = loadPersistedSnapshot(version);
+  const reconciledLs = persisted ? reconcileSnapshot(persisted, data) : null;
+  if (reconciledLs) return reconciledLs.className;
+
+  return firstPlayableClass(data)?.name ?? null;
+}
+
+function firstPlayableClass(data: TreeData) {
+  const idx = data.playableClassIndices[0];
+  return idx === undefined ? undefined : data.classes[idx];
+}
+
+/** The boot class, resolved *without* the parsed data so its background can
+ *  start loading before data.json arrives. Every case is now answerable
+ *  pre-parse since the share hash carries the class *name* (not a numeric
+ *  index). Precedence mirrors `resolveBootClassName`:
+ *   - share hash → its class name (unvalidated; a bogus name just 404s the
+ *     preload, and the post-parse path picks the real class);
+ *   - returning visitor → the saved class name (localStorage);
+ *   - fresh visitor → {@link DEFAULT_CLASS}. */
+function bootClassNameWithoutData(version: string): string {
+  const hashRaw = decodeShareHash(globalThis.location.hash);
+  if (hashRaw?.version === version) return hashRaw.className;
+  return loadPersistedSnapshot(version)?.className ?? DEFAULT_CLASS;
 }
 
 const overlayStyle: React.CSSProperties = {

@@ -1,5 +1,4 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import type { TreeData } from '../data/types';
 
 // Raw shape of `assets/*.json` in the export — TexturePacker-style.
 // See INSTRUCTIONS.md §2.
@@ -78,28 +77,38 @@ function parseScale(raw: string | number | undefined): number {
 }
 
 /**
- * The atlases shared by every version of the export. Per-class backgrounds
- * are added dynamically from `data.playableClassIndices` (see {@link loadAtlasBundle}).
+ * The atlases shared by every version of the export, loaded up front. Per-class
+ * backgrounds are NOT here — they're lazy-loaded on demand via
+ * {@link AtlasBundle.ensure} (the active class's is eager-loaded at boot).
  */
 export const STATIC_ATLAS_NAMES = [
   'background',
   'frame',
   'group-background',
-  'jewel-radius',
-  'jewel',
-  'line',
   'mastery-effect-active',
   'mastery-effect-disabled',
   'skills-disabled',
   'skills',
 ] as const;
+// Deliberately omitted (shipped by the export but never sampled here, ~440 KB):
+//   'jewel', 'jewel-radius' — this planner doesn't model jewels (see normalize.ts).
+//   'line'                  — edges are drawn procedurally with Pixi Graphics, not sprites.
+// Add back here if jewel/line-sprite rendering is implemented.
 
 export interface AtlasBundle {
   version: string;
-  /** atlas name → LoadedAtlas */
+  /** atlas name → LoadedAtlas. Grows as lazy atlases (class backgrounds) load. */
   atlases: Map<string, LoadedAtlas>;
   /** Total number of distinct frame textures across all atlases — useful for diagnostics. */
   totalFrames: number;
+  /**
+   * Load an atlas on demand if it isn't already in the bundle (used for the
+   * per-class backgrounds, which we lazy-load instead of fetching all up front).
+   * Concurrent calls for the same name share one request. Resolves `true` if the
+   * atlas was newly added, `false` if it was already present. Rejects if the
+   * fetch fails — callers that render decoration should swallow it.
+   */
+  ensure: (name: string) => Promise<boolean>;
   /** Destroy every sub-texture and unload every TextureSource. Call on version switch (§10.8). */
   destroy: () => void;
 }
@@ -125,16 +134,10 @@ export async function loadAtlases(
   return Promise.all(names.map((name) => loadAtlas(`${baseUrl}/${name}.json`, name)));
 }
 
-/**
- * The per-class `background-<class>` atlas names for a version. These depend on
- * the parsed data (which classes are playable), so — unlike {@link STATIC_ATLAS_NAMES}
- * — they can't be fetched until `data.json` has loaded.
- */
-export function classBackgroundNames(data: TreeData): string[] {
-  return data.playableClassIndices
-    .map((i) => data.classes[i])
-    .filter((c): c is NonNullable<typeof c> => c !== undefined)
-    .map((c) => `background-${c.name.toLowerCase()}`);
+/** The `background-<class>` atlas name for a class. The single source of truth
+ *  for this convention, shared by the loader, the lazy `ensure`, and the renderer. */
+export function classBackgroundName(className: string): string {
+  return `background-${className.toLowerCase()}`;
 }
 
 /** Destroy a set of loaded atlases: free each sub-texture and unload its backing WebP. */
@@ -145,8 +148,11 @@ export function destroyAtlases(loaded: readonly LoadedAtlas[]): void {
   }
 }
 
-/** Assemble a renderable bundle from already-loaded atlases. */
-export function buildAtlasBundle(version: string, loaded: LoadedAtlas[]): AtlasBundle {
+/** Assemble a renderable bundle from already-loaded atlases. The bundle can
+ *  grow afterwards via {@link AtlasBundle.ensure} (lazy class backgrounds). */
+export function buildAtlasBundle(version: string, initial: LoadedAtlas[]): AtlasBundle {
+  // `loaded` is mutable so lazily-added atlases are covered by `destroy`.
+  const loaded = [...initial];
   const atlases = new Map<string, LoadedAtlas>();
   let totalFrames = 0;
   for (const atlas of loaded) {
@@ -154,25 +160,44 @@ export function buildAtlasBundle(version: string, loaded: LoadedAtlas[]): AtlasB
     totalFrames += atlas.textures.size;
   }
 
-  return {
+  // Dedupe concurrent `ensure(name)` calls so a quick A→B→A class switch (or
+  // an eager boot load racing the first render) issues at most one request.
+  const inFlight = new Map<string, Promise<boolean>>();
+  let destroyed = false;
+
+  const bundle: AtlasBundle = {
     version,
     atlases,
     totalFrames,
-    destroy: () => destroyAtlases(loaded),
-  };
-}
+    ensure: (name) => {
+      if (atlases.has(name)) return Promise.resolve(false);
+      const existing = inFlight.get(name);
+      if (existing) return existing;
 
-/**
- * Load every atlas needed to render a version: the 10 static ones plus one
- * `background-<class>` per playable class. All requests run in parallel.
- *
- * Prefer the granular {@link loadAtlases} / {@link buildAtlasBundle} when you
- * want to overlap the static atlas downloads with the `data.json` fetch.
- */
-export async function loadAtlasBundle(version: string, data: TreeData): Promise<AtlasBundle> {
-  const loaded = await loadAtlases(version, [
-    ...STATIC_ATLAS_NAMES,
-    ...classBackgroundNames(data),
-  ]);
-  return buildAtlasBundle(version, loaded);
+      const p = loadAtlases(version, [name]).then(([atlas]) => {
+        inFlight.delete(name);
+        // Bundle was torn down (version switch) mid-load — don't attach to a
+        // dead bundle; release the texture we just decoded instead.
+        if (destroyed || !atlas) {
+          if (atlas) destroyAtlases([atlas]);
+          return false;
+        }
+        if (atlases.has(name)) return false; // raced with another caller
+        loaded.push(atlas);
+        atlases.set(atlas.name, atlas);
+        bundle.totalFrames += atlas.textures.size;
+        return true;
+      });
+      // Drop the in-flight entry on failure too, so a later retry can re-request.
+      p.catch(() => inFlight.delete(name));
+      inFlight.set(name, p);
+      return p;
+    },
+    destroy: () => {
+      destroyed = true;
+      destroyAtlases(loaded);
+    },
+  };
+
+  return bundle;
 }

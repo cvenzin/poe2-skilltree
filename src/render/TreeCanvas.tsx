@@ -9,7 +9,7 @@ import {
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type { Edge, TreeData, TreeNode } from '../data/types';
-import { type AtlasBundle, getFrame } from './atlas';
+import { type AtlasBundle, getFrame, classBackgroundName } from './atlas';
 import { spritesForNode, type NodeState } from './frameForNode';
 import { drawMasteries, type MasteryRedraw } from './drawMasteries';
 import { useStore } from '../state/store';
@@ -133,6 +133,7 @@ export default function TreeCanvas({
       ascendancyNodeKeys: new Set<string>(),
       applyAll: null,
       swapContext: null,
+      swapGeneration: 0,
     };
     ctxRef.current = ctx;
     void mount(host, data, atlases, propsRef, ctx, savedCameraRef.current);
@@ -291,6 +292,10 @@ interface MountContext {
   /** Imperatively re-applies the class/ascendancy-dependent layers — called
    *  by the second effect on prop changes. Null until mount finishes. */
   swapContext: ((className: string, ascendancyId: string | null) => void) | null;
+  /** Bumped on every {@link swapContext}. A lazy class-background load captures
+   *  the value at request time and only redraws if it's still current — so a
+   *  fast class switch doesn't paint a stale backdrop when its load lands. */
+  swapGeneration: number;
 }
 
 /**
@@ -980,6 +985,8 @@ function swapContext(
   className: string,
   ascendancyId: string | null,
 ): void {
+  const generation = ++ctx.swapGeneration;
+
   // Drop the previous ascendancy's node wraps from the global maps so the
   // store-subscription doesn't keep paying texture-swap costs on nodes that
   // were just removed from the scene, and so search/state passes can't see
@@ -1015,6 +1022,19 @@ function swapContext(
   if (ctx.mainCircleLayer) drawMainCircle(ctx.mainCircleLayer, atlases, data, className);
   if (ctx.ascendancyLayer) {
     ctx.redrawOverlayEdges = drawAscendancyOverlay(ctx.ascendancyLayer, atlases, data, ascendancyId, ctx);
+  }
+
+  // The per-class backdrop atlas is lazy-loaded (App.tsx). If it's not in yet,
+  // `drawCentralBackdrop` drew nothing (tryGetFrame → null) — fetch it, then
+  // repaint just the backdrop once it lands. Skip if the class changed again
+  // (generation moved) or the canvas was torn down while loading.
+  const bgName = classBackgroundName(className);
+  if (!atlases.atlases.has(bgName)) {
+    atlases.ensure(bgName).then((added) => {
+      if (!added || ctx.cancelled || generation !== ctx.swapGeneration || !ctx.backdropLayer) return;
+      destroyChildren(ctx.backdropLayer);
+      drawCentralBackdrop(ctx.backdropLayer, atlases, data, className, ascendancyId);
+    }).catch(() => { /* missing/failed background — leave the backdrop empty */ });
   }
 
   const state = useStore.getState();
