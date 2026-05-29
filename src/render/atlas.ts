@@ -116,23 +116,37 @@ export function getFrame(bundle: AtlasBundle, atlasName: string, frameKey: strin
   return tex;
 }
 
-/**
- * Load every atlas needed to render a version: the 10 static ones plus one
- * `background-<class>` per playable class. All requests run in parallel.
- */
-export async function loadAtlasBundle(version: string, data: TreeData): Promise<AtlasBundle> {
+/** Load a specific set of atlases by name. All requests run in parallel. */
+export async function loadAtlases(
+  version: string,
+  names: readonly string[]
+): Promise<LoadedAtlas[]> {
   const baseUrl = `${import.meta.env.BASE_URL}trees/${version}/assets`;
+  return Promise.all(names.map((name) => loadAtlas(`${baseUrl}/${name}.json`, name)));
+}
 
-  const classBackgroundNames = data.playableClassIndices
+/**
+ * The per-class `background-<class>` atlas names for a version. These depend on
+ * the parsed data (which classes are playable), so — unlike {@link STATIC_ATLAS_NAMES}
+ * — they can't be fetched until `data.json` has loaded.
+ */
+export function classBackgroundNames(data: TreeData): string[] {
+  return data.playableClassIndices
     .map((i) => data.classes[i])
     .filter((c): c is NonNullable<typeof c> => c !== undefined)
     .map((c) => `background-${c.name.toLowerCase()}`);
+}
 
-  const allNames = [...STATIC_ATLAS_NAMES, ...classBackgroundNames];
-  const loaded = await Promise.all(
-    allNames.map((name) => loadAtlas(`${baseUrl}/${name}.json`, name))
-  );
+/** Destroy a set of loaded atlases: free each sub-texture and unload its backing WebP. */
+export function destroyAtlases(loaded: readonly LoadedAtlas[]): void {
+  for (const atlas of loaded) {
+    for (const tex of atlas.textures.values()) tex.destroy(false); // false: don't destroy shared source
+    Assets.unload(atlas.imageUrl).catch(() => { /* swallow: unloading already-gone asset */ });
+  }
+}
 
+/** Assemble a renderable bundle from already-loaded atlases. */
+export function buildAtlasBundle(version: string, loaded: LoadedAtlas[]): AtlasBundle {
   const atlases = new Map<string, LoadedAtlas>();
   let totalFrames = 0;
   for (const atlas of loaded) {
@@ -144,11 +158,21 @@ export async function loadAtlasBundle(version: string, data: TreeData): Promise<
     version,
     atlases,
     totalFrames,
-    destroy: () => {
-      for (const atlas of loaded) {
-        for (const tex of atlas.textures.values()) tex.destroy(false); // false: don't destroy shared source
-        Assets.unload(atlas.imageUrl).catch(() => { /* swallow: unloading already-gone asset */ });
-      }
-    },
+    destroy: () => destroyAtlases(loaded),
   };
+}
+
+/**
+ * Load every atlas needed to render a version: the 10 static ones plus one
+ * `background-<class>` per playable class. All requests run in parallel.
+ *
+ * Prefer the granular {@link loadAtlases} / {@link buildAtlasBundle} when you
+ * want to overlap the static atlas downloads with the `data.json` fetch.
+ */
+export async function loadAtlasBundle(version: string, data: TreeData): Promise<AtlasBundle> {
+  const loaded = await loadAtlases(version, [
+    ...STATIC_ATLAS_NAMES,
+    ...classBackgroundNames(data),
+  ]);
+  return buildAtlasBundle(version, loaded);
 }

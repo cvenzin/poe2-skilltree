@@ -42,6 +42,21 @@ body {
 
 a { color: inherit; }
 
+/* Loading-splash pulse: the subtitle's rune-blue glow breathes in and out so
+ * the splash reads as "working", not frozen, while the tree data + image
+ * atlases download. A glow (not a text-reveal sweep) so it looks right even
+ * when loading finishes in a single pulse. See src/App.tsx loadingSubtitleStyle. */
+@keyframes poe2-glow-pulse {
+  0%, 100% {
+    opacity: 0.65;
+    text-shadow: 0 0 4px rgba(93, 180, 255, 0.25);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(93, 180, 255, 0.65), 0 0 22px rgba(93, 180, 255, 0.35);
+  }
+}
+
 @keyframes poe2-shake {
   0%   { transform: translateX(0); }
   20%  { transform: translateX(-3px); }

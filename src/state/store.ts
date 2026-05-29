@@ -14,7 +14,7 @@ const UNDO_LIMIT = 50;
 
 export type LoadStatus =
   | { kind: 'idle' }
-  | { kind: 'loading'; version: string; stage: 'data' | 'atlases' }
+  | { kind: 'loading'; version: string }
   | { kind: 'ready'; version: string; data: TreeData; atlases: AtlasBundle }
   | { kind: 'error'; version: string | null; message: string };
 

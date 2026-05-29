@@ -2,7 +2,14 @@ import { useEffect } from 'react';
 import { useStore } from './state/store';
 import { loadTreeData } from './data/loader';
 import { VERSIONS, DEFAULT_VERSION } from './data/versions';
-import { loadAtlasBundle, type AtlasBundle } from './render/atlas';
+import {
+  loadAtlases,
+  buildAtlasBundle,
+  destroyAtlases,
+  classBackgroundNames,
+  STATIC_ATLAS_NAMES,
+  type AtlasBundle,
+} from './render/atlas';
 import { loadPersistedSnapshot, reconcileSnapshot, startPersistence } from './state/persistence';
 import { decodeShareHash, reconcileShareHash } from './state/shareHash';
 import type { TreeData } from './data/types';
@@ -47,13 +54,26 @@ export default function App() {
     let stopPersist: (() => void) | null = null;
     (async () => {
       try {
-        setStatus({ kind: 'loading', version: activeVersion, stage: 'data' });
-        const data = await loadTreeData(activeVersion);
-        if (cancelled) return;
+        setStatus({ kind: 'loading', version: activeVersion });
 
-        setStatus({ kind: 'loading', version: activeVersion, stage: 'atlases' });
-        const atlases = await loadAtlasBundle(activeVersion, data);
-        if (cancelled) { atlases.destroy(); return; }
+        // The static atlases don't depend on the data, so start downloading
+        // them in parallel with `data.json` instead of waiting for it. On
+        // mobile this overlaps the slow WebP decode with the JSON fetch/parse.
+        const staticAtlasesP = loadAtlases(activeVersion, STATIC_ATLAS_NAMES);
+        staticAtlasesP.catch(() => { /* settled below; avoid unhandled rejection */ });
+
+        const data = await loadTreeData(activeVersion);
+        if (cancelled) { destroyAtlases(await staticAtlasesP.catch(() => [])); return; }
+
+        // Only the per-class backgrounds need the data (which classes exist),
+        // but they load quickly, so we don't bother with a separate status.
+        const [staticAtlases, bgAtlases] = await Promise.all([
+          staticAtlasesP,
+          loadAtlases(activeVersion, classBackgroundNames(data)),
+        ]);
+        if (cancelled) { destroyAtlases([...staticAtlases, ...bgAtlases]); return; }
+
+        const atlases = buildAtlasBundle(activeVersion, [...staticAtlases, ...bgAtlases]);
         loadedBundle = atlases;
 
         setStatus({ kind: 'ready', version: activeVersion, data, atlases });
@@ -155,7 +175,7 @@ export default function App() {
       <p style={loadingSubtitleStyle}>
         {status.kind === 'idle' && 'Initialising…'}
         {status.kind === 'loading' &&
-          `Loading tree ${status.version} · ${status.stage === 'data' ? 'data.json' : 'atlases'}…`}
+          `Loading skill tree ${status.version}…`}
       </p>
     </div>
   );
@@ -210,7 +230,12 @@ const loadingTitleStyle: React.CSSProperties = {
 
 const loadingSubtitleStyle: React.CSSProperties = {
   marginTop: '0.6rem',
-  color: palette.textMuted,
+  // The text stays fully drawn; its rune-blue glow breathes (keyframes in
+  // index.css) so the splash reads as "working" rather than frozen. A pulsing
+  // glow instead of a text-reveal sweep, so it still looks right when loading
+  // finishes before a single cycle completes.
+  color: palette.textPrimary,
+  animation: 'poe2-glow-pulse 1.6s ease-in-out infinite',
 };
 
 const errCardStyle: React.CSSProperties = {

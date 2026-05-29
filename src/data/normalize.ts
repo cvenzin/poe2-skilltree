@@ -78,8 +78,7 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
     if (anyValid) playableClassIndices.push(i);
   });
 
-  warnOnSuspiciousCrossClusterEdges(raw, edges, startNodeByClassIndex);
-  warnOnEdgesOverdrawingNodes(raw, edges);
+  maybeRunExportDiagnostics(raw, edges, startNodeByClassIndex);
 
   return {
     ...raw,
@@ -175,6 +174,30 @@ function prunePass(
     pruned.delete(key);
   }
   return pruned ?? allocated;
+}
+
+/**
+ * Run the export sanity checks — OFF by default, opt-in only. `warnOnEdgesOverdrawingNodes`
+ * is O(edges × nodes) (~30M trig ops on the 0.5.0 tree), which froze the loading screen
+ * on mobile when it ran on every load, and even in dev it adds a noticeable hitch. Both
+ * checks only emit a `console.warn` for developers, so they run only when you explicitly
+ * opt in for a session:
+ *
+ *   - inline (PowerShell):  $env:VITE_TREE_DIAGNOSTICS='true'; npm run dev
+ *   - or add to .env.local:  VITE_TREE_DIAGNOSTICS=true
+ *
+ * The `import.meta.env.DEV` guard is statically `false` in a production build, so Vite
+ * tree-shakes the whole thing out regardless of the flag — users never pay for it.
+ */
+function maybeRunExportDiagnostics(
+  raw: RawTreeData,
+  edges: Edge[],
+  startNodeByClassIndex: ReadonlyMap<number, string>,
+): void {
+  if (!import.meta.env.DEV) return;
+  if (import.meta.env.VITE_TREE_DIAGNOSTICS !== 'true') return;
+  warnOnSuspiciousCrossClusterEdges(raw, edges, startNodeByClassIndex);
+  warnOnEdgesOverdrawingNodes(raw, edges);
 }
 
 /**
