@@ -154,7 +154,7 @@ function StatTokens({ text }: Readonly<{ text: string }>) {
 
 const underlineStyle: React.CSSProperties = {
   textDecoration: 'underline',
-  textDecorationColor: palette.rune,
+  textDecorationColor: palette.textMetal,
 };
 
 // Runic frame: container holds no padding so the header band can span full
@@ -222,6 +222,6 @@ const subBulletStyle: React.CSSProperties = {
 };
 
 const subBulletMarkStyle: React.CSSProperties = {
-  color: palette.rune,
+  color: palette.textMetal,
   textAlign: 'center',
 };

@@ -41,8 +41,9 @@ export const palette = {
   textPrimary: '#bcd3ec',
   /** Stat / value blue. */
   textStat: '#7fb4ee',
-  /** Brushed-titanium grey for tooltip stat values — metallic, low-chroma so
-   *  the rune-blue accents (stripe, bullets, underlines) still read as accents. */
+  /** Brushed-titanium grey for tooltip stat values, sub-bullets, and underlines
+   *  — metallic and low-chroma so they sit quietly with the body. The deep
+   *  `runeDark` entry stripe is the only accent that still pops. */
   textMetal: '#c2c8d0',
   /** Muted steel for labels, captions, disabled. */
   textMuted: '#6f8398',
