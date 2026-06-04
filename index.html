@@ -3,6 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Best-effort: ask browsers to revalidate this HTML rather than serve a
+         stale copy. After a redeploy the hashed JS in dist/assets changes, so a
+         cached index.html points at a now-404'd bundle and the app renders a
+         black screen (seen on mobile). The hashed assets are immutable and stay
+         cacheable; only this document must not go stale. http-equiv cache hints
+         are increasingly ignored for the navigation document, so this is a
+         mitigation, not a guarantee. -->
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
     <title>PoE 2 Skill Tree — browser-based passive tree planner</title>
     <meta name="description" content="Free, open-source Path of Exile 2 passive skill tree viewer and planner. Pick a class and ascendancy, preview pathing, allocate within budget, and share builds via URL. Runs entirely in the browser, no account required." />
     <link rel="canonical" href="https://cvenzin.github.io/poe2-skilltree/" />
