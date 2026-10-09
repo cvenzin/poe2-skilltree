@@ -12,14 +12,17 @@ paths from the repository root and follow its `AGENTS.md`.
 ## Select the upstream version
 
 - Inspect [GGG's export releases](https://github.com/grindinggear/poe2-skilltree-export/releases)
-  when the task is performed. Honor a requested version; for "latest", resolve
-  the latest stable published release rather than assuming the default branch
-  or the highest local folder is current. Use tags or the GitHub releases API if
-  the release page cannot display its downloads.
-- Record the exact tag, release URL, and commit when available. For a re-export
+  and the default branch's commit history when the task is performed. Honor a
+  requested version; for "latest", compare releases, tags, and version-labelled
+  export commits. GGG may publish a live patch's export as a commit without a
+  matching release or tag, leaving GitHub's "Latest" badge on an older version.
+  Verify the patch is live using official GGG patch notes; exclude previews
+  unless requested. Do not infer the version from the branch name or local folders.
+- Record the exact version, immutable commit, and source URL; include the tag
+  and release URL when available. For a re-export
   under an existing tag, compare its contents before replacing anything locally.
 - Download the release's export asset when provided, or check out/download the
-  source at the exact release tag. Stage it in a temporary directory outside
+  source at the exact verified tag or commit. Stage it in a temporary directory outside
   `public/trees`; preserve upstream documentation and asset filenames.
 - A request only to check for updates calls for a comparison and report. Import
   files when the user asks to add or update a version.
@@ -39,10 +42,16 @@ paths from the repository root and follow its `AGENTS.md`.
   `meta.image` files relative to each atlas JSON, frame keys, and `meta.scale`.
   Data and assets must come from the same export.
 - Add the version once to `VERSIONS` in `src/data/versions.ts`, keeping the
-  newest-first order. For a routine update to the latest stable release, set
+  newest-first order. For a routine update to the latest verified live export, set
   `DEFAULT_VERSION` to the new version; preserve it for historical additions
   or when the user requests that. Recheck `DEFAULT_CLASS` against the export's
   first playable class if class availability/order changes.
+- Keep the version label tied to the verified export, not just the live game's
+  patch number. Before a label-only correction, compare bundled data and assets
+  with the claimed upstream commit. If they differ, import the matching export
+  under its own version instead of relabelling older data. Verify the directory,
+  `VERSIONS`, `DEFAULT_VERSION`, selector label, and newly shared build's version
+  agree; retain old version IDs and directories for saved builds and share links.
 - Review any newly introduced mechanics. Use the relevant
   [PoE 2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki) article for
   mechanics context and [PoE2DB](https://poe2db.tw/) for game-data lookups and
