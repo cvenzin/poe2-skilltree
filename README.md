@@ -22,6 +22,9 @@ Live: <https://cvenzin.github.io/poe2-skilltree/>
 - Pan, wheel-zoom, and pinch-zoom on touch.
 - Mobile layout: collapsible toolbar, bottom-anchored tooltips, long-press
   suppression so dwelling on a node to read its stats doesn't allocate.
+- Loading feedback appears only after 300 ms; the tree opens as soon as it is
+  ready, with no minimum splash duration. The loader chooses its title font
+  once when shown (the preloaded display face, or a stable system fallback).
 
 ## Tech stack
 

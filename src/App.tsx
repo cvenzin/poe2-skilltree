@@ -16,8 +16,9 @@ import Toolbar from './ui/Toolbar';
 import NodeTooltip from './ui/NodeTooltip';
 import ValidationToast from './ui/ValidationToast';
 import Attribution from './ui/Attribution';
+import LoadingScreen from './ui/LoadingScreen';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
-import { palette, fontDisplay, fontBody } from './ui/theme';
+import { palette, fontBody } from './ui/theme';
 
 export default function App() {
   const status = useStore((s) => s.status);
@@ -184,16 +185,7 @@ export default function App() {
     );
   }
 
-  return (
-    <div style={overlayStyle}>
-      <h1 style={loadingTitleStyle}>PoE 2 Skill Tree</h1>
-      <p style={loadingSubtitleStyle}>
-        {status.kind === 'idle' && 'Initialising…'}
-        {status.kind === 'loading' &&
-          `Loading skill tree ${status.version}…`}
-      </p>
-    </div>
-  );
+  return <LoadingScreen key={`${activeVersion}:${retryToken}`} version={activeVersion} />;
 }
 
 /** Pick an initial allocation/class state for the just-loaded version.
@@ -264,28 +256,6 @@ const overlayStyle: React.CSSProperties = {
   fontFamily: fontBody,
   color: palette.textPrimary,
   background: palette.panelBgSolid,
-};
-
-// Loader title — same carved display font, glyph-blue, and rune glow as the
-// tooltip header, scaled up for the splash.
-const loadingTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontFamily: fontDisplay,
-  fontWeight: 700,
-  fontSize: 30,
-  letterSpacing: 1,
-  color: palette.textTitle,
-  textShadow: `0 0 12px ${palette.runeGlow}, 0 1px 2px rgba(0, 0, 0, 0.8)`,
-};
-
-const loadingSubtitleStyle: React.CSSProperties = {
-  marginTop: '0.6rem',
-  // The text stays fully drawn; its rune-blue glow breathes (keyframes in
-  // index.css) so the splash reads as "working" rather than frozen. A pulsing
-  // glow instead of a text-reveal sweep, so it still looks right when loading
-  // finishes before a single cycle completes.
-  color: palette.textPrimary,
-  animation: 'poe2-glow-pulse 1.6s ease-in-out infinite',
 };
 
 const errCardStyle: React.CSSProperties = {
