@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/poe2-skilltree/',
+  base: '/',
   plugins: [react()],
   resolve: {
     // Force every import of react / react-dom (incl. transitive ones from

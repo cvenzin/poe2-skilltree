@@ -4,7 +4,7 @@
 
 This is a static Path of Exile 2 passive-tree viewer and build planner, using
 React, TypeScript, Vite, PixiJS v8, pixi-viewport, and Zustand. GitHub Pages
-serves it under `/poe2-skilltree/`; use `import.meta.env.BASE_URL` for public
+serves it at `https://poe2planner.app/`; use `import.meta.env.BASE_URL` for public
 asset URLs.
 
 - `src/data/`: export types, loading, normalization, and available versions.

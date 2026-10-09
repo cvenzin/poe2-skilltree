@@ -4,7 +4,7 @@ A web-based viewer and planner for the Path of Exile 2 passive skill tree.
 Lets you pick a class and ascendancy, search nodes, preview pathing, allocate
 points within a budget, undo/redo, and share builds via URL.
 
-Live: <https://cvenzin.github.io/poe2-skilltree/>
+Live: <https://poe2planner.app/>
 
 ## Features
 
@@ -57,6 +57,15 @@ Tests, lint, and the production build run in CI via [.github/workflows/deploy.ym
 on every push to `main`. Successful checks deploy `dist/` to GitHub Pages.
 
 [.github/workflows/deploy.yml]: .github/workflows/deploy.yml
+
+### Custom domain
+
+GitHub Pages serves the site at `https://poe2planner.app/`. Vite's `base` is
+`/` so public assets and tree exports load from the domain root. Keep the
+repository's **Settings → Pages → Custom domain** set to `poe2planner.app`
+and enable **Enforce HTTPS** once GitHub has provisioned the certificate.
+DNS is managed at Porkbun and points the apex domain and `www` to GitHub Pages.
+This repository deploys through GitHub Actions, so a `CNAME` file is not required.
 
 ### Export to the in-game Build Planner
 
