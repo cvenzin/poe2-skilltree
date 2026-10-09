@@ -7,6 +7,7 @@ import UndoRedoButtons from './UndoRedoButtons';
 import ResetButton from './ResetButton';
 import SearchInput from './SearchInput';
 import ShareButton from './ShareButton';
+import ExportBuildButton from './ExportBuildButton';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, controlHeight } from './theme';
 
@@ -222,6 +223,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
         <UndoRedoButtons />
         <ResetButton />
         <ShareButton />
+        <ExportBuildButton data={data} />
       </div>
     </div>
   );

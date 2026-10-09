@@ -80,6 +80,19 @@ sets flips it on so points are never hidden.
 pre-weapon-set build (single `allocated` list, or share hash with only `n=`)
 loads as shared-only. Share hash adds `w1=` / `w2=` for the set branches.
 
+## In-game Build Planner export
+
+`src/state/gggBuild.ts` serializes a snapshot to GGG's experimental v1
+[`.build` format](https://www.pathofexile.com/developer/docs/game#buildplanner).
+Shared passives use string IDs; exclusive passives use `{ id, weapon_set: 1 | 2 }`.
+IDs come from each node's `id` (the PassiveSkills table string), never its numeric
+tree key. Ascendancy passives remain shared, and implicit start nodes are omitted.
+Missing IDs, unavailable passives, and locked nodes fail export rather than losing
+allocations silently. Export includes both weapon sets even when their UI toggle is off.
+
+The mobile export dialog downloads the file and links to GGG's account upload
+page. It does not sign in or upload on the user's behalf.
+
 ## Not implemented
 
 Gear/skill-gem weapon-set binding, DPS/stat calculation, automatic tree

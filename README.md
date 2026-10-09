@@ -18,6 +18,7 @@ Live: <https://cvenzin.github.io/poe2-skilltree/>
 - Passive (123) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red.
 - Undo / redo and a one-click reset.
 - Shareable URL hash encodes class, ascendancy, allocations, and version.
+- Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
 - Mobile layout: collapsible toolbar, bottom-anchored tooltips, long-press
   suppression so dwelling on a node to read its stats doesn't allocate.
@@ -50,6 +51,18 @@ Tests, lint, and the production build run in CI via [.github/workflows/deploy.ym
 on every push to `main`. Successful checks deploy `dist/` to GitHub Pages.
 
 [.github/workflows/deploy.yml]: .github/workflows/deploy.yml
+
+### Export to the in-game Build Planner
+
+Open the toolbar and choose **Export to PoE 2**. Name the build, then tap
+**Download build** and save the `.build` file to Files or Downloads on your device.
+Tap **Open GGG upload page**, sign in, and select the file you just downloaded.
+Then select the guide in the game's Build Planner; points are still allocated in-game.
+
+The file contains your passive tree, ascendancy (when selected), and weapon-set
+assignments. It uses GGG's [Build Planner format](https://www.pathofexile.com/developer/docs/game#buildplanner)
+and includes a link back to the planned tree. Export runs locally in your browser.
+Gear, gems, and leveling stages are outside this planner's scope.
 
 ### Regenerating icons
 
