@@ -101,7 +101,7 @@ export function loadPersistedSnapshot(version: string): BuildSnapshot | null {
  * thrash the debounce on every pointer move.)
  */
 export function startPersistence(version: string): () => void {
-  let timer: number | undefined;
+  let timer: ReturnType<typeof globalThis.setTimeout> | undefined;
   let lastSerialised: string | null = null;
 
   const writeIfChanged = () => {

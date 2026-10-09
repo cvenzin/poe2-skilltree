@@ -35,16 +35,19 @@ the build with no backend.
 
 ## Development
 
+Use Node.js 24 (also used by CI).
+
 ```bash
-npm install
+npm ci
 npm run dev      # vite dev server with HMR
 npm run build    # tsc -b && vite build, output to dist/
 npm run preview  # serve dist/ locally
 npm run lint
+npm test         # Vitest regression suite, including all bundled tree exports
 ```
 
-The build runs in CI via [.github/workflows/deploy.yml] on every push to
-`main` and deploys `dist/` to GitHub Pages.
+Tests, lint, and the production build run in CI via [.github/workflows/deploy.yml]
+on every push to `main`. Successful checks deploy `dist/` to GitHub Pages.
 
 [.github/workflows/deploy.yml]: .github/workflows/deploy.yml
 

@@ -11,6 +11,8 @@ asset URLs.
 - `src/interaction/`: graph pathing, search, and stat markup.
 - `src/state/`: allocation rules, Zustand state, undo/redo, persistence, and sharing.
 - `src/render/`: Pixi canvas, atlas loading, textures, and node visuals.
+  `TreeCanvas.tsx` owns the React lifecycle; `render/tree/` contains scene mounting,
+  class/ascendancy swaps, pointer interaction, camera, edges, nodes, and overlays.
 - `src/ui/`: React controls, tooltips, keyboard shortcuts, and theme.
 - `public/trees/<version>/`: upstream `data.json` and `assets/` for each tree version.
 
@@ -23,9 +25,10 @@ documentation when behavior changes; avoid duplicating detailed design here.
 
 - Install dependencies with `npm ci` using the committed lockfile.
 - `npm run dev` starts Vite; `npm run preview` serves the production build.
-- Run `npm run build` and `npm run lint` for application-code changes.
-- There is currently no automated test runner or `npm test` script. For behavior
-  changes, manually check the affected flows and report what was verified.
+- Run `npm test`, `npm run build`, and `npm run lint` for application-code changes.
+- Vitest regression tests live in `tests/` and cover allocation, pathing, budgets,
+  history, persistence, sharing, and every bundled export's data/atlas compatibility.
+  For behavior changes, also manually check affected flows and report verification.
   Allocation changes should cover preview/commit, cascade removal, both weapon
   sets, budget rejection, and undo/redo. Persistence changes should cover share
   round-trips, reload, and legacy builds. UI changes should include desktop and

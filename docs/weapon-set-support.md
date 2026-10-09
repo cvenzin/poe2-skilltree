@@ -60,7 +60,7 @@ so removing a shared node correctly drops any branch that hung off it.
 ## Rendering
 
 Both trees are always visible. Nodes paint with the normal allocated frame; the
-**edge colour** carries the set identity ([`src/render/TreeCanvas.tsx`](../src/render/TreeCanvas.tsx)):
+**edge colour** carries the set identity ([`edgeState.ts`](../src/render/tree/edgeState.ts)):
 main = gold, Set 1 = green, Set 2 = red. A Set 1 ↔ Set 2 edge belongs to neither
 tree and stays uncoloured.
 
@@ -83,5 +83,10 @@ loads as shared-only. Share hash adds `w1=` / `w2=` for the set branches.
 ## Not implemented
 
 Gear/skill-gem weapon-set binding, DPS/stat calculation, automatic tree
-optimization, user-configurable point totals, and automated tests (no test
-runner is set up in this project).
+optimization, and user-configurable point totals.
+
+## Verification
+
+Run `npm test` for allocation, pathing, budget, history, sharing, persistence,
+and bundled-export compatibility regressions. Renderer changes also need desktop
+and touch checks for preview/commit, cascade removal, pan/zoom, and long-press.
