@@ -12,7 +12,7 @@ interface SearchInputProps {
 }
 
 /**
- * Search input on the toolbar (INSTRUCTIONS.md §10.1).
+ * Search input on the toolbar.
  *
  *   `[🔍 input               ] [3/12] [×]`
  *

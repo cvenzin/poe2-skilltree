@@ -16,7 +16,7 @@ export default defineConfig({
     // Pre-bundle these at server start instead of discovering them lazily.
     // Avoids the "✨ new dependencies optimized → reloading" mid-session
     // cycle that drops in-flight dynamic imports when pixi/viewport are
-    // first hit. See INSTRUCTIONS.md §11 phase 4 notes.
+    // first hit.
     include: ['pixi.js', 'pixi-viewport', 'zustand', '@floating-ui/react'],
   },
 })

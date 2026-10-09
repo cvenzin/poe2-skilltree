@@ -2,7 +2,7 @@ import { useStore, type BuildSnapshot } from './store';
 import type { TreeData } from '../data/types';
 import { buildAllocation, pruneAllocation } from './allocation';
 
-/** localStorage key (INSTRUCTIONS.md §10.5). */
+/** localStorage key for the last saved build. */
 const STORAGE_KEY = 'poe2-tree:last';
 const DEBOUNCE_MS = 500;
 

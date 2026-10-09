@@ -12,12 +12,8 @@ const MOBILE_MARGIN = 12;
 
 /**
  * DOM-overlay tooltip anchored near the cursor at the hovered node's client
- * coordinates. v1 keeps positioning simple: absolute placement offset
- * from the cursor. Smart flip/shift (Floating UI) lands when we add nested
- * glossary tooltips (INSTRUCTIONS.md §7.3).
- *
- * Renders `name` + `stats[]` with markup stripped. Flavour/reminder text and
- * the glossary `<Term>` interactivity are later iterations.
+ * coordinates, clamped to the desktop viewport and bottom-anchored on mobile.
+ * Renders the name, tokenized stats, and weapon-set allocation state when enabled.
  */
 export default function NodeTooltip() {
   const hovered = useStore((s) => s.hovered);

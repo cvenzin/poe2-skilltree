@@ -4,7 +4,7 @@ import { allocationSize } from '../state/allocation';
 import { RESET_CONFIRM_THRESHOLD } from './ResetButton';
 
 /**
- * Global keyboard shortcuts (INSTRUCTIONS.md §10):
+ * Global keyboard shortcuts:
  *   - `Ctrl/Cmd+Z`        → undo
  *   - `Ctrl/Cmd+Y` or `Ctrl/Cmd+Shift+Z` → redo
  *   - `R`                 → reset (with confirm if allocated > 10; second `R`

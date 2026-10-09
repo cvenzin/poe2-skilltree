@@ -3,7 +3,7 @@ import { useStore } from '../state/store';
 import { allocationSize } from '../state/allocation';
 import { palette, controlHeight } from './theme';
 
-/** Threshold for showing a confirmation popover (INSTRUCTIONS.md §9.1).
+/** Threshold for showing a confirmation popover.
  *  Below this, reset is one-click — undo still recovers it. */
 export const RESET_CONFIRM_THRESHOLD = 10;
 

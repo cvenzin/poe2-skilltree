@@ -11,7 +11,7 @@ export async function loadTreeData(version: string): Promise<TreeData> {
 }
 
 // Minimal schema validation — enough to catch a wrong/corrupt file early
-// (INSTRUCTIONS.md §10.6). Not a full validator; we trust the export format
+// during loading. Not a full validator; we trust the export format
 // once the top-level shape is correct.
 function sanityCheck(data: unknown, version: string): asserts data is RawTreeData {
   if (!data || typeof data !== 'object') {

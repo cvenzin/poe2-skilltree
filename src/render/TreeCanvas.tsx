@@ -70,7 +70,7 @@ const WORLD_PADDING = 1800;
  *   - every node as `(frame ← icon)` sprites in unallocated state
  *   - the selected ascendancy as a separate centred overlay
  *
- * Pan/zoom matches INSTRUCTIONS.md §6:
+ * Pan/zoom behavior:
  *   - drag-to-pan with momentum (decelerate)
  *   - wheel-zoom toward cursor (animated)
  *   - pinch zoom
@@ -98,7 +98,6 @@ export default function TreeCanvas({
   // it finishes. Updated by the swap effect below so a queued mount picks up
   // the current values when it lands.
   const propsRef = useRef({ className, ascendancyId });
-  propsRef.current = { className, ascendancyId };
 
   // Preserved camera (viewport center + zoom) across teardowns of the heavy
   // effect — but with className/ascendancyId no longer in this effect's deps,
@@ -174,6 +173,7 @@ export default function TreeCanvas({
   // resolved yet (initial paint), the heavy effect picks up the latest props
   // from `propsRef` when it does — no double-swap. Otherwise call directly.
   useEffect(() => {
+    propsRef.current = { className, ascendancyId };
     ctxRef.current?.swapContext?.(className, ascendancyId);
   }, [className, ascendancyId]);
 
@@ -284,7 +284,7 @@ interface MountContext {
   /** Detach the pulse ticker callback in destroy. */
   removeTickerCallback: (() => void) | null;
   /** Detach the `visibilitychange` listener that pauses the ticker on
-   *  hidden tabs (§10.7). */
+   *  hidden tabs. */
   removeVisibilityListener: (() => void) | null;
   /** Unsubscribe handle for the store-subscription set up in {@link mount}. */
   unsubscribeStore: (() => void) | null;
@@ -429,7 +429,7 @@ function applyConstraintVisibility(ctx: MountContext): void {
 }
 
 /**
- * Per-tree-state visuals for search (INSTRUCTIONS.md §6 search-overlay block):
+ * Per-tree-state visuals for search:
  *   - Cyan ring sprites around every matched node, pulsed via the ticker
  *     (alpha handled in the ticker callback, not here).
  *   - Non-matched node wraps dim to 0.35 alpha while a search is active;
@@ -530,8 +530,8 @@ function prefersReducedMotion(): boolean {
   return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
 
-/** Scale applied to the wrap currently under the cursor (the hover-target,
- *  INSTRUCTIONS.md §6). Subtle enough to read as "this is the click target"
+/** Scale applied to the wrap currently under the cursor (the hover target).
+ *  Subtle enough to read as "this is the click target"
  *  without making nearby nodes look misplaced. */
 const HOVER_TARGET_SCALE = 1.08;
 
@@ -1166,7 +1166,7 @@ function drawBackground(parent: Container, atlases: AtlasBundle, world: WorldSiz
  *
  * The backdrop disc is rendered by {@link drawAscendancyBackdrop} as an
  * *earlier* layer so main-tree passives that overlap the disc area aren't
- * occluded by it. See INSTRUCTIONS.md §6.
+ * occluded by it.
  */
 function drawAscendancyOverlay(
   parent: Container,
@@ -1749,8 +1749,7 @@ function buildNodeSprite(node: import('../data/types').TreeNode, atlases: AtlasB
  * Make a node sprite interactive: hover updates the cursor-anchored tooltip
  * AND computes a preview path; click commits the path (or cascades an
  * unallocate). Pixi's per-sprite event mode is fine at our node count
- * (~1500). If profiling later shows it as a hotspot, swap to a spatial grid
- * (INSTRUCTIONS.md §8).
+ * (~1500). If profiling later shows it as a hotspot, swap to a spatial grid.
  *
  * `pointertap` fires only when the down→up sequence doesn't drift, so a
  * drag-pan over a node never accidentally allocates.
@@ -2012,7 +2011,7 @@ function attachResizeObserver(
     ctx.fitScale = fitScale;
     vp.clampZoom({ minScale: fitScale, maxScale: MAX_ZOOM });
     // If the window shrank past the current camera state, the tree no longer
-    // fits — animate back to fit-to-screen so it stays in view (§10.7).
+    // fits — animate back to fit-to-screen so it stays in view.
     if (vp.scale.x < fitScale) {
       vp.animate({
         scale: fitScale,

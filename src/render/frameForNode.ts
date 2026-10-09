@@ -12,7 +12,7 @@ export interface NodeSprites {
 /**
  * Pick the icon + frame atlas keys for a node in the given visual state.
  *
- * Atlas conventions verified against 0.5.0 (see INSTRUCTIONS.md §2):
+ * Atlas conventions verified against the 0.5.0 export:
  * - **Icons** (skills{,-disabled}.json):
  *   `<kind>Inactive:<path>` for idle (in `skills-disabled.json`)
  *   `<kind>Active:<path>`   for preview + allocated (in `skills.json`)

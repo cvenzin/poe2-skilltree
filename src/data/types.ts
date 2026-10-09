@@ -1,5 +1,5 @@
 // Shape of `data.json` as found in `poe2-skilltree-export-*/data.json`.
-// See INSTRUCTIONS.md §2. Defined permissively for fields we don't use yet;
+// Defined permissively for fields we don't use yet;
 // strictly for fields the app relies on.
 
 export interface AscendancyFlavourRect {

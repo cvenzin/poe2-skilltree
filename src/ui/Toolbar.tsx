@@ -11,15 +11,15 @@ import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, controlHeight } from './theme';
 
 /**
- * Top-left toolbar (INSTRUCTIONS.md §10):
- *   - Class dropdown (filters out PoE 1 placeholder classes, §2)
+ * Top-left toolbar:
+ *   - Class dropdown (filters out PoE 1 placeholder classes)
  *   - Ascendancy dropdown (filtered to playable ascendancies of the active class)
- *   - Passive budget chip (N / 123, editable cap)
+ *   - Passive budget chips (per weapon set when enabled, fixed caps)
  *   - Ascendancy budget chip (N / 8, only when an ascendancy is picked)
  *   - Undo / Redo
- *   - Reset (with confirm popover when allocated > 10, §9.1)
- *
- * Version dropdown, share button, and search input belong to later sub-phases.
+ *   - Reset (with confirm popover when allocated > 10)
+ *   - Version dropdown, share button, and search input
+ *   - Weapon-set toggle and Main / Set 1 / Set 2 editing selector
  */
 interface ToolbarProps {
   data: TreeData;

@@ -1,7 +1,6 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
 // Raw shape of `assets/*.json` in the export — TexturePacker-style.
-// See INSTRUCTIONS.md §2.
 export interface AtlasJson {
   frames: Record<
     string,
@@ -109,7 +108,7 @@ export interface AtlasBundle {
    * fetch fails — callers that render decoration should swallow it.
    */
   ensure: (name: string) => Promise<boolean>;
-  /** Destroy every sub-texture and unload every TextureSource. Call on version switch (§10.8). */
+  /** Destroy every sub-texture and unload every TextureSource. Call on version switch. */
   destroy: () => void;
 }
 

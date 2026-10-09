@@ -3,7 +3,7 @@ import type { BuildSnapshot } from './store';
 import { buildAllocation, pruneAllocation } from './allocation';
 
 /**
- * URL share-hash format (INSTRUCTIONS.md §10.4):
+ * URL share-hash format:
  *
  *   #v=<version>&c=<className>&a=<ascendancyId>&n=<…>&w1=<…>&w2=<…>&ws=<1|2>
  *

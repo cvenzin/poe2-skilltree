@@ -2,7 +2,7 @@ import type { TreeData } from '../data/types';
 import { pruneConstraintLocked } from '../data/normalize';
 
 /**
- * Weapon-set allocation model (see docs/weapon-set-support-plan.md).
+ * Weapon-set allocation model (see docs/weapon-set-support.md).
  *
  * A node is allocated into exactly one of three buckets:
  *   - `shared` — active in both weapon sets
@@ -10,9 +10,9 @@ import { pruneConstraintLocked } from '../data/normalize';
  *   - `set2`   — active only when Weapon Set 2 is the active set
  *
  * The "active tree" for weapon set N is `shared ∪ setN` — that's what the
- * renderer paints and what pathing treats as the allocated frontier. The other
- * set's exclusive nodes are blocked from the active set's pathing and dimmed in
- * its view.
+ * pathing treats as the allocated frontier. The other set's exclusive nodes
+ * are blocked from that set's pathing. Both sets remain visible in the renderer;
+ * edge colors identify the shared tree and each set's branches.
  *
  * Buckets are kept as immutable `ReadonlySet`s; every mutation returns a fresh
  * `Allocation` so Zustand change-detection and undo/redo snapshots work on

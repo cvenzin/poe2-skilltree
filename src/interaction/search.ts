@@ -3,7 +3,7 @@ import { stripStatsMarkup } from './statsMarkup';
 import { computeConstraintHiddenKeys } from '../data/normalize';
 
 /**
- * Search index for a single loaded tree (INSTRUCTIONS.md §10.1).
+ * Search index for a single loaded tree.
  *
  * Each entry is `{ key, haystack }` where `haystack` is the node's name +
  * stripped stats text, lowercased and stripped of combining marks (so an
@@ -41,7 +41,7 @@ export function buildSearchIndex(data: TreeData): SearchEntry[] {
   return out;
 }
 
-/** Case- and accent-insensitive normalisation (§10.1). NFD decomposes a base
+/** Case- and accent-insensitive normalisation. NFD decomposes a base
  *  letter + diacritic, then `[̀-ͯ]` strips the combining marks. */
 export function normalizeForSearch(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');

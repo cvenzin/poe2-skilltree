@@ -63,7 +63,16 @@ node scripts/gen-icons.mjs
 Tree data under `public/trees/<version>/` comes from GGG's official export:
 <https://github.com/grindinggear/poe2-skilltree-export>. Adding a new version
 is a matter of dropping a new export folder into `public/trees/` and
-appending the version string to [src/data/versions.ts].
+prepending the version string to [src/data/versions.ts]. Import provenance is
+recorded in [docs/tree-imports.md](docs/tree-imports.md).
+
+For repeatable release imports, use the repository's
+[`update-poe2-tree` skill](.agents/skills/update-poe2-tree/SKILL.md), which covers
+version selection, asset/schema compatibility, and runtime verification.
+Project working instructions live in [AGENTS.md](AGENTS.md). For game mechanics
+and terminology, consult the [PoE 2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki);
+use [PoE2DB](https://poe2db.tw/) for game-data lookups and stat wording. Check
+that the information applies to the tree's patch version.
 
 [src/data/versions.ts]: src/data/versions.ts
 

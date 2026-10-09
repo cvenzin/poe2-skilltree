@@ -44,8 +44,8 @@ export default function App() {
   }, [setActiveVersion]);
 
   // Load data + atlases for the active version. Re-runs on version change;
-  // cleanup destroys the previous bundle so WebGL textures don't leak (§10.8).
-  // Boot precedence: URL hash > localStorage > defaults (§10.5).
+  // cleanup destroys the previous bundle so WebGL textures don't leak.
+  // Boot precedence: URL hash > localStorage > defaults.
   useEffect(() => {
     if (!activeVersion) return;
     let cancelled = false;

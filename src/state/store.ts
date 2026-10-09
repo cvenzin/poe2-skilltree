@@ -15,10 +15,10 @@ export const PASSIVE_CAP = 123;
 export const ASCENDANCY_CAP = 8;
 /** Weapon-set specialization limit: the maximum number of nodes that may be
  *  allocated exclusively to a single weapon set (per set). Fixed config value
- *  (see docs/weapon-set-support-plan.md); not user-editable in the MVP. */
+ *  (see docs/weapon-set-support.md); not user-editable in the MVP. */
 export const WEAPON_SET_CAP = 24;
-/** Linear single-stack history (INSTRUCTIONS.md §9.1). Each entry is a
- *  `Set<string>` snapshot — small enough that storing snapshots is cheaper
+/** Linear single-stack history. Each entry is an immutable
+ *  `Allocation` snapshot — small enough that storing snapshots is cheaper
  *  than a command pattern. */
 const UNDO_LIMIT = 50;
 
@@ -37,11 +37,11 @@ export interface HoveredNode {
   clientY: number;
 }
 
-/** Persisted view of the build — used by both localStorage restore (§10.5)
- *  and the URL share-hash (§10.4, phase 10c). Kept JSON-friendly: the
+/** Persisted view of the build — used by both localStorage restore
+ *  and the URL share-hash. Kept JSON-friendly: the
  *  allocation buckets are arrays, not Sets.
  *
- *  Weapon-set buckets are stored separately (see docs/weapon-set-support-plan.md).
+ *  Weapon-set buckets are stored separately (see docs/weapon-set-support.md).
  *  Backward compatibility with pre-weapon-set builds (a single `allocated`
  *  list) is handled in the persistence / share-hash decode layer, which maps
  *  the legacy list onto `shared`. */
@@ -121,7 +121,7 @@ interface AppState {
 
   // --- setters ---
   /** Incremented by `retry()` — App's load effect depends on it so a bump
-   *  re-runs the loader without a page reload (§10.6 error-card Retry). */
+   *  re-runs the loader without a page reload. */
   retryToken: number;
 
   setStatus: (s: LoadStatus) => void;
@@ -166,7 +166,7 @@ interface AppState {
 
   /** Set everything at once from a persisted snapshot (localStorage / share
    *  hash). Clears undo history — the imported build doesn't sit on top of
-   *  a phantom history (§9.1). */
+   *  a phantom history. */
   loadSnapshot: (snap: Omit<BuildSnapshot, 'version'>) => void;
 }
 
@@ -270,7 +270,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   // Context switches reset the allocation AND clear undo history — the user
   // doesn't expect to undo from a fresh class back into a previous class's
-  // allocation (§9.1).
+  // allocation.
   setClass: (name) => set((s) => {
     if (s.className === name) return s;
     return {

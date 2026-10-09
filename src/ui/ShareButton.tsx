@@ -6,7 +6,7 @@ import { palette, controlHeight } from './theme';
 const TOAST_MS = 1500;
 
 /**
- * Serialises the current build into the URL share-hash format (§10.4),
+ * Serialises the current build into the URL share-hash format (see state/shareHash.ts),
  * writes it to `location.hash`, and copies the full URL to clipboard.
  * Shows a brief "Copied!" pill next to the button on success.
  *
