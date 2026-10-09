@@ -69,6 +69,7 @@ export interface TreeNode {
   isNotable?: boolean;
   isMastery?: boolean;
   isJewelSocket?: boolean;
+  isGenericAttribute?: boolean;
   /** Multiple-choice hub: a stat-less ascendancy notable whose options are
    *  mutually-exclusive. The hub itself doesn't cost a point; the chosen
    *  option does. 5 such hubs in 0.5.0 — Path Seeker, Projectile Proximity
@@ -120,6 +121,7 @@ export interface Edge {
 }
 
 export interface SkillOverride {
+  id?: string;
   name: string;
   icon: string;
   stats: string[];

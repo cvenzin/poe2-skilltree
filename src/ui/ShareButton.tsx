@@ -32,6 +32,8 @@ export default function ShareButton() {
       sharedKeys: [...allocation.shared],
       set1Keys: [...allocation.set1],
       set2Keys: [...allocation.set2],
+      attributeChoices: useStore.getState().attributeChoices,
+      defaultAttribute: useStore.getState().defaultAttribute ?? undefined,
     });
 
     // Update the URL without history pollution. `replaceState` doesn't fire

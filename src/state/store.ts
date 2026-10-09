@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { TreeData } from '../data/types';
 import type { AtlasBundle } from '../render/atlas';
+import { attributeOptions, choicesForAllocation, isAttributeChoice, parseAttributeChoices, reconcileAttributeChoices,
+  type AttributeChoice, type AttributeChoices } from './attributes';
+import { allAllocated, isAllocated } from './allocation';
+import { createAttributeState, type AttributeState } from './attributeState';
+export type { AttributeEditor } from './attributeState';
+import { pushHistory, type BuildEdit } from './buildHistory';
 import {
   type Allocation,
   type AllocationMode,
@@ -17,10 +23,6 @@ export const ASCENDANCY_CAP = 8;
  *  allocated exclusively to a single weapon set (per set). Fixed config value
  *  (see docs/weapon-set-support.md); not user-editable in the MVP. */
 export const WEAPON_SET_CAP = 24;
-/** Linear single-stack history. Each entry is an immutable
- *  `Allocation` snapshot — small enough that storing snapshots is cheaper
- *  than a command pattern. */
-const UNDO_LIMIT = 50;
 
 export type LoadStatus =
   | { kind: 'idle' }
@@ -55,9 +57,11 @@ export interface BuildSnapshot {
   set1: string[];
   /** Weapon Set 2 branch allocations. */
   set2: string[];
+  attributeChoices?: AttributeChoices;
+  defaultAttribute?: AttributeChoice;
 }
 
-interface AppState {
+export interface AppState extends AttributeState {
   status: LoadStatus;
   /** Which export version the App is currently loading or has loaded. Distinct
    *  from `status` so the version dropdown can read it independently of
@@ -87,10 +91,10 @@ interface AppState {
   previewPath: readonly string[] | null;
 
   // --- 10a: budgets + undo/redo ---
-  /** Snapshot history of `allocation`, oldest → newest, capped at UNDO_LIMIT. */
-  past: Allocation[];
+  /** Immutable allocation + attribute edits, oldest first, capped in buildHistory. */
+  past: BuildEdit[];
   /** Redo stack, top = most recently undone. */
-  future: Allocation[];
+  future: BuildEdit[];
   /** Per-budget rejection counters. Increment when an allocation is rejected
    *  against that budget; the matching chip uses the value as a React `key`
    *  to retrigger its CSS shake animation. Per-budget so a rejection on one
@@ -141,7 +145,7 @@ interface AppState {
 
   /** Commit a new allocation. Pushes the previous allocation to `past`, clears
    *  `future`. Does NOT enforce budgets — that's `tryAllocate`. */
-  commitAllocation: (next: Allocation) => void;
+  commitAllocation: (next: Allocation, data?: TreeData) => void;
   /** Allocation entry point used by the renderer. Returns true if committed,
    *  false if rejected by a budget (bumps the matching rejectionTick). */
   tryAllocate: (next: Allocation, data: TreeData) => boolean;
@@ -233,13 +237,8 @@ export function countBudgets(
   return { shared, set1, set2, activeIn1: shared + set1, activeIn2: shared + set2, ascendancy };
 }
 
-function pushHistory(past: Allocation[], current: Allocation): Allocation[] {
-  const next = [...past, current];
-  if (next.length > UNDO_LIMIT) next.shift();
-  return next;
-}
-
-export const useStore = create<AppState>()((set, get) => ({
+export const useStore = create<AppState>()((set, get, api) => ({
+  ...createAttributeState(set, get, api),
   status: { kind: 'idle' },
   activeVersion: null,
   retryToken: 0,
@@ -264,8 +263,14 @@ export const useStore = create<AppState>()((set, get) => ({
   searchCursor: -1,
   preSearchCamera: null,
 
-  setStatus: (s) => set({ status: s }),
-  setActiveVersion: (v) => set({ activeVersion: v }),
+  setStatus: (status) => set((s) => status.kind === 'ready' ? {
+    status,
+    attributeChoices: reconcileAttributeChoices(s.attributeChoices, s.allocation, status.data, s.ascendancyId),
+    defaultAttribute: attributeOptions(status.data, s.allocation, s.ascendancyId)
+      .some((option) => option.choice === s.defaultAttribute) ? s.defaultAttribute : null,
+    attributeEditor: null, past: [], future: [],
+  } : { status, attributeEditor: null }),
+  setActiveVersion: (v) => set({ activeVersion: v, attributeEditor: null }),
   retry: () => set((s) => ({ retryToken: s.retryToken + 1, status: { kind: 'idle' } })),
 
   // Context switches reset the allocation AND clear undo history — the user
@@ -277,6 +282,9 @@ export const useStore = create<AppState>()((set, get) => ({
       className: name,
       ascendancyId: null,
       allocation: EMPTY_ALLOCATION,
+      attributeChoices: {},
+      attributeEditor: null,
+      defaultAttribute: s.defaultAttribute && ['strength', 'dexterity', 'intelligence'].includes(s.defaultAttribute) ? s.defaultAttribute : null,
       past: [],
       future: [],
       previewPath: null,
@@ -287,8 +295,13 @@ export const useStore = create<AppState>()((set, get) => ({
       preSearchCamera: null,
     };
   }),
-  setAscendancy: (id) => set({
+  setAscendancy: (id) => set((s) => ({
     ascendancyId: id,
+    attributeChoices: s.status.kind === 'ready'
+      ? reconcileAttributeChoices(s.attributeChoices, s.allocation, s.status.data, id) : s.attributeChoices,
+    defaultAttribute: s.status.kind === 'ready' && !attributeOptions(s.status.data, s.allocation, id)
+      .some((option) => option.choice === s.defaultAttribute) ? null : s.defaultAttribute,
+    attributeEditor: null,
     previewPath: null,
     past: [],
     future: [],
@@ -296,28 +309,32 @@ export const useStore = create<AppState>()((set, get) => ({
     searchMatches: [],
     searchCursor: -1,
     preSearchCamera: null,
-  }),
+  })),
   setHovered: (h) => set({ hovered: h, previewPath: null }),
   setPreviewPath: (path) => set({ previewPath: path }),
   setValidationMessage: (msg) => set({ validationMessage: msg }),
 
   // Switching the edited tree clears any in-flight preview (it was computed
   // for the old tree's frontier).
-  setAllocationMode: (mode) => set({ allocationMode: mode, previewPath: null }),
+  setAllocationMode: (mode) => set({ allocationMode: mode, previewPath: null, attributeEditor: null }),
   // Turning sets off snaps editing back to the main tree so a stale Set 1/2
   // mode can't allocate into a hidden bucket.
   setWeaponSetsEnabled: (enabled) => set(enabled
     ? { weaponSetsEnabled: true }
     : { weaponSetsEnabled: false, allocationMode: 'shared', previewPath: null }),
 
-  commitAllocation: (next) => set((s) => ({
-    allocation: next,
-    past: pushHistory(s.past, s.allocation),
-    future: [],
-    previewPath: null,
-    // A successful change clears any stale rejection message.
-    validationMessage: null,
-  })),
+  commitAllocation: (next, suppliedData) => set((s) => {
+    const data = suppliedData ?? (s.status.kind === 'ready' ? s.status.data : null);
+    const choices = data ? choicesForAllocation(s.attributeChoices, s.allocation, next, data, s.ascendancyId, s.defaultAttribute)
+      : Object.fromEntries(Object.entries(s.attributeChoices).filter(([key]) => isAllocated(next, key)));
+    const defaultAttribute = data && !attributeOptions(data, next, s.ascendancyId)
+      .some((option) => option.choice === s.defaultAttribute) ? null : s.defaultAttribute;
+    return {
+      allocation: next, attributeChoices: choices, defaultAttribute,
+      past: pushHistory(s.past, s), future: [], previewPath: null, attributeEditor: null,
+      validationMessage: null,
+    };
+  }),
 
   tryAllocate: (next, data) => {
     const s = get();
@@ -364,13 +381,21 @@ export const useStore = create<AppState>()((set, get) => ({
       });
       return false;
     }
-    s.commitAllocation(pruned);
+    if (!attributeOptions(data, pruned, s.ascendancyId).some((option) => option.choice === s.defaultAttribute) &&
+      [...allAllocated(pruned)].some((key) => data.nodes[key]?.isGenericAttribute && !isAllocated(s.allocation, key))) {
+      set({ attributeEditor: { kind: 'default', pending: pruned }, hovered: null, previewPath: null });
+      return false;
+    }
+    s.commitAllocation(pruned, data);
     return true;
   },
 
   resetAllocation: () => set((s) => ({
     allocation: EMPTY_ALLOCATION,
-    past: isEmptyAllocation(s.allocation) ? s.past : pushHistory(s.past, s.allocation),
+    attributeChoices: {},
+    attributeEditor: null,
+    defaultAttribute: s.defaultAttribute && ['strength', 'dexterity', 'intelligence'].includes(s.defaultAttribute) ? s.defaultAttribute : null,
+    past: isEmptyAllocation(s.allocation) ? s.past : pushHistory(s.past, s),
     future: [],
     previewPath: null,
   })),
@@ -379,9 +404,11 @@ export const useStore = create<AppState>()((set, get) => ({
     const prev = s.past.at(-1);
     if (prev === undefined) return s;
     return {
-      allocation: prev,
+      allocation: prev.allocation,
+      attributeChoices: prev.attributeChoices,
+      attributeEditor: null,
       past: s.past.slice(0, -1),
-      future: [...s.future, s.allocation],
+      future: [...s.future, { allocation: s.allocation, attributeChoices: s.attributeChoices }],
       previewPath: null,
     };
   }),
@@ -390,8 +417,10 @@ export const useStore = create<AppState>()((set, get) => ({
     const next = s.future.at(-1);
     if (next === undefined) return s;
     return {
-      allocation: next,
-      past: [...s.past, s.allocation],
+      allocation: next.allocation,
+      attributeChoices: next.attributeChoices,
+      attributeEditor: null,
+      past: pushHistory(s.past, s),
       future: s.future.slice(0, -1),
       previewPath: null,
     };
@@ -430,6 +459,9 @@ export const useStore = create<AppState>()((set, get) => ({
   loadSnapshot: (snap) => set({
     className: snap.className,
     ascendancyId: snap.ascendancyId,
+    attributeChoices: parseAttributeChoices(snap.attributeChoices),
+    defaultAttribute: isAttributeChoice(snap.defaultAttribute) ? snap.defaultAttribute : null,
+    attributeEditor: null,
     allocation: {
       shared: new Set(snap.shared),
       set1: new Set(snap.set1),

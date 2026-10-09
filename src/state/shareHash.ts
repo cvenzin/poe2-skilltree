@@ -1,6 +1,8 @@
 import type { TreeData } from '../data/types';
 import type { BuildSnapshot } from './store';
 import { buildAllocation, pruneAllocation } from './allocation';
+import { ATTRIBUTE_CHOICES, isAttributeChoice, parseAttributeChoices, reconcileAttributeChoices, attributeOptions,
+  type AttributeChoice, type AttributeChoices } from './attributes';
 
 /**
  * URL share-hash format:
@@ -18,6 +20,8 @@ import { buildAllocation, pruneAllocation } from './allocation';
  *   w1  Weapon Set 1-only allocations (same encoding), omitted when empty
  *   w2  Weapon Set 2-only allocations (same encoding), omitted when empty
  *   ws  active weapon set (1 or 2), omitted when 1
+ *   at_<choice>  node keys for each chosen attribute bonus (same encoding)
+ *   ad  default bonus for future attribute allocations, omitted when unspecified
  *
  * Backward compatibility: pre-weapon-set links carry only `n=` (the full
  * allocation). Those decode as shared-only — `n` → shared, `w1`/`w2` empty,
@@ -37,6 +41,8 @@ export interface ShareHashRaw {
   sharedKeys: string[];
   set1Keys: string[];
   set2Keys: string[];
+  attributeChoices?: AttributeChoices;
+  defaultAttribute?: AttributeChoice;
 }
 
 export function encodeShareHash(s: Readonly<ShareHashRaw>): string {
@@ -48,6 +54,11 @@ export function encodeShareHash(s: Readonly<ShareHashRaw>): string {
   if (s.sharedKeys.length > 0) parts.push(`n=${encodeNodeKeys(s.sharedKeys)}`);
   if (s.set1Keys.length > 0) parts.push(`w1=${encodeNodeKeys(s.set1Keys)}`);
   if (s.set2Keys.length > 0) parts.push(`w2=${encodeNodeKeys(s.set2Keys)}`);
+  for (const choice of ATTRIBUTE_CHOICES) {
+    const keys = Object.entries(s.attributeChoices ?? {}).filter(([, value]) => value === choice).map(([key]) => key);
+    if (keys.length) parts.push(`at_${choice}=${encodeNodeKeys(keys)}`);
+  }
+  if (s.defaultAttribute) parts.push(`ad=${s.defaultAttribute}`);
   return `#${parts.join('&')}`;
 }
 
@@ -61,6 +72,9 @@ export function decodeShareHash(hash: string): ShareHashRaw | null {
   if (!className) return null;
 
   const ascendancyId = params.get('a');
+  const choices = Object.fromEntries(ATTRIBUTE_CHOICES.flatMap((choice) =>
+    decodeNodeKeys(params.get(`at_${choice}`) ?? '').map((key) => [key, choice])));
+  const defaultAttribute = params.get('ad');
   return {
     version,
     className,
@@ -68,6 +82,8 @@ export function decodeShareHash(hash: string): ShareHashRaw | null {
     sharedKeys: decodeNodeKeys(params.get('n') ?? ''),
     set1Keys: decodeNodeKeys(params.get('w1') ?? ''),
     set2Keys: decodeNodeKeys(params.get('w2') ?? ''),
+    ...(Object.keys(choices).length ? { attributeChoices: choices } : {}),
+    ...(isAttributeChoice(defaultAttribute) ? { defaultAttribute } : {}),
   };
 }
 
@@ -104,12 +120,16 @@ export function reconcileShareHash(
     data,
   );
 
+  const choices = reconcileAttributeChoices(parseAttributeChoices(raw.attributeChoices), alloc, data, ascendancyId);
+  const defaultAttribute = attributeOptions(data, alloc, ascendancyId).find((option) => option.choice === raw.defaultAttribute)?.choice;
   return {
     className: cls.name,
     ascendancyId,
     shared: [...alloc.shared],
     set1: [...alloc.set1],
     set2: [...alloc.set2],
+    ...(Object.keys(choices).length ? { attributeChoices: choices } : {}),
+    ...(defaultAttribute ? { defaultAttribute } : {}),
   };
 }
 

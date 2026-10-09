@@ -123,6 +123,10 @@ export function attachNodeInteraction(
     // main tree is shared-only; removing a shared node can orphan weapon-set
     // branches that hung off it (resolveCascade drops them).
     if (bucket === mode) {
+      if (data.nodes[nodeKey]?.isGenericAttribute) {
+        state.openAttributeEditor({ kind: 'node', nodeKey });
+        return;
+      }
       const resolved = resolveCascade(data, removeKey(alloc, nodeKey), pathing.frontierKeys, pathing.ascendancyId, pathing.hiddenKeys);
       // If the cascade removes a constraint gate (e.g. Druid Oracle's "The
       // Unseen Path"), its Forbidden Path nodes aren't graph-reachable, so

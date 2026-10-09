@@ -5,6 +5,7 @@ import { tokenizeStatLine } from '../interaction/statsMarkup';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, panelShadow } from './theme';
 import type { TreeNode } from '../data/types';
+import { attributeNode } from '../state/attributes';
 
 const TOOLTIP_OFFSET = 16;
 const VIEWPORT_MARGIN = 8;
@@ -18,6 +19,7 @@ const MOBILE_MARGIN = 12;
 export default function NodeTooltip() {
   const hovered = useStore((s) => s.hovered);
   const allocation = useStore((s) => s.allocation);
+  const choices = useStore((s) => s.attributeChoices);
   // When the sets UI is off, suppress all weapon-set vocabulary in the tooltip.
   const showSets = useStore((s) => s.weaponSetsEnabled);
   const data = useStore((s) =>
@@ -53,8 +55,9 @@ export default function NodeTooltip() {
   }, [hovered, isMobile]);
 
   if (!hovered || !data) return null;
-  const node = data.nodes[hovered.nodeKey];
-  if (!node?.name) return null;
+  const original = data.nodes[hovered.nodeKey];
+  if (!original?.name) return null;
+  const node = attributeNode(original, choices[hovered.nodeKey], data);
   // Ascendancy nodes aren't weapon-set-split — suppress the allocation-state
   // block for them (always shared). Also suppress entirely when the sets UI is
   // off, so new users never see weapon-set wording.
@@ -83,6 +86,11 @@ export default function NodeTooltip() {
   return (
     <div ref={ref} style={style}>
       <NodeTooltipContents node={node} bucket={bucket} />
+      {original.isGenericAttribute && bucketOf(allocation, hovered.nodeKey) !== null && (
+        <div style={{ padding: '8px 14px', color: palette.textMuted }}>
+          {choices[hovered.nodeKey] ? 'Tap to change attribute or remove node.' : 'Unspecified · Tap to choose an attribute.'}
+        </div>
+      )}
     </div>
   );
 }

@@ -132,7 +132,8 @@ export async function mount(
     // Both weapon-set trees are always shown: every allocated node paints as
     // allocated, and the edges carry the set colour (gold/green/red).
     const all = ctx.pathing?.allAllocated ?? allAllocated(allocation);
-    applyNodeStates(data, atlases, ctx.nodeWraps, ctx.nodeStates, all, previewPath);
+    const state = useStore.getState();
+    applyNodeStates(data, atlases, ctx.nodeWraps, ctx.nodeStates, all, previewPath, state.attributeChoices, state.defaultAttribute);
     applyConstraintVisibility(ctx);
     ctx.redrawMainEdges?.(allocation, previewPath);
     ctx.redrawOverlayEdges?.(allocation, previewPath);
@@ -166,7 +167,8 @@ export async function mount(
   applyJewelOverlay(useStore.getState().hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
 
   ctx.unsubscribeStore = useStore.subscribe((s, prev) => {
-    if (s.allocation !== prev.allocation || s.previewPath !== prev.previewPath) {
+    if (s.allocation !== prev.allocation || s.previewPath !== prev.previewPath ||
+      s.attributeChoices !== prev.attributeChoices || s.defaultAttribute !== prev.defaultAttribute) {
       applyAll(s.allocation, s.previewPath);
     }
     if (s.searchMatches !== prev.searchMatches || s.searchCursor !== prev.searchCursor) {

@@ -74,7 +74,8 @@ sets flips it on so points are never hidden.
 
 ## Persistence
 
-`BuildSnapshot` stores `shared` / `set1` / `set2`
+`BuildSnapshot` stores `shared` / `set1` / `set2`, plus optional
+[attribute choices and a default](attribute-selection.md)
 ([`persistence.ts`](../src/state/persistence.ts),
 [`shareHash.ts`](../src/state/shareHash.ts)). Backward compatible: a
 pre-weapon-set build (single `allocated` list, or share hash with only `n=`)
@@ -85,6 +86,8 @@ loads as shared-only. Share hash adds `w1=` / `w2=` for the set branches.
 `src/state/gggBuild.ts` serializes a snapshot to GGG's experimental v1
 [`.build` format](https://www.pathofexile.com/developer/docs/game#buildplanner).
 Shared passives use string IDs; exclusive passives use `{ id, weapon_set: 1 | 2 }`.
+Chosen attribute nodes use objects with `additional_text` recommendations,
+retaining the same IDs and weapon-set assignments.
 IDs come from each node's `id` (the PassiveSkills table string), never its numeric
 tree key. Ascendancy passives remain shared, and implicit start nodes are omitted.
 Missing IDs, unavailable passives, and locked nodes fail export rather than losing

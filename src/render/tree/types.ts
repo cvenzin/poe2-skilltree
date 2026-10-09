@@ -1,7 +1,6 @@
 import type { Allocation, AllocationMode } from '../../state/allocation';
 import { Application, Container } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import type { NodeState } from '../frameForNode';
 import type { MasteryRedraw } from '../drawMasteries';
 
 export interface WorldSize {
@@ -75,7 +74,7 @@ export interface MountContext {
   constrainedWraps: Set<string>;
   /** Last applied state per node — drives the rebuild diff in
    *  {@link applyNodeStates}. Updated atomically with the wrap's children. */
-  nodeStates: Map<string, NodeState>;
+  nodeStates: Map<string, string>;
   /** Edge-redraw closures, called on every state change. Overlay redraw is
    *  null when no ascendancy is selected. */
   redrawMainEdges: EdgeRedraw | null;

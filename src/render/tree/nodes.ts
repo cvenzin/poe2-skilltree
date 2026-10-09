@@ -7,6 +7,7 @@ import type { NodeState } from '../frameForNode';
 import type { ClusterInfo } from './geometry';
 import type { MountContext } from './types';
 import { attachNodeInteraction } from './nodeInteraction';
+import { attributeNode, type AttributeChoices, type AttributeChoice } from '../../state/attributes';
 
 /**
  * For each registered wrap, compute its desired visual state from the store
@@ -23,18 +24,22 @@ export function applyNodeStates(
   data: TreeData,
   atlases: AtlasBundle,
   wraps: ReadonlyMap<string, Container>,
-  prevStates: Map<string, NodeState>,
+  prevStates: Map<string, string>,
   allocated: ReadonlySet<string>,
-  previewPath: readonly string[] | null
+  previewPath: readonly string[] | null,
+  choices: AttributeChoices = {},
+  defaultChoice: AttributeChoice | null = null,
 ): void {
   const previewSet = previewPath ? new Set(previewPath) : null;
   for (const [key, wrap] of wraps) {
     const next = computeNodeState(key, allocated, previewSet);
-    if (prevStates.get(key) === next) continue;
-    const node = data.nodes[key];
-    if (!node) continue;
+    const original = data.nodes[key];
+    if (!original) continue;
+    const node = attributeNode(original, choices[key] ?? (next === 'preview' ? defaultChoice ?? undefined : undefined), data);
+    const visualKey = `${next}:${node.icon ?? ''}`;
+    if (prevStates.get(key) === visualKey) continue;
     rebuildSpriteContents(wrap, node, atlases, next);
-    prevStates.set(key, next);
+    prevStates.set(key, visualKey);
   }
 }
 
@@ -89,7 +94,7 @@ function rebuildSpriteContents(
   atlases: AtlasBundle,
   state: NodeState
 ): void {
-  wrap.removeChildren();
+  destroyChildren(wrap);
   const sprites = spritesForNode(node, state);
   if (sprites.icon) addSprite(wrap, atlases, sprites.icon.atlas, sprites.icon.key, placeholderDot());
   if (sprites.frame) addSprite(wrap, atlases, sprites.frame.atlas, sprites.frame.key, null);
@@ -180,6 +185,7 @@ function addSprite(
 ): void {
   try {
     const tex = getFrame(atlases, atlasName, frameKey);
+    fallback?.destroy();
     const s = new Sprite(tex);
     s.anchor.set(0.5);
     parent.addChild(s);

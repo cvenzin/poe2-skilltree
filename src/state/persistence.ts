@@ -1,6 +1,7 @@
 import { useStore, type BuildSnapshot } from './store';
 import type { TreeData } from '../data/types';
 import { buildAllocation, pruneAllocation } from './allocation';
+import { attributeOptions, isAttributeChoice, parseAttributeChoices, reconcileAttributeChoices } from './attributes';
 
 /** localStorage key for the last saved build. */
 const STORAGE_KEY = 'poe2-tree:last';
@@ -18,6 +19,8 @@ export function readSnapshot(version: string): BuildSnapshot | null {
     shared: [...s.allocation.shared],
     set1: [...s.allocation.set1],
     set2: [...s.allocation.set2],
+    ...(Object.keys(s.attributeChoices).length ? { attributeChoices: s.attributeChoices } : {}),
+    ...(s.defaultAttribute ? { defaultAttribute: s.defaultAttribute } : {}),
   };
 }
 
@@ -47,12 +50,16 @@ export function reconcileSnapshot(snap: BuildSnapshot, data: TreeData): Omit<Bui
     ascendancyId,
     data,
   );
+  const choices = reconcileAttributeChoices(parseAttributeChoices(snap.attributeChoices), alloc, data, ascendancyId);
+  const defaultAttribute = attributeOptions(data, alloc, ascendancyId).find((option) => option.choice === snap.defaultAttribute)?.choice;
   return {
     className: snap.className,
     ascendancyId,
     shared: [...alloc.shared],
     set1: [...alloc.set1],
     set2: [...alloc.set2],
+    ...(Object.keys(choices).length ? { attributeChoices: choices } : {}),
+    ...(defaultAttribute ? { defaultAttribute } : {}),
   };
 }
 
@@ -85,6 +92,8 @@ export function loadPersistedSnapshot(version: string): BuildSnapshot | null {
       shared,
       set1: asStrings(parsed.set1),
       set2: asStrings(parsed.set2),
+      ...(parsed.attributeChoices ? { attributeChoices: parseAttributeChoices(parsed.attributeChoices) } : {}),
+      ...(isAttributeChoice(parsed.defaultAttribute) ? { defaultAttribute: parsed.defaultAttribute } : {}),
     };
   } catch {
     // Corrupt JSON or storage disabled — start fresh.
@@ -126,6 +135,8 @@ export function startPersistence(version: string): () => void {
   const unsub = useStore.subscribe((s, prev) => {
     if (
       s.allocation !== prev.allocation ||
+      s.attributeChoices !== prev.attributeChoices ||
+      s.defaultAttribute !== prev.defaultAttribute ||
       s.className !== prev.className ||
       s.ascendancyId !== prev.ascendancyId
     ) {

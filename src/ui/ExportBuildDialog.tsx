@@ -74,6 +74,7 @@ export default function ExportBuildDialog({ data, onClose }: Readonly<{ data: Tr
         <section aria-label="Download your build">
           <h3>1. Save your build</h3>
           <p>Download the file to Files or Downloads on your device. Shared passives and both weapon sets are included.</p>
+          <p>Chosen attribute bonuses appear as recommendations on nodes in-game. Unspecified nodes have no recommendation.</p>
           {count === 0 && <p>Allocate at least one passive to download a build.</p>}
           <button className="build-export__action build-export__primary" type="submit" disabled={!name.trim() || count === 0}>
             Download build

@@ -17,6 +17,9 @@ Live: <https://cvenzin.github.io/poe2-skilltree/>
   it.
 - Passive (123) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red.
 - Undo / redo and a one-click reset.
+- Select a default bonus for new attribute travel nodes, override individual
+  nodes, or fill unspecified nodes from older builds. Choices support undo/redo,
+  saving, sharing, and in-game export recommendations.
 - Shareable URL hash encodes class, ascendancy, allocations, and version.
 - Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
@@ -66,6 +69,10 @@ The file contains your passive tree, ascendancy (when selected), and weapon-set
 assignments. It uses GGG's [Build Planner format](https://www.pathofexile.com/developer/docs/game#buildplanner)
 and includes a link back to the planned tree. Export runs locally in your browser.
 Gear, gems, and leveling stages are outside this planner's scope.
+
+Attribute travel-node choices are included as recommendations on the relevant
+nodes; you still choose the bonus in-game. See [attribute selection](docs/attribute-selection.md)
+for mobile editing, defaults, legacy builds and Pathfinder alternatives.
 
 ### Regenerating icons
 

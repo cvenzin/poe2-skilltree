@@ -8,6 +8,7 @@ import ResetButton from './ResetButton';
 import SearchInput from './SearchInput';
 import ShareButton from './ShareButton';
 import ExportBuildButton from './ExportBuildButton';
+import AttributeControls from './AttributeControls';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, controlHeight } from './theme';
 
@@ -61,6 +62,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   // Collapsed: render just the hamburger toggle button in the top-left.
   if (!expanded) {
     return (
+      <>
       <button
         type="button"
         aria-label="Open toolbar"
@@ -69,6 +71,8 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
       >
         ≡
       </button>
+      <AttributeControls data={data} />
+      </>
     );
   }
 
@@ -173,6 +177,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
 
       {/* Row 3 — point counters */}
       <div style={rowStyle}>
+        <AttributeControls data={data} inline />
         {showSets ? (
           <>
             <BudgetChip kind="passive" label="Shared" count={counts.shared} />
