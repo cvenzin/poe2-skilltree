@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore, countBudgets, effectiveBudgetCaps, ASCENDANCY_CAP } from '../state/store';
 import type { TreeData } from '../data/types';
-import { VERSIONS } from '../data/versions';
+import { getPatchUpdateVersion, VERSIONS } from '../data/versions';
 import BudgetChip from './BudgetChip';
 import UndoRedoButtons from './UndoRedoButtons';
 import ResetButton from './ResetButton';
@@ -9,6 +9,7 @@ import SearchInput from './SearchInput';
 import ShareButton from './ShareButton';
 import ExportBuildButton from './ExportBuildButton';
 import AttributeControls from './AttributeControls';
+import TreeVersionNotice from './TreeVersionNotice';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, controlHeight } from './theme';
 import './Toolbar.css';
@@ -40,6 +41,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   const setActiveVersion = useStore((s) => s.setActiveVersion);
   const setAllocationMode = useStore((s) => s.setAllocationMode);
   const setWeaponSetsEnabled = useStore((s) => s.setWeaponSetsEnabled);
+  const patchUpdateVersion = getPatchUpdateVersion(activeVersion);
 
   const isMobile = useIsMobile();
   // Collapse state for both viewports. The hamburger/collapse-tab pair works
@@ -67,11 +69,11 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
       <>
       <button
         type="button"
-        aria-label="Open toolbar"
+        aria-label={patchUpdateVersion ? `Open toolbar. Patch ${patchUpdateVersion} is available.` : 'Open toolbar'}
         onClick={() => setExpanded(true)}
-        style={toggleButtonStyle}
+        style={patchUpdateVersion ? updateToggleButtonStyle : toggleButtonStyle}
       >
-        ≡
+        ≡{patchUpdateVersion && <span style={updateToggleBadgeStyle}>Update</span>}
       </button>
       {/* Keep node and first-allocation dialogs available with the menu closed. */}
       <AttributeControls data={data} showTrigger={false} />
@@ -121,6 +123,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
             </select>
           </label>
         )}
+        <TreeVersionNotice data={data} />
       </div>
 
       {/* Row 2 — character */}
@@ -436,6 +439,21 @@ const toggleButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
   zIndex: 10,
   pointerEvents: 'auto',
+};
+
+const updateToggleButtonStyle: React.CSSProperties = {
+  ...toggleButtonStyle,
+  width: 84,
+  gap: 5,
+  color: palette.textTitle,
+  fontSize: 19,
+};
+
+const updateToggleBadgeStyle: React.CSSProperties = {
+  color: palette.rune,
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: 0.2,
 };
 
 // Collapse handle: a small tab hanging off the panel's bottom-right edge,

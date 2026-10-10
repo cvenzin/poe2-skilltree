@@ -10,7 +10,7 @@ import {
   type AtlasBundle,
 } from './render/atlas';
 import { loadPersistedSnapshot, reconcileSnapshot, startPersistence } from './state/persistence';
-import { decodeShareHash, reconcileShareHash } from './state/shareHash';
+import { decodeShareHash, encodeShareHash, reconcileShareHash } from './state/shareHash';
 import type { TreeData } from './data/types';
 import TreeCanvas from './render/TreeCanvas';
 import Toolbar from './ui/Toolbar';
@@ -88,7 +88,20 @@ export default function App() {
         }
 
         setStatus({ kind: 'ready', version: activeVersion, data, atlases });
-        applyBootSnapshot(activeVersion, data, loadSnapshot);
+        const migration = useStore.getState().pendingVersionMigration;
+        if (migration?.version === activeVersion) {
+          const migrated = reconcileSnapshot({ version: activeVersion, ...migration.snapshot }, data);
+          useStore.getState().clearPendingVersionMigration();
+          if (migrated) {
+            loadSnapshot(migrated);
+            replaceShareHash(activeVersion, migrated);
+          } else {
+            applyBootSnapshot(activeVersion, data, loadSnapshot);
+            useStore.getState().setValidationMessage('The build could not be carried into this tree version.');
+          }
+        } else {
+          applyBootSnapshot(activeVersion, data, loadSnapshot);
+        }
 
         // Auto-persist AFTER restore so the initial loadSnapshot doesn't
         // immediately re-write the same bytes.
@@ -211,6 +224,12 @@ function applyBootSnapshot(
  *  (hash → localStorage → first playable). A wrong guess is harmless: the lazy
  *  swapContext path loads whatever class actually renders. */
 function resolveBootClassName(version: string, data: TreeData): string | null {
+  const migration = useStore.getState().pendingVersionMigration;
+  if (migration?.version === version) {
+    const reconciled = reconcileSnapshot({ version, ...migration.snapshot }, data);
+    if (reconciled) return reconciled.className;
+  }
+
   const hashRaw = decodeShareHash(globalThis.location.hash);
   if (hashRaw && hashRaw.version === version) {
     const reconciled = reconcileShareHash(hashRaw, data);
@@ -237,9 +256,30 @@ function firstPlayableClass(data: TreeData) {
  *   - returning visitor → the saved class name (localStorage);
  *   - fresh visitor → {@link DEFAULT_CLASS}. */
 function bootClassNameWithoutData(version: string): string {
+  const migration = useStore.getState().pendingVersionMigration;
+  if (migration?.version === version) return migration.snapshot.className;
+
   const hashRaw = decodeShareHash(globalThis.location.hash);
   if (hashRaw?.version === version) return hashRaw.className;
   return loadPersistedSnapshot(version)?.className ?? DEFAULT_CLASS;
+}
+
+function replaceShareHash(
+  version: string,
+  snapshot: NonNullable<ReturnType<typeof reconcileSnapshot>>,
+): void {
+  const hash = encodeShareHash({
+    version,
+    className: snapshot.className,
+    ascendancyId: snapshot.ascendancyId,
+    sharedKeys: snapshot.shared,
+    set1Keys: snapshot.set1,
+    set2Keys: snapshot.set2,
+    attributeChoices: snapshot.attributeChoices,
+    defaultAttribute: snapshot.defaultAttribute,
+  });
+  const url = `${globalThis.location.pathname}${globalThis.location.search}${hash}`;
+  globalThis.history.replaceState(null, '', url);
 }
 
 const overlayStyle: React.CSSProperties = {

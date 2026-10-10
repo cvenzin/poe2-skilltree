@@ -66,6 +66,9 @@ export interface AppState extends AttributeState {
    *  load-progress state. `null` only between app start and the manifest fetch
    *  completing. Changing this re-triggers the data/atlas load effect. */
   activeVersion: string | null;
+  /** One-shot snapshot carried by the explicit patch-update flow while the
+   *  destination tree data and atlases load. */
+  pendingVersionMigration: { version: string; snapshot: Omit<BuildSnapshot, 'version'> } | null;
   className: string | null;        // resolved on data load (first playable class)
   ascendancyId: string | null;     // null = no ascendancy rendered
   hovered: HoveredNode | null;
@@ -127,7 +130,8 @@ export interface AppState extends AttributeState {
   retryToken: number;
 
   setStatus: (s: LoadStatus) => void;
-  setActiveVersion: (v: string) => void;
+  setActiveVersion: (v: string, migration?: Omit<BuildSnapshot, 'version'>) => void;
+  clearPendingVersionMigration: () => void;
   retry: () => void;
   setClass: (name: string) => void;
   setAscendancy: (id: string | null) => void;
@@ -261,6 +265,7 @@ export const useStore = create<AppState>()((set, get, api) => ({
   ...createAttributeState(set, get, api),
   status: { kind: 'idle' },
   activeVersion: null,
+  pendingVersionMigration: null,
   retryToken: 0,
   className: null,
   ascendancyId: null,
@@ -290,7 +295,12 @@ export const useStore = create<AppState>()((set, get, api) => ({
       .some((option) => option.choice === s.defaultAttribute) ? s.defaultAttribute : null,
     attributeEditor: null, past: [], future: [],
   } : { status, attributeEditor: null }),
-  setActiveVersion: (v) => set({ activeVersion: v, attributeEditor: null }),
+  setActiveVersion: (v, migration) => set({
+    activeVersion: v,
+    pendingVersionMigration: migration ? { version: v, snapshot: migration } : null,
+    attributeEditor: null,
+  }),
+  clearPendingVersionMigration: () => set({ pendingVersionMigration: null }),
   retry: () => set((s) => ({ retryToken: s.retryToken + 1, status: { kind: 'idle' } })),
 
   // Context switches reset the allocation AND clear undo history — the user
