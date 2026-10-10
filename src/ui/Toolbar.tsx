@@ -11,6 +11,7 @@ import ExportBuildButton from './ExportBuildButton';
 import AttributeControls from './AttributeControls';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, controlHeight } from './theme';
+import './Toolbar.css';
 
 /**
  * Top-left toolbar:
@@ -78,7 +79,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   }
 
   return (
-    <div style={containerStyle}>
+    <div className="tree-toolbar" style={containerStyle}>
       <button
         type="button"
         aria-label="Collapse toolbar"

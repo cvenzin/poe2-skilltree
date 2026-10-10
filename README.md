@@ -23,8 +23,11 @@ Live: <https://poe2planner.app/>
 - Shareable URL hash encodes class, ascendancy, allocations, and version.
 - Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
-- Mobile layout: collapsible toolbar, bottom-anchored tooltips, long-press
-  suppression so dwelling on a node to read its stats doesn't allocate.
+- Mobile layout: collapsible toolbar and tooltips at the opposite screen edge
+  from the pressed node (bottom for upper-half nodes, top for lower-half nodes).
+  The tooltip stays at that edge during the hold; the toolbar fades while a
+  top tooltip overlays it, then returns to normal when inspection ends.
+  Long-press suppression prevents inspection from allocating nodes.
 - Loading feedback appears only after 300 ms; the tree opens as soon as it is
   ready, with no minimum splash duration. The loader chooses its title font
   once when shown (the preloaded display face, or a stable system fallback).

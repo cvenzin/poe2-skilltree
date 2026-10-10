@@ -1,0 +1,12 @@
+.tree-toolbar {
+  transition: opacity 120ms ease;
+}
+
+/* The tooltip follows the toolbar in App and keeps its edge fixed during a hold. */
+.tree-toolbar:has(~ [data-mobile-tooltip-edge="top"]) {
+  opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tree-toolbar { transition: none; }
+}

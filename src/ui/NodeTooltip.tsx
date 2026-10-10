@@ -1,19 +1,15 @@
-import { useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { bucketOf, type AllocationMode } from '../state/allocation';
 import { tokenizeStatLine } from '../interaction/statsMarkup';
 import { useIsMobile } from './useIsMobile';
-import { palette, fontBody, fontDisplay, panelShadow } from './theme';
+import { palette, fontDisplay } from './theme';
 import type { TreeNode } from '../data/types';
 import { attributeNode } from '../state/attributes';
-
-const TOOLTIP_OFFSET = 16;
-const VIEWPORT_MARGIN = 8;
-const MOBILE_MARGIN = 12;
+import NodeTooltipFrame from './NodeTooltipFrame';
 
 /**
  * DOM-overlay tooltip anchored near the cursor at the hovered node's client
- * coordinates, clamped to the desktop viewport and bottom-anchored on mobile.
+ * coordinates, clamped on desktop and anchored opposite the touch on mobile.
  * Renders the name, tokenized stats, and weapon-set allocation state when enabled.
  */
 export default function NodeTooltip() {
@@ -26,34 +22,6 @@ export default function NodeTooltip() {
     s.status.kind === 'ready' ? s.status.data : null
   );
   const isMobile = useIsMobile();
-  const ref = useRef<HTMLDivElement | null>(null);
-  // Desktop only: tentative position is committed by the layout effect once
-  // the tooltip's real size is known so the clamp can keep it on-screen.
-  // Mobile skips this — the tooltip is CSS-anchored to bottom-left so the
-  // finger never covers it.
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
-
-  useLayoutEffect(() => {
-    if (!hovered || !ref.current || isMobile) {
-      setPosition(null);
-      return;
-    }
-    const rect = ref.current.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    // Prefer offset to the lower-right of the cursor, but flip/shift so the
-    // tooltip stays inside the viewport on small screens (mobile) and at edges.
-    let left = hovered.clientX + TOOLTIP_OFFSET;
-    let top = hovered.clientY + TOOLTIP_OFFSET;
-    if (left + rect.width > vw - VIEWPORT_MARGIN) {
-      left = Math.max(VIEWPORT_MARGIN, vw - rect.width - VIEWPORT_MARGIN);
-    }
-    if (top + rect.height > vh - VIEWPORT_MARGIN) {
-      top = Math.max(VIEWPORT_MARGIN, vh - rect.height - VIEWPORT_MARGIN);
-    }
-    setPosition({ left, top });
-  }, [hovered, isMobile]);
-
   if (!hovered || !data) return null;
   const original = data.nodes[hovered.nodeKey];
   if (!original?.name) return null;
@@ -63,35 +31,15 @@ export default function NodeTooltip() {
   // off, so new users never see weapon-set wording.
   const bucket = (!showSets || node.ascendancyId) ? null : bucketOf(allocation, hovered.nodeKey);
 
-  // Mobile: anchor to bottom-left so the finger doesn't cover the tooltip;
-  //   the element grows upward via `bottom` and rightward up to maxWidth.
-  // Desktop: cursor-following with viewport clamp (see layout effect above);
-  //   first paint is hidden off-screen until the clamp commits.
-  let style: React.CSSProperties;
-  if (isMobile) {
-    style = {
-      ...containerStyle,
-      left: MOBILE_MARGIN,
-      bottom: MOBILE_MARGIN,
-      maxWidth: `calc(100vw - ${MOBILE_MARGIN * 2}px)`,
-      maxHeight: `calc(100vh - ${MOBILE_MARGIN * 2}px)`,
-      overflowY: 'auto',
-    };
-  } else if (position) {
-    style = { ...containerStyle, left: position.left, top: position.top };
-  } else {
-    style = { ...containerStyle, left: -9999, top: -9999, visibility: 'hidden' };
-  }
-
   return (
-    <div ref={ref} style={style}>
+    <NodeTooltipFrame key={`${isMobile}:${hovered.nodeKey}`} hovered={hovered} isMobile={isMobile}>
       <NodeTooltipContents node={node} bucket={bucket} />
       {original.isGenericAttribute && bucketOf(allocation, hovered.nodeKey) !== null && (
         <div style={{ padding: '8px 14px', color: palette.textMuted }}>
           {choices[hovered.nodeKey] ? 'Tap to change attribute or remove node.' : 'Unspecified · Tap to choose an attribute.'}
         </div>
       )}
-    </div>
+    </NodeTooltipFrame>
   );
 }
 
@@ -227,24 +175,6 @@ const allocLabelStyle: React.CSSProperties = {
   letterSpacing: 0.6,
   fontSize: 11,
   minWidth: 72,
-};
-
-// Runic frame: container holds no padding so the header band can span full
-// width with its own background. Header and body each pad themselves.
-const containerStyle: React.CSSProperties = {
-  position: 'fixed',
-  pointerEvents: 'none',
-  background: palette.panelBg,
-  border: `1px solid ${palette.border}`,
-  borderRadius: 6,
-  overflow: 'hidden',
-  color: palette.textPrimary,
-  fontFamily: fontBody,
-  fontSize: 13,
-  lineHeight: 1.45,
-  maxWidth: 'min(420px, calc(100vw - 16px))',
-  boxShadow: panelShadow,
-  zIndex: 100,
 };
 
 const headerStyle: React.CSSProperties = {
