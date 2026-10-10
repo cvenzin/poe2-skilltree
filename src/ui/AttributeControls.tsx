@@ -6,7 +6,7 @@ import AttributeDialog from './AttributeDialog';
 import { controlHeight, fontBody, fontDisplay, palette, panelShadow } from './theme';
 import './AttributeControls.css';
 
-export default function AttributeControls({ data, inline = false }: Readonly<{ data: TreeData; inline?: boolean }>) {
+export default function AttributeControls({ data, showTrigger = true }: Readonly<{ data: TreeData; showTrigger?: boolean }>) {
   const allocation = useStore((s) => s.allocation);
   const choices = useStore((s) => s.attributeChoices);
   const defaultChoice = useStore((s) => s.defaultAttribute);
@@ -17,13 +17,12 @@ export default function AttributeControls({ data, inline = false }: Readonly<{ d
   const unspecified = [...allAllocated(allocation)].filter((key) => data.nodes[key]?.isGenericAttribute && !choices[key]).length;
 
   return (
-    <div className={`attribute-controls${inline ? ' attribute-controls--inline' : ''}`} style={themeVars}>
-      <button type="button" className="attribute-controls__trigger" onClick={() => openEditor({ kind: 'default' })}
+    <div className="attribute-controls" style={themeVars}>
+      {showTrigger && <button type="button" className="attribute-controls__trigger" onClick={() => openEditor({ kind: 'default' })}
         aria-label={`Default for new attribute nodes: ${selected?.override.name ?? 'Choose'}`}>
         <span>New attributes: <strong>{selected?.override.name ?? 'Choose'}</strong> ▾</span>
-        {!inline && unspecified > 0 && <small>{unspecified} unspecified</small>}
-      </button>
-      {inline && unspecified > 0 && <small className="attribute-controls__unspecified">{unspecified} unspecified</small>}
+      </button>}
+      {showTrigger && unspecified > 0 && <small className="attribute-controls__unspecified">{unspecified} unspecified</small>}
       {editor && <AttributeDialog key={editor.kind === 'node' ? editor.nodeKey : 'default'} data={data} editor={editor} />}
     </div>
   );

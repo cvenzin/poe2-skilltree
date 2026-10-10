@@ -71,7 +71,8 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
       >
         ≡
       </button>
-      <AttributeControls data={data} />
+      {/* Keep node and first-allocation dialogs available with the menu closed. */}
+      <AttributeControls data={data} showTrigger={false} />
       </>
     );
   }
@@ -177,7 +178,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
 
       {/* Row 3 — point counters */}
       <div style={rowStyle}>
-        <AttributeControls data={data} inline />
+        <AttributeControls data={data} />
         {showSets ? (
           <>
             <BudgetChip kind="passive" label="Shared" count={counts.shared} />

@@ -6,7 +6,8 @@ Selected bonuses use the names, stats and icons in the version's `skillOverrides
 
 ## Editing
 
-The **New attributes** control stays available when the toolbar is collapsed.
+Open the toolbar (burger menu) to find the **New attributes** control on desktop
+and mobile. Collapsing the toolbar hides the control to keep the tree clear.
 Choose a default once; future path allocations apply it to all newly allocated
 generic nodes in one undo step. The first path containing an attribute node asks
 for a default before committing. Cancelling leaves the path unallocated.
