@@ -8,7 +8,7 @@ import { drawBackground } from './decorations';
 import { drawMasteries } from '../drawMasteries';
 import { drawEdges } from './edges';
 import { drawNodes, applyNodeStates, applyHoverScale } from './nodes';
-import { refreshSearchRingStrokes, applySearchHighlight } from './searchHighlight';
+import { refreshSearchRingUniforms, applySearchHighlight, createSearchMatchLayer } from './searchHighlight';
 import { allAllocated } from '../../state/allocation';
 import type { Allocation } from '../../state/allocation';
 import { refreshConstraintState, applyConstraintVisibility } from './pathingContext';
@@ -16,7 +16,7 @@ import { applyUnlockHighlight, applyJewelOverlay } from './radiusOverlays';
 import { swapContext } from './classContext';
 import { useStore } from '../../state/store';
 import { handleSearchCameraTransition } from './searchCamera';
-import { attachGestureSuppression } from './nodeInteraction';
+import { attachGestureSuppression, computePreviewPathForNode } from './nodeInteraction';
 
 export async function mount(
   host: HTMLDivElement,
@@ -88,7 +88,7 @@ export async function mount(
   // Search-match overlay sits on top of everything: cyan rings around matched
   // nodes, pulsed via the ticker. Built per match-set change in
   // {@link applySearchHighlight}.
-  const searchMatchLayer = new Container();
+  const searchMatchLayer = createSearchMatchLayer();
   worldContainer.addChild(searchMatchLayer);
   ctx.searchMatchLayer = searchMatchLayer;
   ctx.worldContainer = worldContainer;
@@ -97,13 +97,13 @@ export async function mount(
   const pulseStart = performance.now();
   let lastRingScale = viewport.scale.x;
   const tickerCb = () => {
-    if (searchMatchLayer.children.length === 0) return;
+    if (!searchMatchLayer.children[0]?.visible) return;
     // Keep the ring stroke a constant *screen* width across zoom. Doing this
     // in the ticker covers every path that can change scale (wheel/pinch,
     // search framing animation, initial fit, resize) without per-event hooks.
     const scale = viewport.scale.x;
     if (scale !== lastRingScale) {
-      refreshSearchRingStrokes(searchMatchLayer, scale);
+      refreshSearchRingUniforms(searchMatchLayer, scale);
       lastRingScale = scale;
     }
     if (ctx.reduceMotion) { searchMatchLayer.alpha = 1; return; }
@@ -127,8 +127,14 @@ export async function mount(
   // whenever allocation or preview changes. Subscribe AFTER the draws so
   // every wrap and edge layer is registered. The subscription unsubs in the
   // useEffect cleanup via `ctx.unsubscribeStore`.
+  let pathingAllocation: Allocation | null = null;
   const applyAll = (allocation: Allocation, previewPath: readonly string[] | null) => {
-    refreshConstraintState(ctx, data, allocation);
+    // Pathing and constraint sets depend on allocation, not on which node is
+    // currently previewed. Keep preview-only paints from rebuilding them.
+    if (pathingAllocation !== allocation) {
+      refreshConstraintState(ctx, data, allocation);
+      pathingAllocation = allocation;
+    }
     // Both weapon-set trees are always shown: every allocated node paints as
     // allocated, and the edges carry the set colour (gold/green/red).
     const all = ctx.pathing?.allAllocated ?? allAllocated(allocation);
@@ -167,9 +173,29 @@ export async function mount(
   applyJewelOverlay(useStore.getState().hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
 
   ctx.unsubscribeStore = useStore.subscribe((s, prev) => {
-    if (s.allocation !== prev.allocation || s.previewPath !== prev.previewPath ||
+    const allocationChanged = s.allocation !== prev.allocation;
+    const modeChanged = s.allocationMode !== prev.allocationMode;
+    if (allocationChanged || modeChanged) ctx.hoverPreviewDependencies = null;
+    if (allocationChanged && pathingAllocation !== s.allocation) {
+      refreshConstraintState(ctx, data, s.allocation);
+      pathingAllocation = s.allocation;
+    }
+
+    const previewInputsChanged = allocationChanged || modeChanged;
+    const refreshedPreview = previewInputsChanged && s.hovered
+      ? computePreviewPathForNode(s.hovered.nodeKey, data, ctx.pathing, s.allocationMode)
+      : s.previewPath;
+    const needsPreviewRefresh = refreshedPreview !== s.previewPath &&
+      !(refreshedPreview !== null && s.previewPath !== null && refreshedPreview.length === s.previewPath.length &&
+        refreshedPreview.every((key, index) => key === s.previewPath?.[index]));
+    if (needsPreviewRefresh && s.hovered) {
+      // Allocation and edit-mode changes invalidate the old path. Recompute it
+      // immediately for a stationary pointer so the state never holds a stale
+      // preview (and publish the target/path together).
+      s.setHoverState(s.hovered, refreshedPreview);
+    } else if (allocationChanged || s.previewPath !== prev.previewPath ||
       s.attributeChoices !== prev.attributeChoices || s.defaultAttribute !== prev.defaultAttribute) {
-      applyAll(s.allocation, s.previewPath);
+      applyAll(s.allocation, refreshedPreview);
     }
     if (s.searchMatches !== prev.searchMatches || s.searchCursor !== prev.searchCursor) {
       applySearchHighlight(s.searchMatches, s.searchCursor, ctx.nodeWraps, searchMatchLayer, worldContainer, viewport.scale.x);
@@ -177,7 +203,7 @@ export async function mount(
     // Redraw the radius overlay when either the hovered node OR the Entwined-
     // active flag flips. The pathing context is already refreshed by applyAll
     // above, so `ctx.pathing.entwinedActive` is current.
-    if (s.hovered !== prev.hovered || s.allocation !== prev.allocation) {
+    if (s.hovered?.nodeKey !== prev.hovered?.nodeKey || allocationChanged) {
       applyJewelOverlay(s.hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
     }
     if (s.hovered?.nodeKey !== prev.hovered?.nodeKey) {

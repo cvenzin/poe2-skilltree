@@ -52,6 +52,16 @@ export interface PathingContext {
   entwinedActive: boolean;
 }
 
+export interface HoverPreviewDependencies {
+  nodeKey: string;
+  activeVersion: string | null;
+  className: string | null;
+  ascendancyId: string | null;
+  allocation: Allocation;
+  allocationMode: AllocationMode;
+  pathing: PathingContext | null;
+}
+
 export interface MountContext {
   cancelled: boolean;
   /** True while the viewport is being actively panned (drag) or pinch-zoomed.
@@ -83,8 +93,8 @@ export interface MountContext {
    *  active and inactive variants when allocation changes. Patterns are
    *  decorative anchors at mastery-node positions; the layer is non-interactive. */
   redrawMasteries: MasteryRedraw | null;
-  /** Cyan-ring overlay layer (one Graphics per matched node), sits above
-   *  nodes. Pulse animation runs on the ticker — alpha 0.6 ↔ 1.0 @ ~1 Hz. */
+  /** Single-mesh cyan-ring overlay sits above nodes. Focus and zoom update
+   *  uniforms; the pulse runs on the ticker — alpha 0.6 ↔ 1.0 @ ~1 Hz. */
   searchMatchLayer: Container | null;
   /** Jewel-radius preview layer — when the user hovers a jewel socket, draws
    *  a circle showing the socket's radius and highlights any nodes listed in
@@ -122,6 +132,8 @@ export interface MountContext {
    *  {@link swapContext} so the permanent interaction handlers always read
    *  the current values without needing to re-attach. */
   pathing: PathingContext | null;
+  /** One current-hover cache; individual node listeners must not retain old pathing contexts. */
+  hoverPreviewDependencies: HoverPreviewDependencies | null;
   /** Dedicated containers for the class/ascendancy-dependent layers. Kept in
    *  worldContainer across class/ascendancy switches — only their contents
    *  are cleared and re-drawn, avoiding a WebGL context teardown. */

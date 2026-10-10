@@ -132,6 +132,10 @@ export interface AppState extends AttributeState {
   setClass: (name: string) => void;
   setAscendancy: (id: string | null) => void;
   setHovered: (h: HoveredNode | null) => void;
+  /** Atomically publish a hover target and the path computed for that target. */
+  setHoverState: (h: HoveredNode, path: readonly string[] | null) => void;
+  /** Move the tooltip anchor within its current target without invalidating its preview. */
+  updateHoveredPosition: (h: HoveredNode) => void;
   setPreviewPath: (path: readonly string[] | null) => void;
   setValidationMessage: (msg: string | null) => void;
 
@@ -330,6 +334,19 @@ export const useStore = create<AppState>()((set, get, api) => ({
     };
   }),
   setHovered: (h) => set({ hovered: h, previewPath: null }),
+  setHoverState: (hovered, previewPath) => set((s) => {
+    const samePath = s.previewPath === previewPath || (s.previewPath !== null && previewPath !== null &&
+      s.previewPath.length === previewPath.length && s.previewPath.every((key, index) => key === previewPath[index]));
+    const sameHover = s.hovered?.nodeKey === hovered.nodeKey && s.hovered.clientX === hovered.clientX &&
+      s.hovered.clientY === hovered.clientY;
+    if (sameHover && samePath) return s;
+    return { hovered, previewPath: samePath ? s.previewPath : previewPath };
+  }),
+  updateHoveredPosition: (hovered) => set((s) => {
+    if (!s.hovered || s.hovered.nodeKey !== hovered.nodeKey ||
+      (s.hovered.clientX === hovered.clientX && s.hovered.clientY === hovered.clientY)) return s;
+    return { hovered };
+  }),
   setPreviewPath: (path) => set({ previewPath: path }),
   setValidationMessage: (msg) => set({ validationMessage: msg }),
 

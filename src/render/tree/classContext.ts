@@ -34,6 +34,7 @@ export function swapContext(
   ascendancyId: string | null,
 ): void {
   const generation = ++ctx.swapGeneration;
+  ctx.hoverPreviewDependencies = null;
   // Release the old overlay's hover reference before destroying its wraps.
   if (ctx.hoverScaledWrap && !ctx.hoverScaledWrap.destroyed) ctx.hoverScaledWrap.scale.set(1);
   ctx.hoverScaledWrap = null;
@@ -91,7 +92,7 @@ export function swapContext(
     applyJewelOverlay(state.hovered, data, ctx.nodeWraps, ctx.jewelOverlay, ctx.worldContainer, ctx.pathing);
   }
   if (ctx.searchMatchLayer && ctx.worldContainer && ctx.viewport) {
-    applySearchHighlight(state.searchMatches, state.searchCursor, ctx.nodeWraps, ctx.searchMatchLayer, ctx.worldContainer, ctx.viewport.scale.x);
+    applySearchHighlight(state.searchMatches, state.searchCursor, ctx.nodeWraps, ctx.searchMatchLayer, ctx.worldContainer, ctx.viewport.scale.x, true);
   }
 }
 

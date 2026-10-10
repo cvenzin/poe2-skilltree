@@ -80,3 +80,31 @@ describe('budgets and history', () => {
     expect(useStore.getState().allocation.set1).toEqual(new Set(['3']));
   });
 });
+
+describe('hover preview state', () => {
+  it('publishes a target and path in one update, then moves only the tooltip anchor', () => {
+    const changes: Array<{ hovered: ReturnType<typeof useStore.getState>['hovered']; previewPath: readonly string[] | null }> = [];
+    const unsubscribe = useStore.subscribe((state) => {
+      changes.push({ hovered: state.hovered, previewPath: state.previewPath });
+    });
+    const path = ['2', '3'];
+
+    useStore.getState().setHoverState({ nodeKey: '3', clientX: 10, clientY: 20 }, path);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toEqual({ hovered: { nodeKey: '3', clientX: 10, clientY: 20 }, previewPath: path });
+
+    changes.length = 0;
+    useStore.getState().updateHoveredPosition({ nodeKey: '3', clientX: 12, clientY: 22 });
+    expect(changes).toHaveLength(1);
+    expect(useStore.getState().previewPath).toBe(path);
+
+    changes.length = 0;
+    useStore.getState().updateHoveredPosition({ nodeKey: '3', clientX: 12, clientY: 22 });
+    expect(changes).toHaveLength(0);
+
+    useStore.getState().setHovered(null);
+    expect(useStore.getState().hovered).toBeNull();
+    expect(useStore.getState().previewPath).toBeNull();
+    unsubscribe();
+  });
+});

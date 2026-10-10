@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import type { MountContext } from './tree/types';
 import { prefersReducedMotion } from './tree/viewport';
 import { mount } from './tree/mount';
+import { destroySearchMatchLayer } from './tree/searchHighlight';
 
 interface TreeCanvasProps {
   data: TreeData;
@@ -88,6 +89,7 @@ export default function TreeCanvas({
       removeVisibilityListener: null,
       unsubscribeStore: null,
       pathing: null,
+      hoverPreviewDependencies: null,
       backdropLayer: null,
       mainCircleLayer: null,
       ascendancyLayer: null,
@@ -115,6 +117,7 @@ export default function TreeCanvas({
       ctx.unsubscribeStore?.();
       ctx.removeTickerCallback?.();
       ctx.removeVisibilityListener?.();
+      destroySearchMatchLayer(ctx.searchMatchLayer);
       // destroy(removeView, opts) — true tears down the WebGL context and
       // releases textures we own; atlases manage their own lifecycle.
       ctx.app?.destroy(true, { children: true });
