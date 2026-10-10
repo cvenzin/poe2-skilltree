@@ -2,8 +2,8 @@ import { Container } from 'pixi.js';
 import type { TreeData } from '../../data/types';
 import type { MountContext } from './types';
 import { useStore } from '../../state/store';
-import { bfsShortestPath, autoOptionsForPath, resolveCascade, applyPathAllocation } from '../../interaction/pathing';
-import { isEmptyAllocation, bucketOf, removeKey, pruneAllocation } from '../../state/allocation';
+import { bfsShortestPath, autoOptionsForPath, applyPathAllocation } from '../../interaction/pathing';
+import { isEmptyAllocation, bucketOf, removeKey } from '../../state/allocation';
 import { Viewport } from 'pixi-viewport';
 
 /**
@@ -57,6 +57,7 @@ export function attachNodeInteraction(
       state.setPreviewPath(null);
       return;
     }
+    if (pathing.blockedByMode[mode].has(nodeKey)) return;
     // Entwined Realities short-circuits the connecting-path cost: any
     // Entwined-eligible target previews as a single-node addition, regardless
     // of whether BFS could route through the rest of the tree.
@@ -127,15 +128,14 @@ export function attachNodeInteraction(
         state.openAttributeEditor({ kind: 'node', nodeKey });
         return;
       }
-      const resolved = resolveCascade(data, removeKey(alloc, nodeKey), pathing.frontierKeys, pathing.ascendancyId, pathing.hiddenKeys);
-      // If the cascade removes a constraint gate (e.g. Druid Oracle's "The
-      // Unseen Path"), its Forbidden Path nodes aren't graph-reachable, so
-      // prune by constraint so they drop in the same commit.
-      state.commitAllocation(pruneAllocation(resolved, pathing.ascendancyId, data));
+      // The store settles both connectivity and lost constraint/radius gates
+      // before checking whether this removal also loses a needed point bonus.
+      state.commitAllocation(removeKey(alloc, nodeKey), data);
       return;
     }
     // Entwined Realities: any eligible target allocates as a single node into
     // the current tree, bypassing BFS entirely.
+    if (pathing.blockedByMode[mode].has(nodeKey)) return;
     if (pathing.entwinedKeys.has(nodeKey)) {
       state.tryAllocate(applyPathAllocation(data, alloc, [nodeKey], [], mode), data);
       return;

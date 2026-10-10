@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useStore } from './state/store';
 import { loadTreeData } from './data/loader';
-import { VERSIONS, DEFAULT_VERSION, DEFAULT_CLASS } from './data/versions';
+import { VERSIONS, DEFAULT_CLASS } from './data/versions';
+import { resolveBootVersion } from './state/bootVersion';
 import {
   buildAtlasBundle,
   classBackgroundName,
@@ -28,20 +29,15 @@ export default function App() {
   const retryToken = useStore((s) => s.retryToken);
   const setStatus = useStore((s) => s.setStatus);
   const setActiveVersion = useStore((s) => s.setActiveVersion);
-  const setClass = useStore((s) => s.setClass);
   const loadSnapshot = useStore((s) => s.loadSnapshot);
   const retry = useStore((s) => s.retry);
 
   useKeyboardShortcuts();
 
-  // Pick the initial version once on mount: hash version (if installed) > default.
+  // Pick the initial version once: installed hash > saved build > default.
   // Then setting `activeVersion` kicks off the version-keyed load effect.
   useEffect(() => {
-    const hashRaw = decodeShareHash(globalThis.location.hash);
-    const desired = (hashRaw && (VERSIONS as readonly string[]).includes(hashRaw.version))
-      ? hashRaw.version
-      : DEFAULT_VERSION;
-    setActiveVersion(desired);
+    setActiveVersion(resolveBootVersion(globalThis.location.hash));
   }, [setActiveVersion]);
 
   // Load data + atlases for the active version. Re-runs on version change;
@@ -92,7 +88,7 @@ export default function App() {
         }
 
         setStatus({ kind: 'ready', version: activeVersion, data, atlases });
-        applyBootSnapshot(activeVersion, data, loadSnapshot, setClass);
+        applyBootSnapshot(activeVersion, data, loadSnapshot);
 
         // Auto-persist AFTER restore so the initial loadSnapshot doesn't
         // immediately re-write the same bytes.
@@ -111,7 +107,7 @@ export default function App() {
       stopPersist?.();
       loadedBundle?.destroy();
     };
-  }, [activeVersion, retryToken, setStatus, setClass, loadSnapshot]);
+  }, [activeVersion, retryToken, setStatus, loadSnapshot]);
 
   // External hash changes (back/forward navigation, manual edit, paste). If
   // the hash names a different version, switch to it — the load effect will
@@ -120,7 +116,7 @@ export default function App() {
   useEffect(() => {
     const handler = () => {
       const raw = decodeShareHash(globalThis.location.hash);
-      if (!raw) return;
+      if (!raw || !(VERSIONS as readonly string[]).includes(raw.version)) return;
       const s = useStore.getState();
       if (raw.version !== s.activeVersion) {
         setActiveVersion(raw.version);
@@ -129,6 +125,7 @@ export default function App() {
       if (s.status.kind === 'ready') {
         const reconciled = reconcileShareHash(raw, s.status.data);
         if (reconciled) loadSnapshot(reconciled);
+        else s.setValidationMessage('Cannot load this build: its class, allocation rules, or point budgets are invalid.');
       }
     };
     globalThis.addEventListener('hashchange', handler);
@@ -194,7 +191,6 @@ function applyBootSnapshot(
   version: string,
   data: TreeData,
   loadSnapshot: ReturnType<typeof useStore.getState>['loadSnapshot'],
-  setClass: ReturnType<typeof useStore.getState>['setClass'],
 ): void {
   const hashRaw = decodeShareHash(globalThis.location.hash);
   if (hashRaw && hashRaw.version === version) {
@@ -206,7 +202,7 @@ function applyBootSnapshot(
   if (reconciledLs) { loadSnapshot(reconciledLs); return; }
 
   const firstPlayable = firstPlayableClass(data);
-  if (firstPlayable) setClass(firstPlayable.name);
+  if (firstPlayable) loadSnapshot({ className: firstPlayable.name, ascendancyId: null, shared: [], set1: [], set2: [] });
 }
 
 /** The class `applyBootSnapshot` will end up selecting, resolved *without*

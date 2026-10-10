@@ -59,7 +59,7 @@ export function findMatches(query: string, index: readonly SearchEntry[]): strin
   return matches;
 }
 
-/** Drop matches whose `unlockConstraint` isn't currently satisfied — those
+/** Drop matches from unselected ascendancies or with unsatisfied constraints — those
  *  nodes are invisible in the canvas, so highlighting them with cyan rings
  *  would point at empty space. Allocating "The Unseen Path" makes the gated
  *  matches reappear on the next keystroke / allocation change. */
@@ -69,8 +69,7 @@ export function filterConstraintHidden(
   ascendancyId: string | null,
   allocated: ReadonlySet<string>,
 ): string[] {
-  if (data.constrainedNodeKeys.size === 0) return [...matches];
   const hidden = computeConstraintHiddenKeys(data, ascendancyId, allocated);
-  if (hidden.size === 0) return [...matches];
-  return matches.filter((k) => !hidden.has(k));
+  return matches.filter((key) => !hidden.has(key) &&
+    (!data.nodes[key]?.ascendancyId || data.nodes[key]!.ascendancyId === ascendancyId));
 }

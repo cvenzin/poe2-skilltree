@@ -70,6 +70,8 @@ export interface TreeNode {
   isMastery?: boolean;
   isJewelSocket?: boolean;
   isGenericAttribute?: boolean;
+  grantedPassivePoints?: number;
+  weaponPassivePointsGranted?: number;
   /** Multiple-choice hub: a stat-less ascendancy notable whose options are
    *  mutually-exclusive. The hub itself doesn't cost a point; the chosen
    *  option does. 5 such hubs in 0.5.0 — Path Seeker, Projectile Proximity

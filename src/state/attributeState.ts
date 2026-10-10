@@ -1,8 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from './store';
 import { attributeOptions, isAttributeChoice, type AttributeChoice, type AttributeChoices } from './attributes';
-import { allAllocated, bucketOf, pruneAllocation, removeKey, type Allocation } from './allocation';
-import { resolveCascade } from '../interaction/pathing';
+import { allAllocated, bucketOf, removeKey, type Allocation } from './allocation';
 import { pushHistory } from './buildHistory';
 
 export type AttributeEditor = { kind: 'default'; pending?: Allocation } | { kind: 'node'; nodeKey: string };
@@ -50,14 +49,6 @@ export const createAttributeState: StateCreator<AppState, [], [], AttributeState
     const s = get();
     if (s.status.kind !== 'ready' || bucketOf(s.allocation, key) !== s.allocationMode ||
       !s.status.data.nodes[key]?.isGenericAttribute) return;
-    const data = s.status.data;
-    const cls = data.classes.findIndex((entry) => entry.name === s.className);
-    const start = data.startNodeByClassIndex.get(cls);
-    if (!start) return;
-    const roots = new Set([start]);
-    for (const [nodeKey, node] of Object.entries(data.nodes)) {
-      if (node.isAscendancyStart && node.ascendancyId === s.ascendancyId) roots.add(nodeKey);
-    }
-    s.commitAllocation(pruneAllocation(resolveCascade(data, removeKey(s.allocation, key), roots, s.ascendancyId), s.ascendancyId, data), data);
+    s.commitAllocation(removeKey(s.allocation, key), s.status.data);
   },
 });

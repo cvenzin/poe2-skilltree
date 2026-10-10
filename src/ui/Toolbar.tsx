@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, countBudgets, PASSIVE_CAP, ASCENDANCY_CAP, WEAPON_SET_CAP } from '../state/store';
+import { useStore, countBudgets, effectiveBudgetCaps, ASCENDANCY_CAP } from '../state/store';
 import type { TreeData } from '../data/types';
 import { VERSIONS } from '../data/versions';
 import BudgetChip from './BudgetChip';
@@ -17,7 +17,7 @@ import './Toolbar.css';
  * Top-left toolbar:
  *   - Class dropdown (filters out PoE 1 placeholder classes)
  *   - Ascendancy dropdown (filtered to playable ascendancies of the active class)
- *   - Passive budget chips (per weapon set when enabled, fixed caps)
+ *   - Passive budget chips (per weapon set when enabled, including skill bonuses)
  *   - Ascendancy budget chip (N / 8, only when an ascendancy is picked)
  *   - Undo / Redo
  *   - Reset (with confirm popover when allocated > 10)
@@ -55,6 +55,7 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   const activeClass = playableClasses.find((c) => c.name === className);
 
   const counts = countBudgets(allocation, ascendancyId, data);
+  const caps = effectiveBudgetCaps(allocation, ascendancyId, data);
 
   // The sets UI is a free user preference (off by default). Loading a build
   // that uses sets flips it on (see loadSnapshot), but it's always toggleable.
@@ -187,33 +188,33 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
               kind="weaponSet1"
               label="Set 1"
               count={counts.set1}
-              cap={WEAPON_SET_CAP}
+              cap={caps.weaponSet}
             />
             <BudgetChip
               kind="weaponSet2"
               label="Set 2"
               count={counts.set2}
-              cap={WEAPON_SET_CAP}
+              cap={caps.weaponSet}
             />
             <BudgetChip
               kind="passive"
               label="Active S1"
               count={counts.activeIn1}
-              cap={PASSIVE_CAP}
-              note={unspentNote(PASSIVE_CAP - counts.activeIn1)}
+              cap={caps.passive}
+              note={unspentNote(caps.passive - counts.activeIn1)}
             />
             <BudgetChip
               kind="passive"
               label="Active S2"
               count={counts.activeIn2}
-              cap={PASSIVE_CAP}
-              note={unspentNote(PASSIVE_CAP - counts.activeIn2)}
+              cap={caps.passive}
+              note={unspentNote(caps.passive - counts.activeIn2)}
             />
           </>
         ) : (
           // Sets off → one plain passives counter (shared == active when there
           // are no weapon-set allocations).
-          <BudgetChip kind="passive" label="Passives" count={counts.shared} cap={PASSIVE_CAP} />
+          <BudgetChip kind="passive" label="Passives" count={counts.shared} cap={caps.passive} />
         )}
         {ascendancyId && (
           <BudgetChip

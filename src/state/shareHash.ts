@@ -1,7 +1,7 @@
 import type { TreeData } from '../data/types';
 import type { BuildSnapshot } from './store';
-import { buildAllocation, pruneAllocation } from './allocation';
-import { ATTRIBUTE_CHOICES, isAttributeChoice, parseAttributeChoices, reconcileAttributeChoices, attributeOptions,
+import { reconcileSnapshot } from './persistence';
+import { ATTRIBUTE_CHOICES, isAttributeChoice,
   type AttributeChoice, type AttributeChoices } from './attributes';
 
 /**
@@ -30,8 +30,8 @@ import { ATTRIBUTE_CHOICES, isAttributeChoice, parseAttributeChoices, reconcileA
  * Names/ids instead of indices: class names + ascendancy ids are the app's own
  * stable identifiers (the store keys off them), so they don't shift when the
  * export reorders or renames display labels. Legacy `p=` / `ap=` cap params
- * from earlier builds are ignored — caps are fixed at game-rule values now (see
- * PASSIVE_CAP / ASCENDANCY_CAP). Masteries (`m`) are out of scope — PoE 2 has none.
+ * from earlier builds are ignored — caps derive from game rules and allocated
+ * ascendancy bonuses. Masteries (`m`) are out of scope — PoE 2 has none.
  */
 
 export interface ShareHashRaw {
@@ -96,41 +96,11 @@ export function reconcileShareHash(
   raw: ShareHashRaw,
   data: TreeData,
 ): Omit<BuildSnapshot, 'version'> | null {
-  const cls = data.classes.find((c) => c.name === raw.className);
-  if (!cls || cls.ascendancies.length === 0) return null;
-
-  const ascValid =
-    raw.ascendancyId !== null &&
-    cls.ascendancies.some((a) => a.id === raw.ascendancyId) &&
-    data.playableAscendancyIds.has(raw.ascendancyId);
-  const ascendancyId = ascValid ? raw.ascendancyId : null;
-
-  const exists = (k: string) => data.nodes[k] !== undefined;
-  // Normalize the three buckets (a key lives in exactly one), then drop
-  // constraint-locked nodes the imported `(ascendancyId, allocation)` pair
-  // doesn't satisfy — a hash crafted with mismatched gates would otherwise leak
-  // hidden nodes into the build.
-  const alloc = pruneAllocation(
-    buildAllocation(
-      raw.sharedKeys.filter(exists),
-      raw.set1Keys.filter(exists),
-      raw.set2Keys.filter(exists),
-    ),
-    ascendancyId,
-    data,
-  );
-
-  const choices = reconcileAttributeChoices(parseAttributeChoices(raw.attributeChoices), alloc, data, ascendancyId);
-  const defaultAttribute = attributeOptions(data, alloc, ascendancyId).find((option) => option.choice === raw.defaultAttribute)?.choice;
-  return {
-    className: cls.name,
-    ascendancyId,
-    shared: [...alloc.shared],
-    set1: [...alloc.set1],
-    set2: [...alloc.set2],
-    ...(Object.keys(choices).length ? { attributeChoices: choices } : {}),
-    ...(defaultAttribute ? { defaultAttribute } : {}),
-  };
+  return reconcileSnapshot({
+    version: raw.version, className: raw.className, ascendancyId: raw.ascendancyId,
+    shared: raw.sharedKeys, set1: raw.set1Keys, set2: raw.set2Keys,
+    attributeChoices: raw.attributeChoices, defaultAttribute: raw.defaultAttribute,
+  }, data);
 }
 
 // ---------- varint / delta / base64url plumbing ----------

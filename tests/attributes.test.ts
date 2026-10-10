@@ -19,8 +19,9 @@ const data = makeTree({
   '4': { id: 'dexterity4', isGenericAttribute: true },
   '5': { id: 'intelligence5', isGenericAttribute: true },
   '11': { id: 'AscendancyRanger3Notable9' },
-  ...Object.fromEntries(keys(100, PASSIVE_CAP).map((key) => [key, {}])),
+  ...Object.fromEntries(keys(100, PASSIVE_CAP).map((key) => [key, { in: ['1'] }])),
 });
+data.nodes['1']!.out.push(...keys(100, PASSIVE_CAP));
 data.skillOverrides = {
   '100': { id: 'generic_attribute_strength', name: 'Strength', icon: 'str.png', stats: ['+5 to [Strength]'] },
   '101': { id: 'generic_attribute_dexterity', name: 'Dexterity', icon: 'dex.png', stats: ['+5 to [Dexterity]'] },

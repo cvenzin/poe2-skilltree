@@ -8,8 +8,8 @@ import { buildBlockedKeys, computeEntwinedAllocatableKeys, isEntwinedRealitiesAc
 /** Build the full pathing context for the current allocation. Computes the
  *  base block set once, then the per-edit-mode frontier and blocked sets (the
  *  main tree can't route through weapon-set nodes; the sets can't route through
- *  each other). Constraint / entwined state is evaluated against the union of
- *  all allocated nodes (the constraint gate is a shared ascendancy node). */
+ *  each other). Constraint gates are shared ascendancy
+ *  nodes; Entwined anchors must also belong to the shared tree. */
 export function buildPathingContext(
   data: TreeData,
   classStartKey: string,
@@ -20,9 +20,14 @@ export function buildPathingContext(
   const all = allAllocated(allocation);
   const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, all);
   const base = buildBlockedKeys(data, classStartKey, ascendancyId, all);
-  const withBlocked = (extra: ReadonlySet<string>): Set<string> => {
+  const withBlocked = (extra: ReadonlySet<string>, exclusive = false): Set<string> => {
     const out = new Set(base);
     for (const k of extra) out.add(k);
+    if (exclusive) {
+      for (const [key, node] of Object.entries(data.nodes)) {
+        if ((node.isKeystone || node.isJewelSocket) && !allocation.shared.has(key)) out.add(key);
+      }
+    }
     return out;
   };
   return {
@@ -37,12 +42,12 @@ export function buildPathingContext(
     },
     blockedByMode: {
       shared: withBlocked(blockedForMode(allocation, 'shared')),
-      set1: withBlocked(blockedForMode(allocation, 'set1')),
-      set2: withBlocked(blockedForMode(allocation, 'set2')),
+      set1: withBlocked(blockedForMode(allocation, 'set1'), true),
+      set2: withBlocked(blockedForMode(allocation, 'set2'), true),
     },
     hiddenKeys,
-    entwinedKeys: computeEntwinedAllocatableKeys(data, all, ascendancyId, hiddenKeys),
-    entwinedActive: isEntwinedRealitiesActive(data, all, ascendancyId),
+    entwinedKeys: computeEntwinedAllocatableKeys(data, allocation.shared, ascendancyId, hiddenKeys),
+    entwinedActive: isEntwinedRealitiesActive(data, allocation.shared, ascendancyId),
   };
 }
 

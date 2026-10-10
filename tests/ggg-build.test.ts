@@ -42,8 +42,8 @@ describe('GGG build export', () => {
   it('deduplicates buckets, skips implicit roots and keeps ascendancy passives shared', () => {
     const build = createGggBuild({ ...snapshot, shared: ['root', '1', '2', '10'],
       set1: ['2', '3', '11'], set2: ['3', '4'] }, data, 'Witch', url);
-    expect(build.passives).toEqual(['lightning14', { id: 'strength89', weapon_set: 1 },
-      'AscendancyWitch1Small1', { id: 'intelligence4', weapon_set: 2 }]);
+    expect(build.passives).toEqual(['lightning14', 'AscendancyWitch1Small1',
+      { id: 'strength89', weapon_set: 1 }, { id: 'intelligence4', weapon_set: 2 }]);
   });
 
   it('supports a tree without an ascendancy and omits optional ascendancy metadata', () => {
@@ -73,6 +73,12 @@ describe('GGG build export', () => {
     expect(() => createGggBuild(snapshot, data, '   ', url)).toThrow('Enter a build name');
   });
 
+  it.each(['isKeystone', 'isJewelSocket'] as const)('rejects exclusive %s exports instead of emitting invalid weapon_set entries', (flag) => {
+    const tree = makeTree({ '3': { id: 'special', [flag]: true }, '2': { id: 'normal' },
+      '11': { id: 'asc' }, '4': { id: 'other' } });
+    expect(() => createGggBuild(snapshot, tree, 'Build', url)).toThrow('must be allocated in Main');
+  });
+
   it('creates a safe, bounded .build filename with tree version', () => {
     expect(gggBuildFilename(' My Witch / Lightning:*? ', '0.5.2')).toBe('my-witch-lightning-0.5.2.build');
     expect(gggBuildFilename('⚡', '0.5.2')).toBe('poe2-build-0.5.2.build');
@@ -87,7 +93,7 @@ describe.each(VERSIONS)('GGG export for bundled tree %s', (version) => {
   it('maps actual passives, weapon sets and ascendancy IDs into the documented format', () => {
     const main = Object.entries(tree.nodes).filter(([key, node]) =>
       /^\d+$/.test(key) && node.id && node.icon && !node.ascendancyId && !node.classStartIndex &&
-      !node.isMastery && !node.unlockConstraint).slice(0, 3);
+      !node.isMastery && !node.isKeystone && !node.isJewelSocket && !node.unlockConstraint).slice(0, 3);
     const ascId = tree.classes.find((cls) => cls.name === 'Witch')!.ascendancies
       .find((asc) => tree.playableAscendancyIds.has(asc.id))!.id;
     const asc = Object.entries(tree.nodes).find(([, node]) =>

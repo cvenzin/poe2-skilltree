@@ -1,4 +1,5 @@
-import { useStore, type BuildSnapshot } from './store';
+import { useStore, allocationBudgetError, type BuildSnapshot } from './store';
+import { exclusiveAllocationError, shareAscendancyAllocation } from './buildRules';
 import type { TreeData } from '../data/types';
 import { buildAllocation, pruneAllocation } from './allocation';
 import { attributeOptions, isAttributeChoice, parseAttributeChoices, reconcileAttributeChoices } from './attributes';
@@ -28,29 +29,32 @@ export function readSnapshot(version: string): BuildSnapshot | null {
  *  playable, the ascendancy (if any) must still belong to that class, and
  *  every allocated node key must still exist. Drops the ones that don't, and
  *  dedupes / constraint-prunes the weapon-set buckets. Returns null if the
- *  class itself isn't usable. */
+ *  class is unusable, a budget is exceeded, or a keystone/socket is exclusive. */
 export function reconcileSnapshot(snap: BuildSnapshot, data: TreeData): Omit<BuildSnapshot, 'version'> | null {
-  const cls = data.classes.find((c) => c.name === snap.className);
-  if (!cls || cls.ascendancies.length === 0) return null;
+  const cls = data.classes.find((c, index) => c.name === snap.className && data.playableClassIndices.includes(index));
+  if (!cls) return null;
   const ascendancyId =
-    snap.ascendancyId && data.playableAscendancyIds.has(snap.ascendancyId)
+    snap.ascendancyId && cls.ascendancies.some((asc) => asc.id === snap.ascendancyId) &&
+      data.playableAscendancyIds.has(snap.ascendancyId)
       ? snap.ascendancyId
       : null;
-  const exists = (k: string) => data.nodes[k] !== undefined;
+  const exists = (k: string) => data.nodes[k] !== undefined &&
+    (!data.nodes[k]!.ascendancyId || data.nodes[k]!.ascendancyId === ascendancyId);
   // Build a normalized allocation (a key lives in exactly one bucket), then
   // drop constraint-locked nodes the imported state doesn't satisfy — e.g. a
   // build saved on Druid Oracle with "The Unseen Path", imported on a different
   // ascendancy, loses the Forbidden Path nodes.
   const alloc = pruneAllocation(
-    buildAllocation(
+    shareAscendancyAllocation(buildAllocation(
       snap.shared.filter(exists),
       snap.set1.filter(exists),
       snap.set2.filter(exists),
-    ),
+    ), data),
     ascendancyId,
     data,
   );
   const choices = reconcileAttributeChoices(parseAttributeChoices(snap.attributeChoices), alloc, data, ascendancyId);
+  if (exclusiveAllocationError(alloc, data) || allocationBudgetError(alloc, ascendancyId, data)) return null;
   const defaultAttribute = attributeOptions(data, alloc, ascendancyId).find((option) => option.choice === snap.defaultAttribute)?.choice;
   return {
     className: snap.className,
@@ -69,12 +73,12 @@ export function reconcileSnapshot(snap: BuildSnapshot, data: TreeData): Omit<Bui
  *  Backward compatibility: pre-weapon-set builds stored a single `allocated`
  *  list. Those load as shared-only — `allocated` → `shared`, set1/set2 empty,
  *  Weapon Set 1 active. */
-export function loadPersistedSnapshot(version: string): BuildSnapshot | null {
+export function loadPersistedSnapshot(version?: string): BuildSnapshot | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<BuildSnapshot> & { allocated?: unknown };
-    if (parsed.version !== version) return null;
+    if (typeof parsed.version !== 'string' || (version !== undefined && parsed.version !== version)) return null;
     if (typeof parsed.className !== 'string') return null;
 
     const asStrings = (v: unknown): string[] =>
@@ -86,7 +90,7 @@ export function loadPersistedSnapshot(version: string): BuildSnapshot | null {
     if (!hasNewFormat && !Array.isArray(parsed.allocated)) return null;
 
     return {
-      version,
+      version: parsed.version,
       className: parsed.className,
       ascendancyId: typeof parsed.ascendancyId === 'string' ? parsed.ascendancyId : null,
       shared,

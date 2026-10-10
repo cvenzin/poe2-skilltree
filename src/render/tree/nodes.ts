@@ -80,10 +80,10 @@ export function applyHoverScale(
   prevScaled: Container | null,
   nextKey: string | null,
 ): Container | null {
-  if (prevScaled) prevScaled.scale.set(1);
+  if (prevScaled && !prevScaled.destroyed) prevScaled.scale.set(1);
   if (!nextKey) return null;
   const wrap = wraps.get(nextKey);
-  if (!wrap) return null;
+  if (!wrap || wrap.destroyed) return null;
   wrap.scale.set(HOVER_TARGET_SCALE);
   return wrap;
 }

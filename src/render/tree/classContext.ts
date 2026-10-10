@@ -24,9 +24,7 @@ import { drawOverlayEdges } from './edges';
  * nodes, masteries, jewel overlay, search overlay, ticker, and store
  * subscription all stay in place — that's the whole point of this path: no
  * WebGL teardown, no black-screen flash when the user changes class or
- * ascendancy. The store has already cleared the allocation by the time we get
- * here (see store.ts `setClass` / `setAscendancy`), so the redraw at the end
- * paints the fresh tree with nothing allocated.
+ * ascendancy. The redraw uses the store's revalidated allocation.
  */
 export function swapContext(
   ctx: MountContext,
@@ -36,6 +34,9 @@ export function swapContext(
   ascendancyId: string | null,
 ): void {
   const generation = ++ctx.swapGeneration;
+  // Release the old overlay's hover reference before destroying its wraps.
+  if (ctx.hoverScaledWrap && !ctx.hoverScaledWrap.destroyed) ctx.hoverScaledWrap.scale.set(1);
+  ctx.hoverScaledWrap = null;
 
   // Drop the previous ascendancy's node wraps from the global maps so the
   // store-subscription doesn't keep paying texture-swap costs on nodes that

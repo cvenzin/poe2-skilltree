@@ -22,6 +22,9 @@ interface Allocation {
   the class start over `shared ∪ setN`. The main tree connects over `shared`
   **only** — it never routes through a weapon-set node, and the two sets never
   route through each other.
+- **Keystones, jewel sockets, and ascendancy skills are shared.** Allocate
+  keystones and sockets in Main through a shared-only path. Set previews block
+  unallocated keystones and sockets; an already shared one can connect a branch.
 
 ### Points
 
@@ -30,14 +33,27 @@ passive-point budget *independently per set* (shared counts toward both). The
 set-specific count additionally has its own specialization cap.
 
 ```text
-shared + set1 ≤ PASSIVE_CAP   (123)
-shared + set2 ≤ PASSIVE_CAP
-set1 ≤ WEAPON_SET_CAP          (24)
-set2 ≤ WEAPON_SET_CAP
+shared + set1 ≤ PASSIVE_CAP + allocated grantedPassivePoints
+shared + set2 ≤ PASSIVE_CAP + allocated grantedPassivePoints
+set1 ≤ WEAPON_SET_CAP + allocated weaponPassivePointsGranted
+set2 ≤ WEAPON_SET_CAP + allocated weaponPassivePointsGranted
 ```
 
 The two sets can have different active totals and different unspent remainders.
-Caps are fixed constants in [`src/state/store.ts`](../src/state/store.ts).
+Base caps are constants in [`src/state/store.ts`](../src/state/store.ts): 123
+passives at level 100 with quest rewards, 24 specialized points per set, and
+8 ascendancy points counted separately. Effective caps use the selected
+ascendancy's allocated shared skills and the fields in that version's export.
+Oracle and Pathfinder can grant ordinary passive points. Weapon Master adds
+100 specialized points per set; its conversion does not subtract from the active
+passive total. The displayed counters and edit/import checks use these same caps.
+These exceptions are present in all bundled exports; see GGG's
+[Weapon Master patch notes](https://www.pathofexile.com/forum/view-thread/3826682)
+and the [weapon-set rules](https://www.poe2wiki.net/wiki/Weapon_set).
+
+Removing a point-granting skill or switching ascendancy is rejected if the
+surviving allocation would exceed its reduced budget. Refund the excess passive
+or specialization points first. Rejected edits preserve allocation and history.
 
 ## Editing
 
@@ -56,6 +72,11 @@ node-conversion between trees — switch mode and re-allocate.
 revalidates after every edit: the main tree is pruned to shared-only
 reachability first, then each set is pruned against the *surviving* main tree —
 so removing a shared node correctly drops any branch that hung off it.
+Constraint gates, radius anchors, and optionless multiple-choice hubs are
+recomputed until the cascade settles. Replacing a multiple-choice option
+prunes the previous option's dependent branch in the same undoable edit.
+Switching ascendancy removes the previous ascendancy's skills and revalidates
+the remaining main tree and both sets, then clears history and transient context.
 
 ## Rendering
 
@@ -68,7 +89,7 @@ tree and stays uncoloured.
 
 A "Weapon Sets" checkbox (off by default) gates the whole feature. When off:
 the edit selector is hidden, editing is forced to the main tree, counters
-collapse to a single `Passives N / 123`, and tooltips omit weapon-set wording.
+collapse to a single passive counter with the effective cap, and tooltips omit weapon-set wording.
 It's a free user preference (not persisted); loading a build that already uses
 sets flips it on so points are never hidden.
 
@@ -80,6 +101,14 @@ sets flips it on so points are never hidden.
 [`shareHash.ts`](../src/state/shareHash.ts)). Backward compatible: a
 pre-weapon-set build (single `allocated` list, or share hash with only `n=`)
 loads as shared-only. Share hash adds `w1=` / `w2=` for the set branches.
+Boot selects the installed URL version first, then the saved build's installed
+version, then the default. Imports return editing to Main and clear hover,
+preview, search, and history. Reconciliation drops unknown keys, foreign
+ascendancy skills, and locked nodes; mismatched ascendancies become none.
+Over-budget builds and exclusive keystones/sockets are rejected rather than
+silently moving special nodes onto potentially disconnected shared paths.
+Legacy exclusive ascendancy skills can safely become shared because their
+ascendancy connection is independent of the weapon-set branch.
 
 ## In-game Build Planner export
 

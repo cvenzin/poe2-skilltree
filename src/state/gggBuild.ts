@@ -1,5 +1,6 @@
 import type { TreeData } from '../data/types';
-import type { BuildSnapshot } from './store';
+import { allocationBudgetError, type BuildSnapshot } from './store';
+import { exclusiveAllocationError, shareAscendancyAllocation } from './buildRules';
 import { buildAllocation, pruneAllocation } from './allocation';
 import { encodeShareHash } from './shareHash';
 import { attributeNode, attributeRecommendation, reconcileAttributeChoices } from './attributes';
@@ -37,10 +38,12 @@ export function createGggBuild(
     throw new Error('Select an ascendancy that belongs to your class before exporting.');
   }
 
-  const allocation = buildAllocation(snapshot.shared, snapshot.set1, snapshot.set2);
+  const allocation = shareAscendancyAllocation(buildAllocation(snapshot.shared, snapshot.set1, snapshot.set2), data);
   if (pruneAllocation(allocation, snapshot.ascendancyId, data) !== allocation) {
     throw new Error('Some allocated passives are locked. Update your tree before exporting.');
   }
+  const invalid = exclusiveAllocationError(allocation, data) ?? allocationBudgetError(allocation, snapshot.ascendancyId, data)?.message;
+  if (invalid) throw new Error(invalid);
   const passives: GggBuild['passives'] = [];
   const choices = reconcileAttributeChoices(snapshot.attributeChoices ?? {}, allocation, data, snapshot.ascendancyId);
   for (const [bucket, weaponSet] of [[allocation.shared, 0], [allocation.set1, 1], [allocation.set2, 2]] as const) {

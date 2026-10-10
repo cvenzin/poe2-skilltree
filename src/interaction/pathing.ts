@@ -344,6 +344,12 @@ export function applyPathAllocation(
   const ascKeys: string[] = [];
   const mainKeys: string[] = [];
   const newKeys = [...path, ...autoOptions];
+  // A set path must never create an exclusive keystone/socket or move a
+  // shared one into a set. Allocate these through Main's shared-only path.
+  if (mode !== 'shared' && newKeys.some((key) => {
+    const node = data.nodes[key];
+    return node?.isKeystone || node?.isJewelSocket;
+  })) return allocation;
   for (const key of newKeys) {
     const node = data.nodes[key];
     if (!node) continue;
@@ -399,11 +405,11 @@ function pruneTreeToReachable(
   for (;;) {
     const seeds = collectCascadeSeeds(data, current, frontierKeys, ascendancyId, hiddenKeys);
     const reachable = walkAllocated(data, current, seeds);
-    const droppedHub = dropOptionlessMcHubs(data, reachable);
-    if (!droppedHub) {
-      for (const key of frontierKeys) reachable.delete(key);
-      return reachable;
-    }
+    dropOptionlessMcHubs(data, reachable);
+    for (const key of frontierKeys) reachable.delete(key);
+    // Losing the notable or a keystone can invalidate the radius seeds used
+    // in this pass. Recompute them from the survivors before returning.
+    if (reachable.size === current.size) return reachable;
     current = reachable;
   }
 }
