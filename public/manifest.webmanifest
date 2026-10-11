@@ -1,7 +1,7 @@
 {
   "name": "PoE 2 Skill Tree",
   "short_name": "PoE2 Tree",
-  "description": "Path of Exile 2 passive skill tree viewer and planner.",
+  "description": "Create and share your Path of Exile 2 builds with a free passive skill tree planner for mobile and desktop. No account needed.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
