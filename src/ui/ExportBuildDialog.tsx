@@ -93,6 +93,8 @@ export default function ExportBuildDialog({ data, onClose }: Readonly<{ data: Tr
         </a>
       </section>
       <p className="build-export__hint">Then select the guide in the game’s Build Planner. You still allocate your points in-game.</p>
+      <a className="build-export__guide" href={`${import.meta.env.BASE_URL}guides/export-to-poe2/`}
+        target="_blank" rel="noopener noreferrer">Step-by-step export guide ↗</a>
     </dialog>
   );
 }

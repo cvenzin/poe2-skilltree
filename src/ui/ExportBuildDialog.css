@@ -85,3 +85,4 @@
 .build-export__status:empty { display: none; }
 .build-export__error { color: var(--export-error); }
 .build-export .build-export__hint { margin: 16px 0 0; font-size: 12px; }
+.build-export__guide { display: inline-flex; align-items: center; min-height: 44px; color: var(--export-accent); text-underline-offset: 3px; }

@@ -1,10 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
   base: '/',
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      input: {
+        planner: fileURLToPath(new URL('./index.html', import.meta.url)),
+        exportGuide: fileURLToPath(new URL('./guides/export-to-poe2/index.html', import.meta.url)),
+      },
+    },
+  },
   resolve: {
     // Force every import of react / react-dom (incl. transitive ones from
     // zustand, @floating-ui/react etc.) to resolve to the *same* module

@@ -89,6 +89,20 @@ Attribute travel-node choices are included as recommendations on the relevant
 nodes; you still choose the bonus in-game. See [attribute selection](docs/attribute-selection.md)
 for mobile editing, defaults, legacy builds and Pathfinder alternatives.
 
+### Searchable export guide
+
+The public [export guide](https://poe2planner.app/guides/export-to-poe2/)
+is a standalone HTML page at `guides/export-to-poe2/index.html`, with styles in
+`guides/guide.css` and screenshots in `public/guides/`. Vite builds both the
+planner and guide; GitHub Pages serves the guide directly at its directory URL,
+without client-side routing or JavaScript. Links in the planner and export dialog
+open the guide in a new tab so readers keep their current tree open.
+
+When the export flow changes, update the guide and its screenshots alongside the
+dialog. Keep the guide's canonical URL and `public/sitemap.xml` in sync. Verify
+the guide from `npm run preview`, including a direct load, narrow-screen layout,
+and its links back to the planner.
+
 ### Regenerating icons
 
 `public/favicon.svg` is the source of truth for the icon. To regenerate the
