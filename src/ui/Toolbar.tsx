@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore, countBudgets, effectiveBudgetCaps, ASCENDANCY_CAP } from '../state/store';
 import type { TreeData } from '../data/types';
 import { getPatchUpdateVersion, VERSIONS } from '../data/versions';
@@ -11,25 +11,11 @@ import ExportBuildButton from './ExportBuildButton';
 import AttributeControls from './AttributeControls';
 import TreeVersionNotice from './TreeVersionNotice';
 import { useIsMobile } from './useIsMobile';
-import { palette, fontBody, fontDisplay, controlHeight } from './theme';
+import { palette, fontBody, fontDisplay, panelShadow } from './theme';
 import './Toolbar.css';
 
-/**
- * Top-left toolbar:
- *   - Class dropdown (filters out PoE 1 placeholder classes)
- *   - Ascendancy dropdown (filtered to playable ascendancies of the active class)
- *   - Passive budget chips (per weapon set when enabled, including skill bonuses)
- *   - Ascendancy budget chip (N / 8, only when an ascendancy is picked)
- *   - Undo / Redo
- *   - Reset (with confirm popover when allocated > 10)
- *   - Version dropdown, share button, and search input
- *   - Weapon-set toggle and Main / Set 1 / Set 2 editing selector
- */
-interface ToolbarProps {
-  data: TreeData;
-}
-
-export default function Toolbar({ data }: Readonly<ToolbarProps>) {
+/** Character setup, search, point counters, and build actions over the canvas. */
+export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const allocation = useStore((s) => s.allocation);
@@ -44,436 +30,162 @@ export default function Toolbar({ data }: Readonly<ToolbarProps>) {
   const patchUpdateVersion = getPatchUpdateVersion(activeVersion);
 
   const isMobile = useIsMobile();
-  // Collapse state for both viewports. The hamburger/collapse-tab pair works
-  // the same everywhere; only the *default* differs: open on desktop, collapsed
-  // on mobile (where the toolbar wraps to 3-4 rows and obscures too much of the
-  // canvas). The lazy initialiser reads `isMobile` once on first render, so the
-  // default tracks the initial viewport without re-collapsing on later resizes.
+  // Use the initial viewport only: resizing must not discard an open panel.
   const [expanded, setExpanded] = useState(() => !isMobile);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+  useEffect(() => {
+    if (restoreFocus.current) {
+      toggleRef.current?.focus();
+      restoreFocus.current = false;
+    }
+  }, [expanded]);
+  const toggleExpanded = () => {
+    restoreFocus.current = true;
+    setExpanded((value) => !value);
+  };
 
   const playableClasses = data.playableClassIndices
     .map((i) => data.classes[i])
     .filter((c): c is NonNullable<typeof c> => c !== undefined);
   const activeClass = playableClasses.find((c) => c.name === className);
-
   const counts = countBudgets(allocation, ascendancyId, data);
   const caps = effectiveBudgetCaps(allocation, ascendancyId, data);
 
-  // The sets UI is a free user preference (off by default). Loading a build
-  // that uses sets flips it on (see loadSnapshot), but it's always toggleable.
-  const showSets = weaponSetsEnabled;
-
-  // Collapsed: render just the hamburger toggle button in the top-left.
   if (!expanded) {
     return (
       <>
-      <button
-        type="button"
-        aria-label={patchUpdateVersion ? `Open toolbar. Patch ${patchUpdateVersion} is available.` : 'Open toolbar'}
-        onClick={() => setExpanded(true)}
-        style={patchUpdateVersion ? updateToggleButtonStyle : toggleButtonStyle}
-      >
-        ≡{patchUpdateVersion && <span style={updateToggleBadgeStyle}>Update</span>}
-      </button>
-      {/* Keep node and first-allocation dialogs available with the menu closed. */}
-      <AttributeControls data={data} showTrigger={false} />
+        <button ref={toggleRef} type="button" className="toolbar-toggle" style={themeVars}
+          aria-label={patchUpdateVersion ? `Open toolbar. Patch ${patchUpdateVersion} is available.` : 'Open toolbar'}
+          aria-expanded={false} aria-controls="tree-toolbar-content" onClick={toggleExpanded}>
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span>Build</span>
+          {patchUpdateVersion && <span className="toolbar-update">Update</span>}
+        </button>
+        {/* Keep node and first-allocation dialogs available with the menu closed. */}
+        <AttributeControls data={data} showTrigger={false} />
       </>
     );
   }
 
   return (
-    <div className="tree-toolbar" style={containerStyle}>
-      <button
-        type="button"
-        aria-label="Collapse toolbar"
-        onClick={() => setExpanded(false)}
-        style={collapseTabStyle}
-      >
-          <svg
-            aria-hidden
-            width="14"
-            height="9"
-            viewBox="0 0 14 9"
-            fill="none"
-            style={{ display: 'block' }}
-          >
-            <path
-              d="M1 8 L7 2 L13 8"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      {/* Row 1 — lookup / config */}
-      <div style={rowStyle}>
-        <SearchInput data={data} />
+    <div className="tree-toolbar" style={themeVars} role="region" aria-label="Build planner">
+      <header className="toolbar-header">
+        <span className="toolbar-title">Build planner</span>
         {VERSIONS.length > 1 && (
-          <label style={labelStyle}>
-            <span style={labelTitleStyle}>Version</span>
-            <select
-              value={activeVersion ?? ''}
-              onChange={(e) => setActiveVersion(e.target.value)}
-              style={selectStyle}
-            >
-              {VERSIONS.map((v) => (
-                <option key={v} value={v}>{v}</option>
-              ))}
+          <label className="toolbar-version">
+            <span>Tree version</span>
+            <select aria-label="Version" value={activeVersion ?? ''}
+              onChange={(e) => setActiveVersion(e.target.value)}>
+              {VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </label>
         )}
+        <button ref={toggleRef} type="button" className="toolbar-close" aria-label="Collapse toolbar"
+          aria-expanded={true} aria-controls="tree-toolbar-content" onClick={toggleExpanded}>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+      </header>
+
+      <div id="tree-toolbar-content" className="toolbar-content">
+        <SearchInput data={data} />
         <TreeVersionNotice data={data} />
-      </div>
+        <div className="toolbar-character">
+          <label className="toolbar-field">
+            <span>Class</span>
+            <select value={className ?? ''} onChange={(e) => setClass(e.target.value)}>
+              {playableClasses.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="toolbar-field">
+            <span>Ascendancy</span>
+            <select value={ascendancyId ?? ''} onChange={(e) => setAscendancy(e.target.value || null)}
+              disabled={!activeClass || activeClass.ascendancies.length === 0}>
+              <option value="">(none)</option>
+              {activeClass?.ascendancies.filter((a) => data.playableAscendancyIds.has(a.id))
+                .map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </label>
+        </div>
 
-      {/* Row 2 — character */}
-      <div style={rowStyle}>
-        <label style={labelStyle}>
-          <span style={labelTitleStyle}>Class</span>
-          <select
-            value={className ?? ''}
-            onChange={(e) => setClass(e.target.value)}
-            style={selectStyle}
-          >
-            {playableClasses.map((c) => (
-              <option key={c.name} value={c.name}>{c.name}</option>
-            ))}
-          </select>
-        </label>
+        <div className="toolbar-weapon-sets">
+          <label className="toolbar-checkbox" title="Plan separate passives per weapon set">
+            <input type="checkbox" checked={weaponSetsEnabled}
+              onChange={(e) => setWeaponSetsEnabled(e.target.checked)} />
+            <span>Weapon Sets</span>
+          </label>
+          {weaponSetsEnabled && (
+            <fieldset className="toolbar-editing">
+              <legend>Editing</legend>
+              <div className="toolbar-segments">
+                {([
+                  ['shared', 'Main'], ['set1', 'Set 1'], ['set2', 'Set 2'],
+                ] as const).map(([value, label]) => (
+                  <button key={value} type="button" aria-pressed={allocationMode === value}
+                    onClick={() => setAllocationMode(value)}>{label}</button>
+                ))}
+              </div>
+            </fieldset>
+          )}
+        </div>
 
-        <label style={labelStyle}>
-          <span style={labelTitleStyle}>Ascendancy</span>
-          <select
-            value={ascendancyId ?? ''}
-            onChange={(e) => setAscendancy(e.target.value || null)}
-            disabled={!activeClass || activeClass.ascendancies.length === 0}
-            style={selectStyle}
-          >
-            <option value="">(none)</option>
-            {activeClass?.ascendancies
-              .filter((a) => data.playableAscendancyIds.has(a.id))
-              .map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-          </select>
-        </label>
+        <div className="toolbar-row toolbar-budgets">
+          <AttributeControls data={data} />
+          {weaponSetsEnabled ? (
+            <>
+              <BudgetChip kind="passive" label="Shared" count={counts.shared} />
+              <BudgetChip kind="weaponSet1" label="Set 1" count={counts.set1} cap={caps.weaponSet} />
+              <BudgetChip kind="weaponSet2" label="Set 2" count={counts.set2} cap={caps.weaponSet} />
+              <BudgetChip kind="passive" label="Active S1" count={counts.activeIn1}
+                cap={caps.passive} note={unspentNote(caps.passive - counts.activeIn1)} />
+              <BudgetChip kind="passive" label="Active S2" count={counts.activeIn2}
+                cap={caps.passive} note={unspentNote(caps.passive - counts.activeIn2)} />
+            </>
+          ) : (
+            <BudgetChip kind="passive" label="Passives" count={counts.shared} cap={caps.passive} />
+          )}
+          {ascendancyId && (
+            <BudgetChip kind="ascendancy" label="Ascendancy" count={counts.ascendancy} cap={ASCENDANCY_CAP} />
+          )}
+        </div>
 
-        {showSets && (
-          <Segmented
-            legend="Editing"
-            value={allocationMode}
-            options={[
-              { value: 'shared', label: 'Main' },
-              { value: 'set1', label: 'Set 1' },
-              { value: 'set2', label: 'Set 2' },
-            ]}
-            onChange={setAllocationMode}
-          />
-        )}
-        <label style={toggleStyle} title="Plan separate passives per weapon set">
-          <input
-            type="checkbox"
-            checked={showSets}
-            onChange={(e) => setWeaponSetsEnabled(e.target.checked)}
-            style={toggleInputStyle}
-          />
-          <span>Weapon Sets</span>
-        </label>
-      </div>
-
-      {/* Row 3 — point counters */}
-      <div style={rowStyle}>
-        <AttributeControls data={data} />
-        {showSets ? (
-          <>
-            <BudgetChip kind="passive" label="Shared" count={counts.shared} />
-            <BudgetChip
-              kind="weaponSet1"
-              label="Set 1"
-              count={counts.set1}
-              cap={caps.weaponSet}
-            />
-            <BudgetChip
-              kind="weaponSet2"
-              label="Set 2"
-              count={counts.set2}
-              cap={caps.weaponSet}
-            />
-            <BudgetChip
-              kind="passive"
-              label="Active S1"
-              count={counts.activeIn1}
-              cap={caps.passive}
-              note={unspentNote(caps.passive - counts.activeIn1)}
-            />
-            <BudgetChip
-              kind="passive"
-              label="Active S2"
-              count={counts.activeIn2}
-              cap={caps.passive}
-              note={unspentNote(caps.passive - counts.activeIn2)}
-            />
-          </>
-        ) : (
-          // Sets off → one plain passives counter (shared == active when there
-          // are no weapon-set allocations).
-          <BudgetChip kind="passive" label="Passives" count={counts.shared} cap={caps.passive} />
-        )}
-        {ascendancyId && (
-          <BudgetChip
-            kind="ascendancy"
-            label="Ascendancy"
-            count={counts.ascendancy}
-            cap={ASCENDANCY_CAP}
-          />
-        )}
-      </div>
-
-      {/* Row 4 — actions */}
-      <div style={rowStyle}>
-        <UndoRedoButtons />
-        <ResetButton />
-        <ShareButton />
-        <ExportBuildButton data={data} />
+        <div className="toolbar-actions">
+          <div className="toolbar-row toolbar-history">
+            <UndoRedoButtons />
+            <ResetButton />
+          </div>
+          <div className="toolbar-row toolbar-output">
+            <ShareButton />
+            <ExportBuildButton data={data} />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-/** Render the unspent-points suffix for an active-points chip. Negative (over
- *  cap) shows nothing — the chip's own over-cap styling carries that. */
 function unspentNote(unspent: number): string | undefined {
   if (unspent < 0) return undefined;
   return unspent === 0 ? 'full' : `${unspent} left`;
 }
 
-/** A small segmented button group for the allocation-mode (Main / Set 1 /
- *  Set 2) selector. Generic over the value type. */
-function Segmented<T extends string | number>({
-  legend, value, options, onChange,
-}: Readonly<{
-  legend: string;
-  value: T;
-  options: ReadonlyArray<{ value: T; label: string }>;
-  onChange: (v: T) => void;
-}>) {
-  return (
-    <fieldset style={segmentedWrapStyle}>
-      <legend style={segmentedLegendStyle}>{legend}</legend>
-      <div style={segmentedGroupStyle}>
-        {options.map((opt, i) => {
-          const selected = opt.value === value;
-          const base = selected ? segmentSelectedStyle : segmentStyle;
-          // The group's own border draws the left edge — only inner buttons
-          // get a divider, so the first button has no stray double line.
-          return (
-            <button
-              key={String(opt.value)}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => onChange(opt.value)}
-              style={i === 0 ? { ...base, borderLeft: 'none' } : base}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
-
-const containerStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 16,
-  left: 16,
-  // Cap to viewport on narrow screens so the toolbar can't overflow off-screen.
-  maxWidth: 'calc(100vw - 32px)',
-  boxSizing: 'border-box',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  padding: '8px 12px',
-  background: palette.panelBg,
-  border: `1px solid ${palette.border}`,
-  borderRadius: 6,
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: palette.textPrimary,
-  boxShadow: '0 6px 18px rgba(0, 0, 0, 0.55)',
-  zIndex: 10,
-  pointerEvents: 'auto',
-};
-
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 8,
-  alignItems: 'flex-end',
-};
-
-
-// The label is just the column layout; the typographic styling lives on the
-// title span (below) so the rune glow and display font don't inherit down
-// onto the <select> value text.
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-};
-
-// Dropdown title — carved display font, glyph-blue, with the same rune-glow
-// shine as the tooltip header.
-const labelTitleStyle: React.CSSProperties = {
-  fontSize: 12,
-  fontFamily: fontDisplay,
-  color: palette.textTitle,
-  textTransform: 'uppercase',
-  letterSpacing: 1.5,
-  textShadow: `0 0 8px ${palette.runeGlow}, 0 1px 2px rgba(0, 0, 0, 0.8)`,
-};
-
-const selectStyle: React.CSSProperties = {
-  background: palette.fieldBg,
-  color: palette.textPrimary,
-  fontFamily: fontBody,
-  border: `1px solid ${palette.border}`,
-  borderRadius: 3,
-  height: controlHeight,
-  boxSizing: 'border-box',
-  padding: '0 8px',
-  fontSize: 13,
-  minWidth: 140,
-  cursor: 'pointer',
-};
-
-// "Weapon Sets" opt-in checkbox. Aligned to the bottom of row 1 so it sits on
-// the same baseline as the adjacent select controls.
-const toggleStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  height: controlHeight,
-  fontSize: 13,
-  color: palette.textMetal,
-  cursor: 'pointer',
-  userSelect: 'none',
-};
-
-// Tint the native checkbox to the signature rune blue so it matches the rest
-// of the toolbar instead of the browser's default green.
-const toggleInputStyle: React.CSSProperties = {
-  accentColor: palette.rune,
-  cursor: 'pointer',
-};
-
-// Segmented control (allocation-mode selector).
-// Rendered as a borderless fieldset so the legend labels the group for
-// screen readers without drawing the default fieldset chrome.
-const segmentedWrapStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  margin: 0,
-  padding: 0,
-  border: 'none',
-};
-
-const segmentedLegendStyle: React.CSSProperties = {
-  float: 'none',
-  width: 'auto',
-  padding: 0,
-  fontSize: 12,
-  fontFamily: fontDisplay,
-  color: palette.textTitle,
-  textTransform: 'uppercase',
-  letterSpacing: 1.2,
-  textShadow: `0 0 8px ${palette.runeGlow}, 0 1px 2px rgba(0, 0, 0, 0.8)`,
-};
-
-const segmentedGroupStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  border: `1px solid ${palette.border}`,
-  borderRadius: 3,
-  overflow: 'hidden',
-};
-
-const segmentStyle: React.CSSProperties = {
-  background: palette.fieldBg,
-  color: palette.textMuted,
-  border: 'none',
-  borderLeft: `1px solid ${palette.border}`,
-  height: controlHeight,
-  boxSizing: 'border-box',
-  padding: '0 10px',
-  fontSize: 13,
-  fontFamily: fontBody,
-  cursor: 'pointer',
-};
-
-const segmentSelectedStyle: React.CSSProperties = {
-  ...segmentStyle,
-  background: palette.headerBg,
-  color: palette.textTitle,
-  fontWeight: 600,
-};
-
-// Standalone hamburger button shown when the toolbar is collapsed (either
-// viewport). Same visual language as the container so it reads as the
-// toolbar's minimised state rather than a stray icon.
-const toggleButtonStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 16,
-  left: 16,
-  width: 40,
-  height: 40,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: palette.panelBg,
-  border: `1px solid ${palette.border}`,
-  borderRadius: 6,
-  color: palette.textMetal,
-  fontSize: 22,
-  lineHeight: 1,
-  cursor: 'pointer',
-  zIndex: 10,
-  pointerEvents: 'auto',
-};
-
-const updateToggleButtonStyle: React.CSSProperties = {
-  ...toggleButtonStyle,
-  width: 84,
-  gap: 5,
-  color: palette.textTitle,
-  fontSize: 19,
-};
-
-const updateToggleBadgeStyle: React.CSSProperties = {
-  color: palette.rune,
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: 0.2,
-};
-
-// Collapse handle: a small tab hanging off the panel's bottom-right edge,
-// with an up-chevron hinting the toolbar folds away upward. Lives outside the
-// box so it costs no layout space inside it.
-const collapseTabStyle: React.CSSProperties = {
-  position: 'absolute',
-  bottom: -27,
-  right: 14,
-  width: 52,
-  height: 28,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: palette.panelBg,
-  border: `1px solid ${palette.border}`,
-  borderTop: 'none',
-  borderRadius: '0 0 6px 6px',
-  color: palette.textMetal,
-  cursor: 'pointer',
-  padding: 0,
-  pointerEvents: 'auto',
-};
+const themeVars = {
+  '--toolbar-bg': palette.panelBg,
+  '--toolbar-header': palette.headerBg,
+  '--toolbar-field': palette.fieldBg,
+  '--toolbar-border': palette.border,
+  '--toolbar-divider': palette.divider,
+  '--toolbar-text': palette.textPrimary,
+  '--toolbar-title': palette.textTitle,
+  '--toolbar-metal': palette.textMetal,
+  '--toolbar-muted': palette.textMuted,
+  '--toolbar-accent': palette.rune,
+  '--toolbar-glow': palette.runeGlow,
+  '--toolbar-shadow': panelShadow,
+  '--toolbar-body-font': fontBody,
+  '--toolbar-display-font': fontDisplay,
+} as React.CSSProperties;

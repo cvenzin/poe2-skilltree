@@ -44,6 +44,10 @@ export default function Attribution() {
             This product isn&apos;t affiliated with or endorsed by Grinding
             Gear Games in any way.
           </div>
+          <a href={`${import.meta.env.BASE_URL}guides/export-to-poe2/`} target="_blank"
+            rel="noopener noreferrer" style={popoverLinkStyle}>
+            Export guide ↗
+          </a>
           <a
             href={REPO_URL}
             target="_blank"
@@ -55,10 +59,6 @@ export default function Attribution() {
         </div>
       )}
       <div style={chipRowStyle}>
-        <a href={`${import.meta.env.BASE_URL}guides/export-to-poe2/`} target="_blank"
-          rel="noopener noreferrer" style={guideLinkStyle}>
-          Export guide ↗
-        </a>
         {activeVersion && (
           <span style={versionStyle} aria-label={`Tree data version ${activeVersion}`}>
             v{activeVersion}
@@ -107,20 +107,6 @@ const versionStyle: React.CSSProperties = {
   padding: '3px 8px',
   opacity: 0.85,
   letterSpacing: 0.3,
-};
-
-const guideLinkStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  minHeight: 44,
-  padding: '0 10px',
-  borderRadius: 6,
-  background: palette.panelBg,
-  border: `1px solid ${palette.border}`,
-  color: palette.rune,
-  fontSize: 12,
-  textDecoration: 'underline',
-  textUnderlineOffset: 3,
 };
 
 const infoButtonStyle: React.CSSProperties = {

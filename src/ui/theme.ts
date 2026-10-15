@@ -72,6 +72,5 @@ export const fontBody = "system-ui, 'Segoe UI', Roboto, sans-serif";
 export const panelShadow =
   '0 8px 24px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(93, 180, 255, 0.06)';
 
-/** Uniform height (px) for interactive toolbar controls — selects, search,
- *  buttons, chips — so a wrapped row stays visually aligned. */
-export const controlHeight = 28;
+/** Responsive height for toolbar controls. Other overlays keep the 28px fallback. */
+export const controlHeight = 'var(--toolbar-control-height, 28px)';

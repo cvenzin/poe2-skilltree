@@ -35,5 +35,5 @@ const themeVars = {
   '--attribute-accent': palette.rune, '--attribute-danger': palette.dangerText,
   '--attribute-body-font': fontBody, '--attribute-title-font': fontDisplay,
   '--attribute-shadow': panelShadow,
-  '--attribute-control-height': `${controlHeight}px`,
+  '--attribute-control-height': controlHeight,
 } as React.CSSProperties;

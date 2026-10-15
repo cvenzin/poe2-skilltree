@@ -26,7 +26,12 @@ Live: <https://poe2planner.app/>
   before applying the update.
 - Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
-- Mobile layout: collapsible toolbar and tooltips at the opposite screen edge
+- Responsive toolbar: labeled Build toggle, in-panel close button, full-width
+  search, paired class/ascendancy controls, and an accented export action. Mobile
+  controls have 44px touch targets; the panel scrolls on short screens while its
+  header stays visible. The toolbar opens by default on desktop and starts
+  collapsed on mobile; opening and closing it keeps keyboard focus on the toggle.
+- Mobile tooltips appear at the opposite screen edge
   from the pressed node (bottom for upper-half nodes, top for lower-half nodes).
   The tooltip stays at that edge during the hold; the toolbar fades while a
   top tooltip overlays it, then returns to normal when inspection ends.
@@ -95,7 +100,7 @@ The public [export guide](https://poe2planner.app/guides/export-to-poe2/)
 is a standalone HTML page at `guides/export-to-poe2/index.html`, with styles in
 `guides/guide.css` and screenshots in `public/guides/`. Vite builds both the
 planner and guide; GitHub Pages serves the guide directly at its directory URL,
-without client-side routing or JavaScript. Links in the planner and export dialog
+without client-side routing or JavaScript. Links in the About popover and export dialog
 open the guide in a new tab so readers keep their current tree open.
 
 When the export flow changes, update the guide and its screenshots alongside the

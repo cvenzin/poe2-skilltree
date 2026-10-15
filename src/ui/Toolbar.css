@@ -1,12 +1,159 @@
+.tree-toolbar, .toolbar-toggle {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 10px;
+  background: var(--toolbar-bg);
+  color: var(--toolbar-text);
+  font-family: var(--toolbar-body-font);
+  box-shadow: var(--toolbar-shadow);
+  z-index: 10;
+  pointer-events: auto;
+}
 .tree-toolbar {
+  --toolbar-control-height: 32px;
+  display: flex;
+  flex-direction: column;
+  width: 400px;
+  max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+  max-width: calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right)));
+  font-size: 13px;
   transition: opacity 120ms ease;
 }
-
-/* The tooltip follows the toolbar in App and keeps its edge fixed during a hold. */
-.tree-toolbar:has(~ [data-mobile-tooltip-edge="top"]) {
-  opacity: 0.4;
+.toolbar-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--toolbar-header);
+  border-bottom: 1px solid var(--toolbar-divider);
+  border-radius: 10px 10px 0 0;
 }
-
+.toolbar-title {
+  flex: 1;
+  font: 16px var(--toolbar-display-font);
+  color: var(--toolbar-title);
+  letter-spacing: .6px;
+  text-shadow: 0 0 8px var(--toolbar-glow);
+}
+.toolbar-version { display: flex; flex-direction: column; gap: 3px; }
+.toolbar-version > span { font-size: 10px; color: var(--toolbar-muted); }
+.toolbar-version select { width: 84px; }
+.toolbar-close, .toolbar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--toolbar-metal);
+}
+.toolbar-close {
+  flex: 0 0 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+}
+.toolbar-toggle { min-height: 48px; gap: 9px; padding: 0 14px; font-size: 14px; }
+.toolbar-update { color: var(--toolbar-accent); font-size: 11px; }
+.toolbar-toggle svg, .toolbar-close svg { flex-shrink: 0; }
+.toolbar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--toolbar-border) transparent;
+}
+.toolbar-content > * { flex-shrink: 0; }
+.toolbar-character { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.toolbar-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.toolbar-field > span, .toolbar-editing legend {
+  font: 11px var(--toolbar-display-font);
+  color: var(--toolbar-title);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+.tree-toolbar select {
+  box-sizing: border-box;
+  min-width: 0;
+  height: var(--toolbar-control-height);
+  padding: 0 8px;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 5px;
+  background: var(--toolbar-field);
+  color: var(--toolbar-text);
+  font: 13px var(--toolbar-body-font);
+  cursor: pointer;
+}
+.toolbar-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.toolbar-weapon-sets { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.toolbar-checkbox { display: inline-flex; align-items: center; gap: 8px; min-height: var(--toolbar-control-height); cursor: pointer; color: var(--toolbar-metal); }
+.toolbar-checkbox input { width: 16px; height: 16px; margin: 0; accent-color: var(--toolbar-accent); cursor: pointer; }
+.toolbar-editing { min-width: 0; padding: 0; margin: 0; border: 0; }
+.toolbar-editing legend { margin-bottom: 6px; padding: 0; }
+.toolbar-segments { display: flex; }
+.toolbar-segments button {
+  min-height: var(--toolbar-control-height);
+  padding: 0 10px;
+  border: 1px solid var(--toolbar-border);
+  border-right: 0;
+  background: var(--toolbar-field);
+  color: var(--toolbar-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.toolbar-segments button:first-child { border-radius: 5px 0 0 5px; }
+.toolbar-segments button:last-child { border-right: 1px solid var(--toolbar-border); border-radius: 0 5px 5px 0; }
+.toolbar-segments button[aria-pressed=true] { background: var(--toolbar-header); color: var(--toolbar-title); box-shadow: inset 0 -2px var(--toolbar-accent); }
+.toolbar-budgets { padding-top: 12px; border-top: 1px solid var(--toolbar-divider); }
+.toolbar-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 12px; border-top: 1px solid var(--toolbar-divider); }
+.toolbar-output { flex: 1; justify-content: flex-end; }
+.toolbar-output > .build-export-button { flex: 1; white-space: nowrap; }
+.toolbar-history { gap: 6px; }
+.reset-control { display: inline-block; }
+.reset-control:has(.reset-confirmation) { display: contents; }
+.toolbar-history:has(.reset-confirmation) { flex-basis: 100%; }
+.tree-toolbar button, .tree-toolbar input, .tree-toolbar select { touch-action: manipulation; }
+.tree-toolbar button:focus-visible, .tree-toolbar select:focus-visible, .toolbar-toggle:focus-visible {
+  outline: 2px solid var(--toolbar-accent);
+  outline-offset: 3px;
+}
+.tree-search:focus-within { outline: 2px solid var(--toolbar-accent); outline-offset: 2px; }
+.tree-toolbar button:disabled { cursor: default; }
+@media (hover: hover) {
+  .toolbar-toggle:hover, .toolbar-close:hover { background: var(--toolbar-field); border-color: var(--toolbar-accent); color: var(--toolbar-title); }
+}
+/* The tooltip follows the toolbar in App and keeps its edge fixed during a hold. */
+.tree-toolbar:has(~ [data-mobile-tooltip-edge="top"]) { opacity: .4; }
+@media (max-width: 640px) {
+  .tree-toolbar {
+    --toolbar-control-height: 44px;
+    --toolbar-input-font-size: 16px;
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(56px, env(safe-area-inset-bottom)));
+  }
+  .toolbar-close { flex-basis: 44px; height: 44px; }
+  .toolbar-title { font-size: 15px; }
+  .tree-toolbar select, .tree-search input { font-size: 16px; }
+  .toolbar-version select { width: 90px; font-size: 14px; }
+  .toolbar-content { gap: 14px; }
+  .toolbar-actions { flex-direction: column; }
+  .toolbar-output { justify-content: stretch; }
+  .toolbar-history button { min-width: 44px; }
+  .toolbar-checkbox input { width: 18px; height: 18px; }
+  .tree-search button { min-width: 36px; min-height: 40px; }
+}
+@media (max-width: 360px) {
+  .toolbar-title { font-size: 14px; white-space: nowrap; }
+  .toolbar-header { gap: 6px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .tree-toolbar { transition: none; }
 }

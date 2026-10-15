@@ -84,7 +84,7 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
   const display1Based = computeDisplayIndex(cursor, total);
 
   return (
-    <div style={containerStyle}>
+    <div className="tree-search" style={containerStyle}>
       <input
         ref={inputRef}
         type="search"
@@ -133,11 +133,10 @@ function computeDisplayIndex(cursor: number, total: number): number {
 }
 
 const containerStyle: React.CSSProperties = {
-  // Grow to absorb spare width in the toolbar's first row so it lines up with
-  // the (often wider) controls row below. `flex-basis: 160` keeps a sane
-  // minimum before it starts expanding.
+  // Full-width search at the top of the toolbar content.
   display: 'flex',
-  flex: '1 1 160px',
+  flexShrink: 0,
+  minWidth: 0,
   alignItems: 'center',
   gap: 4,
   padding: '0 8px',
@@ -153,7 +152,7 @@ const inputStyle: React.CSSProperties = {
   color: palette.textPrimary,
   border: 'none',
   outline: 'none',
-  fontSize: 13,
+  fontSize: 'var(--toolbar-input-font-size, 13px)',
   fontFamily: 'inherit',
   flex: 1,
   minWidth: 0,

@@ -13,7 +13,7 @@ export default function ExportBuildButton({ data }: Readonly<{ data: TreeData }>
   };
   return (
     <>
-      <button ref={buttonRef} type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} style={buttonStyle}>
+      <button ref={buttonRef} className="build-export-button" type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} style={buttonStyle}>
         Export to PoE 2
       </button>
       {open && createPortal(<ExportBuildDialog data={data} onClose={onClose} />, document.body)}
@@ -22,7 +22,7 @@ export default function ExportBuildButton({ data }: Readonly<{ data: TreeData }>
 }
 
 const buttonStyle: React.CSSProperties = {
-  background: palette.fieldBg, color: palette.textPrimary,
-  border: `1px solid ${palette.border}`, borderRadius: 3,
-  height: controlHeight, padding: '0 12px', fontSize: 13, cursor: 'pointer',
+  background: palette.runeDark, color: palette.textTitle,
+  border: `1px solid ${palette.rune}`, borderRadius: 5,
+  height: controlHeight, padding: '0 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
 };

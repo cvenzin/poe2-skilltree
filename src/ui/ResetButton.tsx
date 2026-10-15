@@ -50,7 +50,7 @@ export default function ResetButton() {
   };
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
+    <div className="reset-control">
       <button
         ref={buttonRef}
         type="button"
@@ -62,7 +62,7 @@ export default function ResetButton() {
         Reset
       </button>
       {open && (
-        <div ref={popoverRef} style={popoverStyle} role="dialog" aria-modal="false">
+        <div ref={popoverRef} className="reset-confirmation" style={popoverStyle} role="dialog" aria-label="Reset allocation" aria-modal="false">
           <div style={{ marginBottom: 8 }}>Discard <strong>{allocCount}</strong> allocated points?</div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => setOpen(false)} style={cancelStyle}>Cancel</button>
@@ -90,15 +90,12 @@ const buttonStyle: React.CSSProperties = {
 };
 
 const popoverStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: '100%',
-  marginTop: 6,
-  left: 0,
   background: palette.panelBgSolid,
   border: `1px solid ${palette.border}`,
   borderRadius: 4,
   padding: 10,
-  minWidth: 220,
+  width: '100%',
+  boxSizing: 'border-box',
   fontSize: 13,
   color: palette.textPrimary,
   boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
@@ -106,6 +103,7 @@ const popoverStyle: React.CSSProperties = {
 };
 
 const cancelStyle: React.CSSProperties = {
+  height: controlHeight,
   background: 'transparent',
   color: palette.textPrimary,
   border: `1px solid ${palette.border}`,
@@ -115,6 +113,7 @@ const cancelStyle: React.CSSProperties = {
 };
 
 const confirmStyle: React.CSSProperties = {
+  height: controlHeight,
   background: palette.dangerBg,
   color: palette.dangerText,
   border: `1px solid ${palette.dangerBorder}`,

@@ -88,8 +88,8 @@ const buttonStyle: React.CSSProperties = {
 
 const toastBaseStyle: React.CSSProperties = {
   position: 'absolute',
-  top: 'calc(100% + 6px)',
-  right: 0,
+  bottom: 'calc(100% + 6px)',
+  left: 0,
   whiteSpace: 'nowrap',
   fontSize: 11,
   padding: '3px 8px',
