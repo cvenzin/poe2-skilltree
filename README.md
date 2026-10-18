@@ -108,15 +108,23 @@ dialog. Keep the guide's canonical URL and `public/sitemap.xml` in sync. Verify
 the guide from `npm run preview`, including a direct load, narrow-screen layout,
 and its links back to the planner.
 
-### Regenerating icons
+### Regenerating icons and social artwork
 
 `public/favicon.svg` is the source of truth for the icon. To regenerate the
 rasterized PNG variants (`apple-touch-icon.png`, `icon-192.png`,
-`icon-512.png`):
+`icon-512.png`) and the 1200 × 630 social preview (`social-preview.png`):
 
 ```bash
 node scripts/gen-icons.mjs
 ```
+
+The gold branching rune and teal gem are shared by the app icons and social
+artwork. `scripts/gen-social-image.mjs` composes the preview with embedded copy
+and decorative paths from the pinned 0.5.5 GGG export. It can also be run on its
+own. The illustration is branding, not a recommended build; it doesn't modify
+the export. Both the planner and export guide reference this image through
+Open Graph and Twitter metadata, keeping the large-image card format.
+The generator also keeps `og-image.png` as a compatibility copy for older embeds.
 
 ## Tree data
 

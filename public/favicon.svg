@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="10" ry="10" fill="#141a24"/>
-  <g stroke="#4f6b8a" stroke-width="3" stroke-linecap="round" fill="none">
-    <line x1="32" y1="32" x2="14" y2="14"/>
-    <line x1="32" y1="32" x2="50" y2="14"/>
-    <line x1="32" y1="32" x2="50" y2="50"/>
-    <line x1="32" y1="32" x2="14" y2="50"/>
-  </g>
-  <g fill="#1a212d" stroke="#577494" stroke-width="2">
-    <circle cx="14" cy="14" r="4.5"/>
-    <circle cx="50" cy="14" r="4.5"/>
-    <circle cx="50" cy="50" r="4.5"/>
-    <circle cx="14" cy="50" r="4.5"/>
-  </g>
-  <circle cx="32" cy="32" r="11" fill="#1a212d" stroke="#5db4ff" stroke-width="2.5"/>
-  <circle cx="32" cy="32" r="4.5" fill="#5db4ff"/>
+  <defs>
+    <linearGradient id="gold" x1="12" y1="8" x2="51" y2="57" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffecb3"/><stop offset=".48" stop-color="#d5aa61"/><stop offset="1" stop-color="#92632f"/>
+    </linearGradient>
+    <linearGradient id="gem" x1="26" y1="24" x2="38" y2="39" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c1fff1"/><stop offset=".5" stop-color="#63dbc5"/><stop offset="1" stop-color="#178f8c"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="13" fill="#101719"/>
+  <path d="M32 5 57 30v4L32 59 7 34v-4Z" fill="#192324" stroke="url(#gold)" stroke-width="2.5"/>
+  <path d="M32 48V32L18 18m14 14 14-14" fill="none" stroke="url(#gold)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m18 13 5 5-5 5-5-5Zm28 0 5 5-5 5-5-5Z" fill="url(#gold)"/>
+  <path d="m32 22 10 10-10 10-10-10Z" fill="url(#gem)" stroke="#e1f9d6" stroke-width="1.5"/>
+  <path d="m32 25 6 7h-6Z" fill="#e0fff3" opacity=".65"/>
+  <path d="m32 45 4 4-4 4-4-4Z" fill="url(#gold)"/>
 </svg>
