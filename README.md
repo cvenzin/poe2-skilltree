@@ -10,7 +10,7 @@ Live: <https://poe2planner.app/>
 
 - Class and ascendancy selection (filters to playable classes per export
   version).
-- Search nodes by name or stats; Enter / Shift+Enter steps through matches.
+- Search nodes by name or stats to highlight matches with circles on the tree; Enter / Shift+Enter steps through matches.
 - Click an unallocated node to preview the cheapest path from your class
   start; click again to allocate.
 - Click an allocated node to cascade-unallocate every node that depended on

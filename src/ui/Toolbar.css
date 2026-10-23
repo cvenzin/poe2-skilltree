@@ -127,6 +127,8 @@
   outline-offset: 3px;
 }
 .tree-search:focus-within { outline: 2px solid var(--toolbar-accent); outline-offset: 2px; }
+/* SearchInput provides its own clear button. */
+.tree-search input::-webkit-search-cancel-button { display: none; }
 .tree-toolbar button:disabled { cursor: default; }
 @media (hover: hover) {
   .toolbar-toggle:hover, .toolbar-close:hover { background: var(--toolbar-field); border-color: var(--toolbar-accent); color: var(--toolbar-title); }

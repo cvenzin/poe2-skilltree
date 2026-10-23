@@ -14,7 +14,7 @@ interface SearchInputProps {
 /**
  * Search input on the toolbar.
  *
- *   `[🔍 input               ] [3/12] [×]`
+ *   `[🔍 input                         ] [×]`
  *
  * Debounces the keystroke → matches recompute by 120 ms so per-keystroke
  * scans coalesce. The search index itself is memoised on `data` — rebuilt
@@ -27,7 +27,6 @@ interface SearchInputProps {
 export default function SearchInput({ data }: Readonly<SearchInputProps>) {
   const query = useStore((s) => s.searchQuery);
   const matches = useStore((s) => s.searchMatches);
-  const cursor = useStore((s) => s.searchCursor);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const allocation = useStore((s) => s.allocation);
   const setSearch = useStore((s) => s.setSearch);
@@ -80,8 +79,6 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
   }, []);
 
   const hasQuery = draft.length > 0;
-  const total = matches.length;
-  const display1Based = computeDisplayIndex(cursor, total);
 
   return (
     <div className="tree-search" style={containerStyle}>
@@ -106,11 +103,6 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
         style={inputStyle}
       />
       {hasQuery && (
-        <span style={chipStyle} aria-live="polite">
-          {total === 0 ? 'no matches' : `${display1Based}/${total}`}
-        </span>
-      )}
-      {hasQuery && (
         <button
           type="button"
           onClick={() => { setDraft(''); clearSearch(); inputRef.current?.focus(); }}
@@ -123,13 +115,6 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
       )}
     </div>
   );
-}
-
-/** 1-based index displayed in the count chip. With no specific cursor active
- *  (`cursor === -1`), the chip shows "1/total" if there are matches, else "0/0". */
-function computeDisplayIndex(cursor: number, total: number): number {
-  if (cursor >= 0) return cursor + 1;
-  return total > 0 ? 1 : 0;
 }
 
 const containerStyle: React.CSSProperties = {
@@ -157,13 +142,6 @@ const inputStyle: React.CSSProperties = {
   flex: 1,
   minWidth: 0,
   padding: 0,
-};
-
-const chipStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: palette.textStat,
-  fontVariantNumeric: 'tabular-nums',
-  whiteSpace: 'nowrap',
 };
 
 const clearButtonStyle: React.CSSProperties = {
