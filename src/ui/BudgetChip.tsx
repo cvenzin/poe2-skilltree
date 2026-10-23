@@ -59,14 +59,13 @@ export default function BudgetChip({
       }}
       data-kind={kind}
     >
-      {/* Inner row aligns the display-font label and the body-font numbers on
-          a shared text baseline (their box centres don't coincide because the
-          fonts have different metrics); the chip then centres the row. */}
+      {/* One font and line height keep the label and value on the same baseline. */}
       <span style={chipInnerStyle}>
         <span style={chipLabelStyle}>{label}</span>
-        <span style={over ? chipCountOverStyle : chipCountStyle}>{count}</span>
-        {cap !== undefined && <span style={chipSlashStyle}>/</span>}
-        {cap !== undefined && <span style={capStyle}>{cap}</span>}
+        <span style={numStyle}>
+          <span style={over ? chipCountOverStyle : undefined}>{count}</span>
+          {cap !== undefined && <><span style={chipSlashStyle}> / </span>{cap}</>}
+        </span>
         {note && <span style={chipNoteStyle}>{note}</span>}
       </span>
     </div>
@@ -82,8 +81,12 @@ const chipStyle: React.CSSProperties = {
   background: palette.fieldBg,
   border: `1px solid ${palette.border}`,
   borderRadius: 3,
+  fontFamily: fontDisplay,
+  fontWeight: 600,
   fontSize: 13,
+  lineHeight: 1,
   fontVariantNumeric: 'tabular-nums',
+  whiteSpace: 'nowrap',
   transition: 'background-color 150ms, border-color 150ms',
 };
 
@@ -103,8 +106,6 @@ const chipShakeStyle: React.CSSProperties = {
 };
 
 const chipLabelStyle: React.CSSProperties = {
-  fontSize: 12,
-  fontFamily: fontDisplay,
   textTransform: 'uppercase',
   letterSpacing: 1.2,
   color: palette.textMuted,
@@ -115,16 +116,10 @@ const chipLabelStyle: React.CSSProperties = {
 // value. Over-cap is the only state that changes the count's colour/weight.
 const numStyle: React.CSSProperties = {
   color: palette.textTitle,
-  fontWeight: 500,
-  fontSize: 13,
-  lineHeight: 1,
-  fontVariantNumeric: 'tabular-nums',
 };
 
-const chipCountStyle: React.CSSProperties = numStyle;
-const chipCountOverStyle: React.CSSProperties = { ...numStyle, color: palette.dangerText, fontWeight: 700 };
-const chipSlashStyle: React.CSSProperties = { ...numStyle, opacity: 0.4 };
-const capStyle: React.CSSProperties = numStyle;
+const chipCountOverStyle: React.CSSProperties = { color: palette.dangerText, fontWeight: 700 };
+const chipSlashStyle: React.CSSProperties = { opacity: 0.4 };
 
 // Muted trailing note (e.g. unspent points) — set apart with a thin divider.
 const chipNoteStyle: React.CSSProperties = {
