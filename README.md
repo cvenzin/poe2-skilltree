@@ -27,8 +27,9 @@ Live: <https://poe2planner.app/>
   the planner keeps the chosen patch without requiring another edit.
 - Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
-- Responsive toolbar: labeled Build toggle, in-panel close button, full-width
-  search, paired class/ascendancy controls, and an accented export action. Mobile
+- Responsive toolbar: Build toggle with a chevron in the heading font,
+  in-panel close button, full-width search, paired class/ascendancy controls,
+  and an accented export action. Mobile
   controls have 44px touch targets; the panel scrolls on short screens while its
   header stays visible. The toolbar opens by default on desktop and starts
   collapsed on mobile; opening and closing it keeps keyboard focus on the toggle.

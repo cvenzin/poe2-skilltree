@@ -57,7 +57,13 @@
   border-radius: 6px;
   background: transparent;
 }
-.toolbar-toggle { min-height: 48px; gap: 9px; padding: 0 14px; font-size: 14px; }
+.toolbar-toggle {
+  min-height: 48px;
+  gap: 8px;
+  padding: 0 14px;
+  font: 600 14px / 1 var(--toolbar-display-font);
+  letter-spacing: .6px;
+}
 .toolbar-update { color: var(--toolbar-accent); font-size: 11px; }
 .toolbar-toggle svg, .toolbar-close svg { flex-shrink: 0; }
 .toolbar-content {

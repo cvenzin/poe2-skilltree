@@ -56,12 +56,12 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
     return (
       <>
         <button ref={toggleRef} type="button" className="toolbar-toggle" style={themeVars}
-          aria-label={patchUpdateVersion ? `Open toolbar. Patch ${patchUpdateVersion} is available.` : 'Open toolbar'}
+          aria-label={patchUpdateVersion ? `Open build controls. Patch ${patchUpdateVersion} is available.` : 'Open build controls'}
           aria-expanded={false} aria-controls="tree-toolbar-content" onClick={toggleExpanded}>
-          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
           <span>Build</span>
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="m3 4.5 3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           {patchUpdateVersion && <span className="toolbar-update">Update</span>}
         </button>
         {/* Keep node and first-allocation dialogs available with the menu closed. */}
