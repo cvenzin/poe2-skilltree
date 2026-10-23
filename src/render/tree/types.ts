@@ -115,6 +115,8 @@ export interface MountContext {
   worldContainer: Container | null;
   /** Cached fit-to-screen scale — the camera-framing floor for search. */
   fitScale: number;
+  /** Default fitted camera scale used to size edge strokes in CSS pixels. */
+  edgeReferenceScale: number;
   /** Snapshot of `prefers-reduced-motion: reduce` at mount time. When true:
    *  - Pan inertia is disabled (decelerate skipped).
    *  - Wheel zoom is not animated.

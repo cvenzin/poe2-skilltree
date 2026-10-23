@@ -123,7 +123,7 @@ export async function mount(
   document.addEventListener('visibilitychange', onVisibility);
   ctx.removeVisibilityListener = () => { document.removeEventListener('visibilitychange', onVisibility); };
 
-  // Repaint nodes (texture swap) and edges (3 state-coloured Graphics layers)
+  // Repaint nodes (texture swap) and edges (five state-coloured stroke layers)
   // whenever allocation or preview changes. Subscribe AFTER the draws so
   // every wrap and edge layer is registered. The subscription unsubs in the
   // useEffect cleanup via `ctx.unsubscribeStore`.
@@ -215,6 +215,9 @@ export async function mount(
 
   configureViewport(viewport, app, world, ctx.reduceMotion);
   attachGestureSuppression(viewport, ctx);
-  setInitialCamera(viewport, app, world, computeMainTreeBounds(data), savedCamera);
+  const mainTree = computeMainTreeBounds(data);
+  setInitialCamera(viewport, app, world, mainTree, null);
+  ctx.edgeReferenceScale = viewport.scale.x;
+  if (savedCamera) setInitialCamera(viewport, app, world, mainTree, savedCamera);
   ctx.observer = attachResizeObserver(host, app, viewport, world, ctx);
 }

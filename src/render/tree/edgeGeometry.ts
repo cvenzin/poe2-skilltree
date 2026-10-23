@@ -1,6 +1,8 @@
 import type { TreeNode, Edge } from '../../data/types';
 import { nodeHasVisual } from '../frameForNode';
-import { Graphics } from 'pixi.js';
+import type { GraphicsPath } from 'pixi.js';
+
+type EdgePath = Pick<GraphicsPath, 'moveTo' | 'lineTo' | 'arc'>;
 
 export const identityTransform = { tx: (n: number) => n, ty: (n: number) => n };
 
@@ -46,7 +48,7 @@ export function resolveDrawableEdge(
  * works for the main tree (identity) and the scaled ascendancy overlay.
  */
 export function traceEdge(
-  layer: Graphics,
+  layer: EdgePath,
   a: TreeNode & { x: number; y: number },
   b: TreeNode & { x: number; y: number },
   edge: Edge,
@@ -69,7 +71,7 @@ export function traceEdge(
  *  Returns false (no draw) when the centre isn't actually equidistant from the
  *  two endpoints — that's degenerate data we'd rather render as a straight line. */
 function tryDrawArc(
-  layer: Graphics,
+  layer: EdgePath,
   ax: number,
   ay: number,
   bx: number,

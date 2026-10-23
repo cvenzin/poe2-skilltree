@@ -85,6 +85,28 @@ Both trees are always visible. Nodes paint with the normal allocated frame; the
 main = gold, Set 1 = green, Set 2 = red. A Set 1 ↔ Set 2 edge belongs to neither
 tree and stays uncoloured.
 
+All five edge states (including blue path preview) share the stroke system in
+`src/render/tree/edgeStyle.ts`, also used by ascendancy connections. Base widths
+at the initial fitted camera are 1.65 CSS px for inactive, 2.7 px for
+allocated/shared and both weapon sets, and 3 px for preview. Widths grow with the zoom ratio
+to the power 0.35, clamped to 0.7–2.2 px for inactive, 1.25–3.4 px for allocated
+paths, and 1.45–3.6 px for preview. Allocated gold/green/red paths additionally
+receive a 10% width reduction at the initial fit and below (2.43 px at fit),
+easing smoothly back to their previous width between 1× and 2× fitted zoom.
+The 1.25 px minimum still applies; inactive and blue preview widths are unchanged.
+Gold is `#E1C36C`, green `#70C991`, red `#E27273`, and preview `#779FFF`;
+inactive stays `#766B58`. The reference remains the initial fit when
+restoring a camera. A 0.65 px dark underlay on each side separates strokes from
+background artwork, without blur or animation.
+
+Straight and curved centerlines reuse the existing Pixi path calculations and
+are cached when the layer mounts. State changes only repartition affected
+colour groups; unchanged groups retain their buffers. Zoom updates shader
+uniforms without retracing paths or uploading vertices. Each state draws its
+center and underlay together, and custom geometry/shaders are released when
+the scene or ascendancy overlay is destroyed. Antialiasing and DPR handling
+remain enabled; stroke boundary smoothing uses physical-pixel feathering.
+
 ## Weapon Sets toggle
 
 A "Weapon Sets" checkbox (off by default) gates the whole feature. When off:

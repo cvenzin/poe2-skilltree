@@ -84,6 +84,7 @@ export default function TreeCanvas({
       hoverScaledWrap: null,
       worldContainer: null,
       fitScale: 1,
+      edgeReferenceScale: 1,
       reduceMotion: prefersReducedMotion(),
       removeTickerCallback: null,
       removeVisibilityListener: null,
