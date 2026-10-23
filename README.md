@@ -23,7 +23,8 @@ Live: <https://poe2planner.app/>
 - Shareable URL hash encodes class, ascendancy, allocations, and version.
 - Older trees show an update notice when a newer patch in the same version line
   is bundled; compatible allocations carry forward, and any changes are shown
-  before applying the update.
+  before applying the update. The updated build is saved immediately, so reopening
+  the planner keeps the chosen patch without requiring another edit.
 - Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
 - Responsive toolbar: labeled Build toggle, in-panel close button, full-width

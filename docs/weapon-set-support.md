@@ -102,7 +102,9 @@ sets flips it on so points are never hidden.
 pre-weapon-set build (single `allocated` list, or share hash with only `n=`)
 loads as shared-only. Share hash adds `w1=` / `w2=` for the set branches.
 Boot selects the installed URL version first, then the saved build's installed
-version, then the default. Imports return editing to Main and clear hover,
+version, then the default. The restored build is saved immediately after a
+successful load, including patch updates, so reopening the base URL retains that
+version without another edit. Imports return editing to Main and clear hover,
 preview, search, and history. Reconciliation drops unknown keys, foreign
 ascendancy skills, and locked nodes; mismatched ascendancies become none.
 Over-budget builds and exclusive keystones/sockets are rejected rather than

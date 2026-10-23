@@ -103,8 +103,8 @@ export default function App() {
           applyBootSnapshot(activeVersion, data, loadSnapshot);
         }
 
-        // Auto-persist AFTER restore so the initial loadSnapshot doesn't
-        // immediately re-write the same bytes.
+        // Start AFTER restore so the saved build includes the loaded version
+        // and reconciled allocation. Unchanged saved builds are not rewritten.
         stopPersist = startPersistence(activeVersion);
       } catch (e: unknown) {
         if (cancelled) return;

@@ -106,8 +106,8 @@ export function loadPersistedSnapshot(version?: string): BuildSnapshot | null {
 }
 
 /**
- * Subscribe to store changes and auto-persist the build to localStorage,
- * debounced 500 ms. Returns an unsubscribe function.
+ * Save the restored build immediately, then subscribe to store changes and
+ * auto-persist edits with a 500 ms debounce. Returns an unsubscribe function.
  *
  * Only fields that belong in a build are watched — `hovered`, `previewPath`,
  * `past`, `future`, `rejectionTick` etc. are not. (Subscribing to them would
@@ -116,6 +116,7 @@ export function loadPersistedSnapshot(version?: string): BuildSnapshot | null {
 export function startPersistence(version: string): () => void {
   let timer: ReturnType<typeof globalThis.setTimeout> | undefined;
   let lastSerialised: string | null = null;
+  try { lastSerialised = localStorage.getItem(STORAGE_KEY); } catch { /* storage disabled */ }
 
   const writeIfChanged = () => {
     timer = undefined;
@@ -123,13 +124,17 @@ export function startPersistence(version: string): () => void {
     if (!snap) return;
     const next = JSON.stringify(snap);
     if (next === lastSerialised) return;
-    lastSerialised = next;
     try {
       localStorage.setItem(STORAGE_KEY, next);
+      lastSerialised = next;
     } catch {
       // Quota exceeded or storage disabled — silently drop. Save is best-effort.
     }
   };
+
+  // Restore and version migration happen before this subscription starts.
+  // Save that state now so a reload keeps the selected version without an edit.
+  writeIfChanged();
 
   const schedule = () => {
     if (timer !== undefined) globalThis.clearTimeout(timer);
