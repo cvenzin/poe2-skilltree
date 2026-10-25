@@ -29,13 +29,34 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
   // Use the initial viewport only: resizing must not discard an open panel.
   const [expanded, setExpanded] = useState(() => !isMobile);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const focusSearchOnExpand = useRef(false);
   const restoreFocus = useRef(false);
   useEffect(() => {
-    if (restoreFocus.current) {
+    if (focusSearchOnExpand.current) {
+      searchRef.current?.focus();
+      searchRef.current?.select();
+      focusSearchOnExpand.current = false;
+    } else if (restoreFocus.current) {
       toggleRef.current?.focus();
       restoreFocus.current = false;
     }
   }, [expanded]);
+  // The toolbar stays mounted when collapsed; the search input does not.
+  useEffect(() => {
+    const handler = () => {
+      restoreFocus.current = false;
+      if (searchRef.current) {
+        searchRef.current.focus();
+        searchRef.current.select();
+      } else {
+        focusSearchOnExpand.current = true;
+        setExpanded(true);
+      }
+    };
+    globalThis.addEventListener('poe2:focus-search', handler);
+    return () => { globalThis.removeEventListener('poe2:focus-search', handler); };
+  }, []);
   const toggleExpanded = () => {
     restoreFocus.current = true;
     setExpanded((value) => !value);
@@ -106,7 +127,7 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
           </label>
         </div>
 
-        <SearchInput data={data} />
+        <SearchInput data={data} inputRef={searchRef} />
         <WeaponSetControls data={data} />
         <AttributeControls data={data} />
 

@@ -64,8 +64,10 @@ describe('import budgets and shared-only skills', () => {
   const asc = keys(1000, 9);
   const data = makeTree({ '4': { isKeystone: true }, '5': { isJewelSocket: true },
     '11': { grantedPassivePoints: 1, weaponPassivePointsGranted: 100 },
-    ...Object.fromEntries(passives.map((key) => [key, {}])),
-    ...Object.fromEntries(asc.map((key) => [key, { ascendancyId: 'Witch1' }])) });
+    ...Object.fromEntries(passives.map((key) => [key, { in: ['1'] }])),
+    ...Object.fromEntries(asc.map((key) => [key, { ascendancyId: 'Witch1', in: ['10'] }])) });
+  data.nodes['1']!.out.push(...passives);
+  data.nodes['10']!.out.push(...asc);
 
   it.each([
     { shared: passives.slice(0, 124) },
@@ -96,5 +98,95 @@ describe('import budgets and shared-only skills', () => {
     const snap = { ...snapshot, ascendancyId: 'Witch1', set1: ['11', '3'] };
     expect(reconcileSnapshot(snap, data)).toMatchObject({ shared: ['2', '11'], set1: ['3'], set2: [] });
     expect(reconcileShareHash(decodeShareHash(hashOf(snap))!, data)).toMatchObject({ shared: ['2', '11'], set1: ['3'] });
+  });
+});
+
+describe('import connectivity and multiple-choice rules', () => {
+  function expectImported(snap: BuildSnapshot, data: ReturnType<typeof makeTree>, expected: Partial<BuildSnapshot>) {
+    const original = structuredClone(snap);
+    const reconciled = reconcileSnapshot(snap, data);
+    expect(reconciled).toMatchObject(expected);
+    expect(reconcileShareHash(decodeShareHash(hashOf(snap))!, data)).toEqual(reconciled);
+    useStore.setState({ status: { kind: 'ready', version: snap.version, data, atlases: {} as never } });
+    useStore.getState().loadSnapshot(snap);
+    expect(useStore.getState().allocation.shared).toEqual(new Set(reconciled!.shared));
+    expect(useStore.getState().allocation.set1).toEqual(new Set(reconciled!.set1));
+    expect(useStore.getState().allocation.set2).toEqual(new Set(reconciled!.set2));
+    expect(useStore.getState().attributeChoices).toEqual(reconciled!.attributeChoices ?? {});
+    expect(snap).toEqual(original);
+  }
+
+  it.each([
+    { shared: ['3'], set1: ['2', '4'], set2: ['5', '6'], expected: { shared: [], set1: ['2'], set2: ['6'] } },
+    { shared: ['2'], set1: ['3', '4'], set2: ['5', '6'], expected: { shared: ['2'], set1: ['3', '4'], set2: ['6'] } },
+    { shared: ['3', '4'], set1: ['5'], set2: ['6'], expected: { shared: [], set1: [], set2: ['6'] } },
+  ])('prunes disconnected nodes independently in all import paths: %j', ({ expected, ...buckets }) => {
+    const snap = { ...snapshot, ...buckets };
+    expectImported(snap, makeTree(), expected);
+  });
+
+  it('cascades lost unlock gates and removes attributes belonging to pruned branches', () => {
+    const data = makeTree({ '2': { unlockConstraint: { nodes: [11], ascendancy: 'Witch1' } },
+      '4': { isGenericAttribute: true } });
+    data.nodes['10']!.out = []; // the imported unlock skill is no longer connected
+    const snap: BuildSnapshot = { ...snapshot, ascendancyId: 'Witch1', shared: ['2', '3', '11'],
+      set1: ['4'], set2: ['5', '6'], attributeChoices: { '4': 'strength' } };
+    expectImported(snap, data, { shared: [], set1: [], set2: ['6'] });
+  });
+
+  it('removes optionless hubs and dependent branches, and preserves a valid choice', () => {
+    const data = makeTree({ '3': { isMultipleChoice: true }, '4': { isMultipleChoiceOption: true } });
+    for (const options of [[], ['4']]) {
+      const snap = { ...snapshot, shared: ['2', '3', ...options], set1: ['5'], set2: ['6'] };
+      expectImported(snap, data, { shared: options.length ? snap.shared : ['2'],
+        set1: options.length ? ['5'] : [], set2: ['6'] });
+    }
+  });
+
+  it.each(['shared', 'set1', 'set2'] as const)('rejects conflicting options across %s and Main', (bucket) => {
+    const data = makeTree({ '3': { isMultipleChoice: true }, '4': { isMultipleChoiceOption: true },
+      '5': { isMultipleChoiceOption: true } });
+    const snap = { ...snapshot, shared: ['2', '3', '4'], [bucket]: bucket === 'shared' ? ['2', '3', '4', '5'] : ['5'] };
+    expect(reconcileSnapshot(snap, data)).toBeNull();
+    expect(reconcileShareHash(decodeShareHash(hashOf(snap))!, data)).toBeNull();
+    useStore.setState({ status: { kind: 'ready', version: snap.version, data, atlases: {} as never } });
+    const before = useStore.getState();
+    before.loadSnapshot(snap);
+    expect(useStore.getState().allocation).toBe(before.allocation);
+    expect(useStore.getState().past).toBe(before.past);
+    expect(useStore.getState().validationMessage).toContain('Only one option');
+  });
+
+  it('does not allow implicit roots or masteries to bridge imported paths', () => {
+    const data = makeTree({ '20': { classStartIndex: [1], in: ['root'], out: ['21'] },
+      '21': { in: ['20'] }, '3': { isMastery: true } });
+    data.nodes['root']!.out.push('20');
+    const snap = { ...snapshot, shared: ['root', '1', '2', '3', '4', '20', '21'] };
+    expectImported(snap, data, { shared: ['2'], set1: [], set2: [] });
+  });
+
+  it('rejects an option reached through an onward connection without its hub', () => {
+    const data = makeTree({ '3': { isMultipleChoice: true }, '4': { isMultipleChoiceOption: true, in: ['1'] } });
+    data.nodes['1']!.out.push('4');
+    const snap = { ...snapshot, shared: ['4'] };
+    expect(reconcileSnapshot(snap, data)).toBeNull();
+    useStore.setState({ status: { kind: 'ready', version: snap.version, data, atlases: {} as never } });
+    useStore.getState().loadSnapshot(snap);
+    expect(useStore.getState().allocation.shared.size).toBe(0);
+    expect(useStore.getState().validationMessage).toContain('require their skill');
+  });
+
+  it('checks budgets after an unreachable point-granting skill is pruned', () => {
+    const passives = keys(100, 124);
+    const data = makeTree({ '11': { grantedPassivePoints: 1 },
+      ...Object.fromEntries(passives.map((key) => [key, { in: ['1'] }])) });
+    data.nodes['1']!.out.push(...passives);
+    data.nodes['10']!.out = [];
+    const snap = { ...snapshot, ascendancyId: 'Witch1', shared: ['11', ...passives] };
+    expect(reconcileSnapshot(snap, data)).toBeNull();
+    useStore.setState({ status: { kind: 'ready', version: snap.version, data, atlases: {} as never } });
+    useStore.getState().loadSnapshot(snap);
+    expect(useStore.getState().allocation.shared.size).toBe(0);
+    expect(useStore.getState().validationMessage).toContain('passive point limit');
   });
 });

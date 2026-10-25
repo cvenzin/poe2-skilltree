@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useStore } from '../state/store';
 import { allAllocated } from '../state/allocation';
 import type { TreeData } from '../data/types';
@@ -9,6 +9,7 @@ const DEBOUNCE_MS = 120;
 
 interface SearchInputProps {
   data: TreeData;
+  inputRef: RefObject<HTMLInputElement | null>;
 }
 
 /**
@@ -22,9 +23,9 @@ interface SearchInputProps {
  *
  * Keyboard handled here (not in the global hook): Enter / Shift+Enter step
  * through matches; Esc clears. Global Ctrl/Cmd+F focuses this input via a
- * custom `poe2:focus-search` window event.
+ * custom `poe2:focus-search` window event handled by the toolbar.
  */
-export default function SearchInput({ data }: Readonly<SearchInputProps>) {
+export default function SearchInput({ data, inputRef }: Readonly<SearchInputProps>) {
   const query = useStore((s) => s.searchQuery);
   const matches = useStore((s) => s.searchMatches);
   const ascendancyId = useStore((s) => s.ascendancyId);
@@ -34,7 +35,6 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
   const stepSearch = useStore((s) => s.stepSearch);
 
   const index = useMemo(() => buildSearchIndex(data), [data]);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [draft, setDraft] = useState(query);
 
   // Sync the visible draft to external clears (Esc hotkey, context switch)
@@ -67,16 +67,6 @@ export default function SearchInput({ data }: Readonly<SearchInputProps>) {
     }, DEBOUNCE_MS);
     return () => { globalThis.clearTimeout(timer); };
   }, [draft, query, index, data, ascendancyId, allocation, matches.length, setSearch]);
-
-  // Focus the input on global Ctrl/Cmd+F (dispatched by useKeyboardShortcuts).
-  useEffect(() => {
-    const handler = () => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    };
-    globalThis.addEventListener('poe2:focus-search', handler);
-    return () => { globalThis.removeEventListener('poe2:focus-search', handler); };
-  }, []);
 
   const hasQuery = draft.length > 0;
 

@@ -3,7 +3,7 @@ import type { TreeData } from '../data/types';
 import type { AtlasBundle } from '../render/atlas';
 import { attributeOptions, choicesForAllocation, isAttributeChoice, parseAttributeChoices, reconcileAttributeChoices,
   type AttributeChoice, type AttributeChoices } from './attributes';
-import { budgetBonuses, exclusiveAllocationError, revalidateAllocation } from './buildRules';
+import { budgetBonuses, exclusiveAllocationError, multipleChoiceAllocationError, revalidateAllocation, shareAscendancyAllocation } from './buildRules';
 import { allAllocated, isAllocated, buildAllocation } from './allocation';
 import { createAttributeState, type AttributeState } from './attributeState';
 export type { AttributeEditor } from './attributeState';
@@ -451,7 +451,7 @@ export const useStore = create<AppState>()((set, get, api) => ({
     searchMatches: matches,
     // Reset cursor to "no specific match focused" — Enter sets it to 0 to
     // start step-through. Empty matches → -1.
-    searchCursor: matches.length === 0 ? -1 : Math.min(s.searchCursor, matches.length - 1),
+    searchCursor: query !== s.searchQuery || matches.length === 0 ? -1 : Math.min(s.searchCursor, matches.length - 1),
   })),
 
   capturePreSearchCamera: (cam) => set((s) => (
@@ -475,14 +475,18 @@ export const useStore = create<AppState>()((set, get, api) => ({
   }),
 
   loadSnapshot: (snap) => set((s) => {
-    const allocation = buildAllocation(snap.shared, snap.set1, snap.set2);
+    let allocation = buildAllocation(snap.shared, snap.set1, snap.set2);
     if (s.status.kind === 'ready') {
       const data = s.status.data;
       const cls = data.classes.find((entry, index) => entry.name === snap.className && data.playableClassIndices.includes(index));
       if (!cls || (snap.ascendancyId && (!data.playableAscendancyIds.has(snap.ascendancyId) ||
         !cls.ascendancies.some((asc) => asc.id === snap.ascendancyId))))
         return { validationMessage: 'The build class and ascendancy do not match.' };
-      const invalid = exclusiveAllocationError(allocation, data) ?? allocationBudgetError(allocation, snap.ascendancyId, data)?.message;
+      allocation = shareAscendancyAllocation(allocation, data);
+      const exclusive = exclusiveAllocationError(allocation, data);
+      if (exclusive) return { validationMessage: exclusive };
+      allocation = revalidateAllocation(allocation, data, snap.className, snap.ascendancyId);
+      const invalid = multipleChoiceAllocationError(allocation, data) ?? allocationBudgetError(allocation, snap.ascendancyId, data)?.message;
       if (invalid) return { validationMessage: invalid };
     }
     return {
@@ -490,12 +494,16 @@ export const useStore = create<AppState>()((set, get, api) => ({
       searchQuery: '', searchMatches: [], searchCursor: -1, preSearchCamera: null, resetConfirmOpen: false,
       className: snap.className,
       ascendancyId: snap.ascendancyId,
-      attributeChoices: parseAttributeChoices(snap.attributeChoices),
-      defaultAttribute: isAttributeChoice(snap.defaultAttribute) ? snap.defaultAttribute : null,
+      attributeChoices: s.status.kind === 'ready'
+        ? reconcileAttributeChoices(parseAttributeChoices(snap.attributeChoices), allocation, s.status.data, snap.ascendancyId)
+        : parseAttributeChoices(snap.attributeChoices),
+      defaultAttribute: isAttributeChoice(snap.defaultAttribute) && (s.status.kind !== 'ready' ||
+        attributeOptions(s.status.data, allocation, snap.ascendancyId).some((option) => option.choice === snap.defaultAttribute))
+        ? snap.defaultAttribute : null,
       attributeEditor: null,
       allocation,
       // Reveal the sets UI only when the loaded build actually uses sets.
-      weaponSetsEnabled: snap.set1.length > 0 || snap.set2.length > 0,
+      weaponSetsEnabled: allocation.set1.size > 0 || allocation.set2.size > 0,
       past: [], future: [], previewPath: null,
     };
   }),

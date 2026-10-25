@@ -10,7 +10,7 @@ import { RESET_CONFIRM_THRESHOLD } from './ResetButton';
  *   - `R`                 → reset (with confirm if allocated > 10; second `R`
  *                                  while popover open confirms)
  *   - `Ctrl/Cmd+F`        → focus search input (fires a custom `poe2:focus-search`
- *                                  event picked up by `SearchInput`)
+ *                                  event opens the toolbar and focuses search)
  *   - `Escape`            → close the reset-confirm popover if open; OR clear
  *                                  the search if active (input handles Esc itself
  *                                  when focused; this is the canvas-focused case)

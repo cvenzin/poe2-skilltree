@@ -31,7 +31,7 @@ describe('share links', () => {
     const data = makeTree({ '20': { unlockConstraint: { nodes: [11], ascendancy: 'Witch1' } } });
     expect(reconcileShareHash({ ...raw, ascendancyId: 'ForeignAscendancy',
       sharedKeys: ['2', '9999'], set1Keys: ['2', '3', '20'], set2Keys: ['3', '4'] }, data))
-      .toEqual({ className: 'Witch', ascendancyId: null, shared: ['2'], set1: ['3'], set2: ['4'] });
+      .toEqual({ className: 'Witch', ascendancyId: null, shared: ['2'], set1: ['3'], set2: [] });
     expect(reconcileShareHash({ ...raw, className: 'Unknown' }, data)).toBeNull();
   });
 });

@@ -36,6 +36,8 @@ Live: <https://poe2planner.app/>
   controls have 44px touch targets; the panel scrolls on short screens while its
   header stays visible. The toolbar opens by default on desktop and starts
   collapsed on mobile; opening and closing it keeps keyboard focus on the toggle.
+  Ctrl/Cmd+F opens collapsed controls and focuses search. Each new query starts
+  with all matches highlighted; Enter selects its first result.
 - Mobile tooltips appear at the opposite screen edge
   from the pressed node (bottom for upper-half nodes, top for lower-half nodes).
   The tooltip stays at that edge during the hold; the toolbar fades while a

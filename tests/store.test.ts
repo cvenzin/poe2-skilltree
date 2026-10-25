@@ -5,6 +5,35 @@ import { keys, makeTree } from './fixtures/tree';
 
 beforeEach(() => useStore.setState(useStore.getInitialState(), true));
 
+describe('search navigation', () => {
+  it('resets a different query so Enter focuses its first match', () => {
+    const actions = useStore.getState();
+    actions.setSearch('life', ['2', '3', '4']);
+    actions.stepSearch(1);
+    actions.stepSearch(1);
+    expect(useStore.getState().searchCursor).toBe(1);
+    actions.setSearch('mana', ['5', '6', '11']);
+    expect(useStore.getState().searchCursor).toBe(-1);
+    actions.stepSearch(1);
+    expect(useStore.getState().searchCursor).toBe(0);
+    actions.setSearch('energy', ['2', '3']);
+    actions.stepSearch(-1);
+    expect(useStore.getState().searchCursor).toBe(1);
+  });
+
+  it('preserves and clamps navigation when the same query is refreshed', () => {
+    const actions = useStore.getState();
+    actions.setSearch('life', ['2', '3', '4']);
+    actions.stepSearch(-1);
+    actions.setSearch('life', ['2', '3', '4']);
+    expect(useStore.getState().searchCursor).toBe(2);
+    actions.setSearch('life', ['2', '3']);
+    expect(useStore.getState().searchCursor).toBe(1);
+    actions.setSearch('life', []);
+    expect(useStore.getState().searchCursor).toBe(-1);
+  });
+});
+
 describe('budgets and history', () => {
   const passives = keys(100, PASSIVE_CAP + 30);
   const asc = keys(1000, ASCENDANCY_CAP + 1);

@@ -1,7 +1,7 @@
 import type { TreeData } from '../data/types';
 import { frontierKeysFor } from '../data/normalize';
-import { resolveCascade } from '../interaction/pathing';
-import { addKeysToBucket, buildAllocation, pruneAllocation, type Allocation } from './allocation';
+import { hubOfOption, resolveCascade } from '../interaction/pathing';
+import { addKeysToBucket, allAllocated, buildAllocation, isAllocated, pruneAllocation, type Allocation } from './allocation';
 
 /** Older serializers accepted ascendancy skills in a set bucket. Their
  * ascendancy connection is independent of that set, so safely restore shared. */
@@ -22,6 +22,19 @@ export function exclusiveAllocationError(allocation: Allocation, data: TreeData)
   return null;
 }
 
+/** Imports have no last-clicked option to resolve an ambiguous choice. */
+export function multipleChoiceAllocationError(allocation: Allocation, data: TreeData): string | null {
+  const hubs = new Set<string>();
+  for (const key of allAllocated(allocation)) {
+    const hub = hubOfOption(data, key);
+    if (!hub) continue;
+    if (!isAllocated(allocation, hub)) return 'Multiple-choice options require their skill to be allocated.';
+    if (hubs.has(hub)) return 'Only one option per multiple-choice skill can be allocated.';
+    hubs.add(hub);
+  }
+  return null;
+}
+
 /** Constraint gates and radius anchors may themselves disappear in a cascade.
  * Alternate both validations until no more nodes are removed. */
 export function revalidateAllocation(
@@ -29,7 +42,8 @@ export function revalidateAllocation(
 ): Allocation {
   const keep = (bucket: ReadonlySet<string>) => [...bucket].filter((key) => {
     const node = data.nodes[key];
-    return node && (!node.ascendancyId || node.ascendancyId === ascendancyId);
+    return node && key !== 'root' && !node.classStartIndex?.length && !node.isAscendancyStart &&
+      !node.isMastery && (!node.ascendancyId || node.ascendancyId === ascendancyId);
   });
   let current = buildAllocation(keep(allocation.shared), keep(allocation.set1), keep(allocation.set2));
   const roots = className ? frontierKeysFor(data, className, ascendancyId) : null;

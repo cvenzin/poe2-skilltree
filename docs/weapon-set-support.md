@@ -139,7 +139,10 @@ draft without replacing named builds. Version changes save a separate copy and
 preserve the source; reopening the base URL restores the active copy and its
 version without another edit. Imports return editing to Main and clear hover,
 preview, search, and history. Reconciliation drops unknown keys, foreign
-ascendancy skills, and locked nodes; mismatched ascendancies become none.
+ascendancy skills, locked nodes, and unreachable branches in each bucket;
+mismatched ascendancies become none. Imports use the same fixed-point cascade
+as edits, including legal radius anchors and removal of optionless
+multiple-choice hubs. Conflicting options for one hub are rejected.
 Over-budget builds and exclusive keystones/sockets are rejected rather than
 silently moving special nodes onto potentially disconnected shared paths.
 Legacy exclusive ascendancy skills can safely become shared because their

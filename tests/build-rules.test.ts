@@ -7,6 +7,7 @@ import { applyPathAllocation, autoOptionsForPath, bfsShortestPath, resolveCascad
 import { buildPathingContext } from '../src/render/tree/pathingContext';
 import { buildAllocation, EMPTY_ALLOCATION, removeKey, type Allocation, type AllocationMode } from '../src/state/allocation';
 import { effectiveBudgetCaps, countBudgets, useStore } from '../src/state/store';
+import { reconcileSnapshot } from '../src/state/persistence';
 import { makeTree, keys } from './fixtures/tree';
 
 beforeEach(() => useStore.setState(useStore.getInitialState(), true));
@@ -115,6 +116,9 @@ describe.each(VERSIONS)('real allocation regressions in %s', (version) => {
     expect(ctx.entwinedKeys.has('2672')).toBe(true);
     for (const mode of ['shared', 'set1', 'set2'] as const) {
       const withRadius = applyPathAllocation(data, allocation, ['2672'], [], mode);
+      const imported = reconcileSnapshot({ version, className: 'Druid', ascendancyId: 'Druid1',
+        shared: [...withRadius.shared], set1: [...withRadius.set1], set2: [...withRadius.set2] }, data)!;
+      expect(imported[mode]).toContain('2672');
       const result = resolveCascade(data, removeKey(withRadius, '11335'), frontierKeysFor(data, 'Druid', 'Druid1'), 'Druid1');
       expect(result[mode].has('2672')).toBe(false);
       expect(resolveCascade(data, result, frontierKeysFor(data, 'Druid', 'Druid1'), 'Druid1')).toBe(result);

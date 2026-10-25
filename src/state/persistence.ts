@@ -1,9 +1,9 @@
 import { useStore, allocationBudgetError, type BuildSnapshot } from './store';
-import { exclusiveAllocationError, shareAscendancyAllocation } from './buildRules';
+import { exclusiveAllocationError, multipleChoiceAllocationError, revalidateAllocation, shareAscendancyAllocation } from './buildRules';
 import { useBuildLibrary, persistLibrarySnapshot } from './buildLibrary';
 import { LIBRARY_KEY, parseLibrary, parseSnapshot, selectedSnapshot } from './buildStorage';
 import type { TreeData } from '../data/types';
-import { buildAllocation, pruneAllocation } from './allocation';
+import { buildAllocation } from './allocation';
 import { attributeOptions, parseAttributeChoices, reconcileAttributeChoices } from './attributes';
 
 /** localStorage key for the last saved build. */
@@ -30,8 +30,9 @@ export function readSnapshot(version: string): BuildSnapshot | null {
 /** Validate a stored snapshot against the live data: the class must still be
  *  playable, the ascendancy (if any) must still belong to that class, and
  *  every allocated node key must still exist. Drops the ones that don't, and
- *  dedupes / constraint-prunes the weapon-set buckets. Returns null if the
- *  class is unusable, a budget is exceeded, or a keystone/socket is exclusive. */
+ *  dedupes and revalidates connectivity / constraints in each weapon set.
+ *  Returns null for unusable classes, conflicting choices, exceeded budgets,
+ *  or exclusive keystones/sockets. */
 export function reconcileSnapshot(snap: BuildSnapshot, data: TreeData): Omit<BuildSnapshot, 'version'> | null {
   const cls = data.classes.find((c, index) => c.name === snap.className && data.playableClassIndices.includes(index));
   if (!cls) return null;
@@ -42,21 +43,17 @@ export function reconcileSnapshot(snap: BuildSnapshot, data: TreeData): Omit<Bui
       : null;
   const exists = (k: string) => data.nodes[k] !== undefined &&
     (!data.nodes[k]!.ascendancyId || data.nodes[k]!.ascendancyId === ascendancyId);
-  // Build a normalized allocation (a key lives in exactly one bucket), then
-  // drop constraint-locked nodes the imported state doesn't satisfy — e.g. a
-  // build saved on Druid Oracle with "The Unseen Path", imported on a different
-  // ascendancy, loses the Forbidden Path nodes.
-  const alloc = pruneAllocation(
-    shareAscendancyAllocation(buildAllocation(
-      snap.shared.filter(exists),
-      snap.set1.filter(exists),
-      snap.set2.filter(exists),
-    ), data),
-    ascendancyId,
-    data,
-  );
+  const normalized = shareAscendancyAllocation(buildAllocation(
+    snap.shared.filter(exists),
+    snap.set1.filter(exists),
+    snap.set2.filter(exists),
+  ), data);
+  if (exclusiveAllocationError(normalized, data)) return null;
+  // Removing unavailable nodes can orphan branches or their unlock gates.
+  // Use the same fixed-point cascade as edits, preserving legal radius roots.
+  const alloc = revalidateAllocation(normalized, data, snap.className, ascendancyId);
   const choices = reconcileAttributeChoices(parseAttributeChoices(snap.attributeChoices), alloc, data, ascendancyId);
-  if (exclusiveAllocationError(alloc, data) || allocationBudgetError(alloc, ascendancyId, data)) return null;
+  if (multipleChoiceAllocationError(alloc, data) || allocationBudgetError(alloc, ascendancyId, data)) return null;
   const defaultAttribute = attributeOptions(data, alloc, ascendancyId).find((option) => option.choice === snap.defaultAttribute)?.choice;
   return {
     className: snap.className,

@@ -103,14 +103,18 @@ export function copyToTreeVersion(version: string, snapshot: Omit<BuildSnapshot,
   return true;
 }
 
+let versionRequest = 0;
+
 export async function changeBuildVersion(version: string): Promise<void> {
+  // Even selecting the current version cancels an earlier pending selection.
+  const request = ++versionRequest;
   const s = useStore.getState();
   const sourceId = useBuildLibrary.getState().library.activeId;
   const source = s.activeVersion ? readSnapshot(s.activeVersion) : null;
   if (!source || version === source.version) return;
   try {
     const data = await loadTreeData(version);
-    if (useBuildLibrary.getState().library.activeId !== sourceId || useStore.getState().activeVersion !== source.version ||
+    if (request !== versionRequest || useBuildLibrary.getState().library.activeId !== sourceId || useStore.getState().activeVersion !== source.version ||
       JSON.stringify(readSnapshot(source.version)) !== JSON.stringify(source)) return;
     const snapshot = reconcileSnapshot(source, data);
     if (!snapshot) { s.setValidationMessage('This build cannot be carried into that tree version.'); return; }
@@ -122,6 +126,9 @@ export async function changeBuildVersion(version: string): Promise<void> {
     if (changed && !globalThis.confirm(`Create a copy for tree ${version}? Some allocations or attribute choices are unavailable and will be removed. Your original build will be kept.`)) return;
     copyToTreeVersion(version, snapshot);
   } catch {
+    if (request !== versionRequest || useBuildLibrary.getState().library.activeId !== sourceId ||
+      useStore.getState().activeVersion !== source.version ||
+      JSON.stringify(readSnapshot(source.version)) !== JSON.stringify(source)) return;
     s.setValidationMessage('Could not load that tree version. Your current build has been kept.');
   }
 }

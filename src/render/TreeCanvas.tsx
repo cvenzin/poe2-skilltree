@@ -5,6 +5,7 @@ import type { MountContext } from './tree/types';
 import { prefersReducedMotion } from './tree/viewport';
 import { mount } from './tree/mount';
 import { destroySearchMatchLayer } from './tree/searchHighlight';
+import { useStore } from '../state/store';
 
 interface TreeCanvasProps {
   data: TreeData;
@@ -100,7 +101,15 @@ export default function TreeCanvas({
       swapGeneration: 0,
     };
     ctxRef.current = ctx;
-    void mount(host, data, atlases, propsRef, ctx, savedCameraRef.current);
+    void mount(host, data, atlases, propsRef, ctx, savedCameraRef.current).catch((error: unknown) => {
+      if (ctx.cancelled) return;
+      const state = useStore.getState();
+      // A late failure from a replaced scene must not overwrite its successor.
+      if (state.status.kind !== 'ready' || state.status.data !== data || state.status.atlases !== atlases ||
+        state.activeVersion !== state.status.version) return;
+      state.setStatus({ kind: 'error', version: state.status.version,
+        message: error instanceof Error ? error.message : String(error) });
+    });
 
     return () => {
       ctx.cancelled = true;
