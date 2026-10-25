@@ -13,7 +13,8 @@
   pointer-events: auto;
 }
 .tree-toolbar {
-  --toolbar-control-height: 32px;
+  --toolbar-control-height: 34px;
+  background: color-mix(in srgb, var(--toolbar-bg) 55%, var(--toolbar-dialog));
   display: flex;
   flex-direction: column;
   width: 400px;
@@ -82,10 +83,8 @@
 .toolbar-character { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .toolbar-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .toolbar-field > span, .toolbar-editing legend {
-  font: 11px var(--toolbar-display-font);
+  font: 12px var(--toolbar-body-font);
   color: var(--toolbar-title);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
 }
 .tree-toolbar select {
   box-sizing: border-box;
@@ -104,7 +103,7 @@
 .toolbar-checkbox { display: inline-flex; align-items: center; gap: 8px; min-height: var(--toolbar-control-height); cursor: pointer; color: var(--toolbar-metal); }
 .toolbar-checkbox input { width: 16px; height: 16px; margin: 0; accent-color: var(--toolbar-accent); cursor: pointer; }
 .toolbar-editing { min-width: 0; padding: 0; margin: 0; border: 0; }
-.toolbar-editing legend { margin-bottom: 6px; padding: 0; }
+.toolbar-editing legend { margin-bottom: 4px; padding: 0; color: var(--toolbar-muted); }
 .toolbar-segments { display: flex; }
 .toolbar-segments button {
   min-height: var(--toolbar-control-height);
@@ -118,8 +117,21 @@
 }
 .toolbar-segments button:first-child { border-radius: 5px 0 0 5px; }
 .toolbar-segments button:last-child { border-right: 1px solid var(--toolbar-border); border-radius: 0 5px 5px 0; }
-.toolbar-segments button[aria-pressed=true] { background: var(--toolbar-header); color: var(--toolbar-title); box-shadow: inset 0 -2px var(--toolbar-accent); }
-.toolbar-budgets { padding-top: 12px; border-top: 1px solid var(--toolbar-divider); }
+.toolbar-segments button[aria-pressed=true] { background: var(--toolbar-header); color: var(--toolbar-title); box-shadow: inset 0 -2px var(--toolbar-accent); font-weight: 600; }
+.toolbar-points { padding-top: 10px; border-top: 1px solid var(--toolbar-divider); }
+.toolbar-weapon-sets { align-items: flex-end; }
+.toolbar-active-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.toolbar-active-totals .budget-chip { padding: 8px 10px; border: 1px solid var(--toolbar-divider); gap: 3px 6px; }
+.toolbar-active-totals .budget-chip__label { flex-basis: 100%; font-size: 12px; }
+.toolbar-active-totals .budget-chip__note { flex-basis: 100%; }
+.toolbar-active-totals .budget-chip__value { font-size: 17px; }
+.toolbar-active-totals .budget-chip__cap { font-size: 13px; }
+.toolbar-active-totals .budget-chip[data-emphasized=true] { border-color: var(--toolbar-border); box-shadow: inset 2px 0 var(--toolbar-accent); }
+.toolbar-point-breakdown { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 6px; }
+.toolbar-point-breakdown .budget-chip { display: grid; grid-template-rows: 1.4em auto; align-items: end; gap: 3px; font-size: 11px; }
+.toolbar-point-breakdown .budget-chip__label { font-size: 11px; line-height: 1.4; color: var(--toolbar-text); }
+.toolbar-point-breakdown .budget-chip__value { font-size: 14px; }
+.toolbar-ascendancy-budget { border-top: 1px solid var(--toolbar-divider); margin-top: 4px; }
 .toolbar-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 12px; border-top: 1px solid var(--toolbar-divider); }
 .toolbar-output { flex: 1; justify-content: flex-end; }
 .toolbar-output > .build-export-button { flex: 1; white-space: nowrap; }
@@ -128,16 +140,18 @@
 .reset-control:has(.reset-confirmation) { display: contents; }
 .toolbar-history:has(.reset-confirmation) { flex-basis: 100%; }
 .tree-toolbar button, .tree-toolbar input, .tree-toolbar select { touch-action: manipulation; }
-.tree-toolbar button:focus-visible, .tree-toolbar select:focus-visible, .toolbar-toggle:focus-visible {
+.tree-toolbar button:focus-visible, .tree-toolbar input:focus-visible, .tree-toolbar select:focus-visible, .toolbar-toggle:focus-visible {
   outline: 2px solid var(--toolbar-accent);
   outline-offset: 3px;
 }
 .tree-search:focus-within { outline: 2px solid var(--toolbar-accent); outline-offset: 2px; }
 /* SearchInput provides its own clear button. */
 .tree-search input::-webkit-search-cancel-button { display: none; }
-.tree-toolbar button:disabled { cursor: default; }
+.tree-toolbar button:disabled, .tree-toolbar select:disabled { cursor: default; opacity: .45; }
+.toolbar-actions button { font-family: inherit; }
 @media (hover: hover) {
   .toolbar-toggle:hover, .toolbar-close:hover { background: var(--toolbar-field); border-color: var(--toolbar-accent); color: var(--toolbar-title); }
+  .toolbar-actions button:not(:disabled):hover, .toolbar-segments button:hover { filter: brightness(1.2); }
 }
 /* The tooltip follows the toolbar in App and keeps its edge fixed during a hold. */
 .tree-toolbar:has(~ [data-mobile-tooltip-edge="top"]) { opacity: .4; }
@@ -156,9 +170,10 @@
   .toolbar-output { justify-content: stretch; }
   .toolbar-history button { min-width: 44px; }
   .toolbar-checkbox input { width: 18px; height: 18px; }
-  .tree-search button { min-width: 36px; min-height: 40px; }
+  .tree-search button { min-width: 44px; min-height: 44px; }
 }
 @media (max-width: 360px) {
+  .toolbar-point-breakdown .budget-chip { grid-template-rows: 2.8em auto; }
   .toolbar-title { font-size: 14px; white-space: nowrap; }
   .toolbar-header { gap: 6px; }
 }

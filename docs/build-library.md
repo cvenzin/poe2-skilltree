@@ -7,6 +7,18 @@ Each saved entry contains its name, update timestamp, and complete
 `BuildSnapshot`: tree version, class, ascendancy, shared and both weapon-set
 allocations, attribute choices, and default attribute.
 
+The selector keeps the build name, class, ascendancy, and patch together.
+The info button beside a named build reveals its full name and details on
+hover, keyboard focus, or tap. Escape or clicking outside dismisses the preview;
+the closed selector stays on one line.
+**New Build** stays visible. Named builds have a **Build actions** overflow
+menu for **Rename**, **Duplicate**, and destructive **Delete**. Open it with
+Enter, Space, or the arrow keys; navigate with arrows, Home/End, or the first
+letter of an action. Escape returns focus to the trigger. Clicking outside or
+tabbing away dismisses it. Dialogs return focus to the trigger on dismissal.
+Unnamed drafts instead show **Save to my builds** beside **New Build**.
+Ordinary autosave status is subtle; storage failures appear as a red alert.
+
 ## Storage and restore
 
 `poe2-tree:builds` contains a schema-versioned library (`schema: 1`), named
@@ -43,7 +55,7 @@ sync or cross-tab merge; avoid editing the library in multiple tabs at once.
 
 ## Version changes and deletion
 
-Changing tree versions or accepting a patch update creates a named copy using
+The header's **Game patch** selector or accepting a patch update creates a named copy using
 the existing reconciliation rules. Allocations or choices removed by a version
 change require confirmation. An unnamed source draft is first saved as
 **My build**, so the original is retained as well.

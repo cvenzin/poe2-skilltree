@@ -87,8 +87,9 @@ This repository deploys through GitHub Actions, so a `CNAME` file is not require
 
 Open the toolbar and use **Save to my builds** to name your current draft.
 The **My builds** selector lists each saved build with its class, ascendancy,
-and tree version. Use **New** for a blank draft, **Rename** to change a name,
-**Duplicate** to experiment with a copy, or **Delete** to remove a saved build
+and game patch. Use **New Build** for a blank draft. Open **Build actions** (•••)
+for **Rename** to change a name, **Duplicate** to experiment with a copy,
+or **Delete** to remove a saved build
 after confirmation. Changes save automatically; switching saves pending edits
 and clears undo/redo so history stays within one build.
 

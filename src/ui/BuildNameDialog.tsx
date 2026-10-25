@@ -36,7 +36,7 @@ export default function BuildNameDialog({ mode, name, onClose, onConfirm }: Read
         {failed && <p role="alert">{error ?? 'The build could not be changed. Try again.'}</p>}
         <div className="build-name-dialog__actions">
           <button type="button" autoFocus={deleting} onClick={dismiss}>Cancel</button>
-          <button type="submit" disabled={!deleting && !value.trim()}>{deleting ? 'Delete build' : 'Save build'}</button>
+          <button type="submit" className={deleting ? 'build-library__delete' : undefined} disabled={!deleting && !value.trim()}>{deleting ? 'Delete build' : 'Save build'}</button>
         </div>
       </form>
     </dialog>

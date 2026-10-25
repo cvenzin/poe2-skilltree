@@ -78,7 +78,7 @@ const buttonStyle: React.CSSProperties = {
   background: palette.fieldBg,
   color: palette.textPrimary,
   border: `1px solid ${palette.border}`,
-  borderRadius: 3,
+  borderRadius: 5,
   height: controlHeight,
   boxSizing: 'border-box',
   padding: '0 12px',
@@ -93,7 +93,7 @@ const toastBaseStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
   fontSize: 11,
   padding: '3px 8px',
-  borderRadius: 3,
+  borderRadius: 5,
   pointerEvents: 'none',
 };
 

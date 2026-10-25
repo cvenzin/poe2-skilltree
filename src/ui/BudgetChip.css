@@ -1,0 +1,20 @@
+.budget-chip {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px;
+  min-width: 0; padding: 6px 0; color: var(--toolbar-text);
+  font: 13px var(--toolbar-body-font); font-variant-numeric: tabular-nums;
+  border-radius: 5px;
+}
+.budget-chip__label { color: var(--toolbar-metal); }
+.budget-chip__value { color: var(--toolbar-title); font-weight: 600; white-space: nowrap; }
+.budget-chip__cap { color: var(--toolbar-muted); font-weight: 400; }
+.budget-chip__note { color: var(--toolbar-metal); font-size: 12px; white-space: nowrap; }
+.budget-chip[data-emphasized=true] { border-color: var(--toolbar-accent); background: var(--toolbar-field); }
+.budget-chip[data-over=true] { background: var(--toolbar-danger-bg); color: var(--toolbar-danger); }
+.budget-chip[data-over=true] .budget-chip__value { color: var(--toolbar-danger); }
+.budget-chip[data-rejected=true] { animation: poe2-shake 250ms, budget-rejection 650ms; }
+@keyframes budget-rejection {
+  0%, 50% { background: var(--toolbar-danger-bg); outline: 1px solid var(--toolbar-danger); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .budget-chip[data-rejected=true] { animation: budget-rejection 650ms; }
+}

@@ -115,6 +115,15 @@ collapse to a single passive counter with the effective cap, and tooltips omit w
 It's a free user preference (not persisted); loading a build that already uses
 sets flips it on so points are never hidden.
 
+The toggle, **Editing: Main / Set 1 / Set 2**, and point overview share one
+toolbar area. Both active passive totals and remaining points stay visible;
+only the edited set is emphasized, with neither card selected in Main. Cards
+are labelled **Set 1 passives** / **Set 2 passives** and show remaining points.
+A three-column breakdown shows shared passives and each set's specialization
+usage/cap, with labels above values. Ascendancy points have
+a separate row. These counters use `countBudgets` and `effectiveBudgetCaps`.
+Turning the toggle off hides the extra counters without removing set allocations.
+
 ## Persistence
 
 `BuildSnapshot` stores `shared` / `set1` / `set2`, plus optional

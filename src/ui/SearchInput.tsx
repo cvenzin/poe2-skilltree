@@ -127,7 +127,7 @@ const containerStyle: React.CSSProperties = {
   padding: '0 8px',
   background: palette.fieldBg,
   border: `1px solid ${palette.border}`,
-  borderRadius: 3,
+  borderRadius: 5,
   height: controlHeight,
   boxSizing: 'border-box',
 };

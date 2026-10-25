@@ -18,11 +18,18 @@ export default function AttributeControls({ data, showTrigger = true }: Readonly
 
   return (
     <div className="attribute-controls" style={themeVars}>
-      {showTrigger && <button type="button" className="attribute-controls__trigger" onClick={() => openEditor({ kind: 'default' })}
+      {showTrigger && <div className="attribute-controls__area">
+        <span className="attribute-controls__label">Default for new attribute nodes</span>
+        <button type="button" className="attribute-controls__trigger" onClick={() => openEditor({ kind: 'default' })}
+        aria-haspopup="dialog"
         aria-label={`Default for new attribute nodes: ${selected?.override.name ?? 'Choose'}`}>
-        <span>New attributes: <strong>{selected?.override.name ?? 'Choose'}</strong> ▾</span>
-      </button>}
-      {showTrigger && unspecified > 0 && <small className="attribute-controls__unspecified">{unspecified} unspecified</small>}
+        <strong>{selected?.override.name ?? 'Choose bonus'}</strong><span aria-hidden="true">▾</span>
+        </button>
+        {unspecified > 0 && <button type="button" className="attribute-controls__unspecified"
+          aria-haspopup="dialog" onClick={() => openEditor({ kind: 'default' })}>
+          <span>Unspecified allocated nodes</span><strong>{unspecified}</strong>
+        </button>}
+      </div>}
       {editor && <AttributeDialog key={editor.kind === 'node' ? editor.nodeKey : 'default'} data={data} editor={editor} />}
     </div>
   );

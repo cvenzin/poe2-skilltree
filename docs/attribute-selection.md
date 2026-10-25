@@ -6,8 +6,9 @@ Selected bonuses use the names, stats and icons in the version's `skillOverrides
 
 ## Editing
 
-Open the toolbar (burger menu) to find the **New attributes** control on desktop
-and mobile. Collapsing the toolbar hides the control to keep the tree clear.
+Open **Build** to find **Default for new attribute nodes**, below the point
+overview on desktop and mobile. Collapsing the toolbar hides the control to
+keep the tree clear; tree-triggered bonus and first-allocation dialogs remain available.
 Choose a default once; future path allocations apply it to all newly allocated
 generic nodes in one undo step. The first path containing an attribute node asks
 for a default before committing. Cancelling leaves the path unallocated.
@@ -19,10 +20,13 @@ Changing the bonus leaves the path intact. **Remove node** is a separate action
 that uses the same cascade rules as ordinary removal. Pan, pinch and long-press
 inspection retain their gesture suppression.
 
-Older builds remain **Unspecified**. The control displays their count and offers
+Older builds remain **Unspecified**. **Unspecified allocated nodes** displays
+their count below the default; selecting it opens the picker, which offers
 **Apply default to unspecified nodes**, including both weapon sets. This is one
 undoable edit and preserves all existing choices. Each shared node has one choice
 active in both sets; each exclusive node's choice belongs to that branch.
+This count describes existing nodes awaiting a bonus choice, not unspent points;
+it does not block sharing or export.
 
 Pathfinder alternatives are available only while the bundled export's
 `AscendancyRanger3Notable9` (Traveller's Wisdom) is allocated in the shared tree

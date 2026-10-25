@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore, countBudgets, effectiveBudgetCaps, ASCENDANCY_CAP } from '../state/store';
+import { useStore } from '../state/store';
 import type { TreeData } from '../data/types';
 import { getPatchUpdateVersion, VERSIONS } from '../data/versions';
-import BudgetChip from './BudgetChip';
+import WeaponSetControls from './WeaponSetControls';
 import UndoRedoButtons from './UndoRedoButtons';
 import ResetButton from './ResetButton';
 import SearchInput from './SearchInput';
@@ -20,14 +20,9 @@ import './Toolbar.css';
 export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
-  const allocation = useStore((s) => s.allocation);
-  const allocationMode = useStore((s) => s.allocationMode);
-  const weaponSetsEnabled = useStore((s) => s.weaponSetsEnabled);
   const activeVersion = useStore((s) => s.activeVersion);
   const setClass = useStore((s) => s.setClass);
   const setAscendancy = useStore((s) => s.setAscendancy);
-  const setAllocationMode = useStore((s) => s.setAllocationMode);
-  const setWeaponSetsEnabled = useStore((s) => s.setWeaponSetsEnabled);
   const patchUpdateVersion = getPatchUpdateVersion(activeVersion);
 
   const isMobile = useIsMobile();
@@ -50,8 +45,6 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
     .map((i) => data.classes[i])
     .filter((c): c is NonNullable<typeof c> => c !== undefined);
   const activeClass = playableClasses.find((c) => c.name === className);
-  const counts = countBudgets(allocation, ascendancyId, data);
-  const caps = effectiveBudgetCaps(allocation, ascendancyId, data);
 
   if (!expanded) {
     return (
@@ -77,8 +70,8 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
         <span className="toolbar-title">Build planner</span>
         {VERSIONS.length > 1 && (
           <label className="toolbar-version">
-            <span>Tree version</span>
-            <select aria-label="Version" value={activeVersion ?? ''}
+            <span>Game patch</span>
+            <select aria-label="Game patch" value={activeVersion ?? ''}
               onChange={(e) => { void changeBuildVersion(e.target.value); }}>
               {VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
@@ -94,7 +87,6 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
 
       <div id="tree-toolbar-content" className="toolbar-content">
         <BuildLibraryControls data={data} />
-        <SearchInput data={data} />
         <TreeVersionNotice data={data} />
         <div className="toolbar-character">
           <label className="toolbar-field">
@@ -114,46 +106,9 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
           </label>
         </div>
 
-        <div className="toolbar-weapon-sets">
-          <label className="toolbar-checkbox" title="Plan separate passives per weapon set">
-            <input type="checkbox" checked={weaponSetsEnabled}
-              onChange={(e) => setWeaponSetsEnabled(e.target.checked)} />
-            <span>Weapon Sets</span>
-          </label>
-          {weaponSetsEnabled && (
-            <fieldset className="toolbar-editing">
-              <legend>Editing</legend>
-              <div className="toolbar-segments">
-                {([
-                  ['shared', 'Main'], ['set1', 'Set 1'], ['set2', 'Set 2'],
-                ] as const).map(([value, label]) => (
-                  <button key={value} type="button" aria-pressed={allocationMode === value}
-                    onClick={() => setAllocationMode(value)}>{label}</button>
-                ))}
-              </div>
-            </fieldset>
-          )}
-        </div>
-
-        <div className="toolbar-row toolbar-budgets">
-          <AttributeControls data={data} />
-          {weaponSetsEnabled ? (
-            <>
-              <BudgetChip kind="passive" label="Shared" count={counts.shared} />
-              <BudgetChip kind="weaponSet1" label="Set 1" count={counts.set1} cap={caps.weaponSet} />
-              <BudgetChip kind="weaponSet2" label="Set 2" count={counts.set2} cap={caps.weaponSet} />
-              <BudgetChip kind="passive" label="Active S1" count={counts.activeIn1}
-                cap={caps.passive} note={unspentNote(caps.passive - counts.activeIn1)} />
-              <BudgetChip kind="passive" label="Active S2" count={counts.activeIn2}
-                cap={caps.passive} note={unspentNote(caps.passive - counts.activeIn2)} />
-            </>
-          ) : (
-            <BudgetChip kind="passive" label="Passives" count={counts.shared} cap={caps.passive} />
-          )}
-          {ascendancyId && (
-            <BudgetChip kind="ascendancy" label="Ascendancy" count={counts.ascendancy} cap={ASCENDANCY_CAP} />
-          )}
-        </div>
+        <SearchInput data={data} />
+        <WeaponSetControls data={data} />
+        <AttributeControls data={data} />
 
         <div className="toolbar-actions">
           <div className="toolbar-row toolbar-history">
@@ -170,11 +125,6 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
   );
 }
 
-function unspentNote(unspent: number): string | undefined {
-  if (unspent < 0) return undefined;
-  return unspent === 0 ? 'full' : `${unspent} left`;
-}
-
 const themeVars = {
   '--toolbar-bg': palette.panelBg,
   '--toolbar-header': palette.headerBg,
@@ -186,6 +136,8 @@ const themeVars = {
   '--toolbar-title': palette.textTitle,
   '--toolbar-metal': palette.textMetal,
   '--toolbar-muted': palette.textMuted,
+  '--toolbar-danger': palette.dangerText,
+  '--toolbar-danger-bg': palette.dangerBg,
   '--toolbar-accent': palette.rune,
   '--toolbar-glow': palette.runeGlow,
   '--toolbar-shadow': panelShadow,

@@ -43,7 +43,7 @@ const buttonStyle: React.CSSProperties = {
   background: palette.fieldBg,
   color: palette.textMetal,
   border: `1px solid ${palette.border}`,
-  borderRadius: 3,
+  borderRadius: 5,
   height: controlHeight,
   boxSizing: 'border-box',
   padding: '0 8px',

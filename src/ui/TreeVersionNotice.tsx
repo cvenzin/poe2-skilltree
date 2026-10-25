@@ -170,7 +170,6 @@ const noticeStyle: React.CSSProperties = {
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: 7,
-  height: controlHeight,
   minHeight: controlHeight,
   boxSizing: 'border-box',
   color: palette.textStat,

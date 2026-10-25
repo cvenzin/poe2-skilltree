@@ -57,13 +57,14 @@ export default function ResetButton() {
         onClick={onClick}
         style={buttonStyle}
         disabled={allocCount === 0}
-        title="Reset allocation (R)"
+        title="Reset all allocations in Main and both weapon sets (R). Recover with Undo."
+        aria-label="Reset all allocations"
       >
         Reset
       </button>
       {open && (
         <div ref={popoverRef} className="reset-confirmation" style={popoverStyle} role="dialog" aria-label="Reset allocation" aria-modal="false">
-          <div style={{ marginBottom: 8 }}>Discard <strong>{allocCount}</strong> allocated points?</div>
+          <div style={{ marginBottom: 8 }}>Reset <strong>{allocCount}</strong> allocated nodes across Main and both weapon sets? Recover with Undo.</div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => setOpen(false)} style={cancelStyle}>Cancel</button>
             <button type="button" onClick={onConfirm} style={confirmStyle} autoFocus>Confirm</button>
@@ -81,7 +82,7 @@ const buttonStyle: React.CSSProperties = {
   background: palette.fieldBg,
   color: palette.textPrimary,
   border: `1px solid ${palette.border}`,
-  borderRadius: 3,
+  borderRadius: 5,
   height: controlHeight,
   boxSizing: 'border-box',
   padding: '0 12px',
@@ -107,7 +108,7 @@ const cancelStyle: React.CSSProperties = {
   background: 'transparent',
   color: palette.textPrimary,
   border: `1px solid ${palette.border}`,
-  borderRadius: 3,
+  borderRadius: 5,
   padding: '3px 10px',
   cursor: 'pointer',
 };
@@ -117,7 +118,7 @@ const confirmStyle: React.CSSProperties = {
   background: palette.dangerBg,
   color: palette.dangerText,
   border: `1px solid ${palette.dangerBorder}`,
-  borderRadius: 3,
+  borderRadius: 5,
   padding: '3px 10px',
   cursor: 'pointer',
 };
