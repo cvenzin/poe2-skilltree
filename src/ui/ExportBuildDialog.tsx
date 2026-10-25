@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { TreeData } from '../data/types';
 import { useStore } from '../state/store';
 import { readSnapshot } from '../state/persistence';
+import { currentBuildName } from '../state/buildLibrary';
 import { createGggBuild, gggBuildFilename } from '../state/gggBuild';
 import { allocationSize } from '../state/allocation';
 import { downloadBuildFile } from './buildDownload';
@@ -16,7 +17,7 @@ export default function ExportBuildDialog({ data, onClose }: Readonly<{ data: Tr
   const version = useStore((s) => s.activeVersion);
   const allocation = useStore((s) => s.allocation);
   const ascendancy = data.classes.flatMap((cls) => cls.ascendancies).find((asc) => asc.id === ascendancyId);
-  const [name, setName] = useState(() => `${ascendancy?.name ?? className ?? 'My'} passive tree`);
+  const [name, setName] = useState(() => currentBuildName() ?? `${ascendancy?.name ?? className ?? 'My'} passive tree`);
   const [downloadedFile, setDownloadedFile] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);

@@ -4,11 +4,15 @@ import { useStore } from '../state/store';
 import { loadTreeData } from '../data/loader';
 import { getPatchUpdateVersion } from '../data/versions';
 import { readSnapshot, reconcileSnapshot } from '../state/persistence';
+import { copyToTreeVersion } from '../state/buildActions';
+import { useBuildLibrary } from '../state/buildLibrary';
 import type { TreeData } from '../data/types';
 import { palette, fontBody, controlHeight } from './theme';
 
 interface PendingUpdate {
   sourceVersion: string;
+  sourceId: string | null;
+  sourceFingerprint: string;
   targetVersion: string;
   snapshot: Omit<BuildSnapshot, 'version'>;
   droppedNames: string[];
@@ -19,7 +23,7 @@ interface PendingUpdate {
 
 export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>) {
   const activeVersion = useStore((s) => s.activeVersion);
-  const setActiveVersion = useStore((s) => s.setActiveVersion);
+  const activeId = useBuildLibrary((s) => s.library.activeId);
   const targetVersion = getPatchUpdateVersion(activeVersion);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +42,7 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
 
   const checkUpdate = async () => {
     const sourceVersion = activeVersion;
+    const sourceId = activeId;
     const source = readSnapshot(sourceVersion);
     if (!source) {
       setError('The current build could not be read.');
@@ -49,7 +54,12 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
     setPending(null);
     try {
       const targetData = await loadTreeData(targetVersion);
-      if (useStore.getState().activeVersion !== sourceVersion) return;
+      if (useStore.getState().activeVersion !== sourceVersion ||
+        useBuildLibrary.getState().library.activeId !== sourceId) return;
+      if (JSON.stringify(readSnapshot(sourceVersion)) !== JSON.stringify(source)) {
+        setError('The build changed while checking. Check the update again.');
+        return;
+      }
 
       const snapshot = reconcileSnapshot(source, targetData);
       if (!snapshot) {
@@ -65,12 +75,14 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
       const ascendancyCleared = Boolean(source.ascendancyId && snapshot.ascendancyId !== source.ascendancyId);
       const defaultAttributeCleared = Boolean(source.defaultAttribute && snapshot.defaultAttribute !== source.defaultAttribute);
       if (droppedKeys.length === 0 && droppedAttributeChoices === 0 && !ascendancyCleared && !defaultAttributeCleared) {
-        setActiveVersion(targetVersion, snapshot);
+        copyToTreeVersion(targetVersion, snapshot);
         return;
       }
 
       setPending({
         sourceVersion,
+        sourceId,
+        sourceFingerprint: JSON.stringify(source),
         targetVersion,
         snapshot,
         droppedNames: droppedKeys.map((key) => data.nodes[key]?.name ?? `Node ${key}`),
@@ -86,19 +98,25 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
   };
 
   const confirmUpdate = () => {
-    if (!pending || useStore.getState().activeVersion !== pending.sourceVersion) return;
-    setActiveVersion(pending.targetVersion, pending.snapshot);
+    if (!pending || useStore.getState().activeVersion !== pending.sourceVersion ||
+      useBuildLibrary.getState().library.activeId !== pending.sourceId) return;
+    if (JSON.stringify(readSnapshot(pending.sourceVersion)) !== pending.sourceFingerprint) {
+      setError('The build changed. Check the update again.');
+      setPending(null);
+      return;
+    }
+    copyToTreeVersion(pending.targetVersion, pending.snapshot);
     setPending(null);
   };
 
-  const visiblePending = pending?.sourceVersion === activeVersion ? pending : null;
+  const visiblePending = pending?.sourceVersion === activeVersion && pending.sourceId === activeId ? pending : null;
 
   return (
     <>
       <div style={noticeStyle}>
         <span>Patch {targetVersion} available</span>
         <button type="button" onClick={checkUpdate} disabled={checking} style={updateButtonStyle}>
-          {checking ? 'Checking…' : 'Update'}
+          {checking ? 'Checking…' : 'Update a copy'}
         </button>
         {error && <span role="alert" style={errorStyle}>{error}</span>}
       </div>
@@ -106,7 +124,8 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
       {visiblePending && (
         <div style={backdropStyle}>
           <section role="dialog" aria-modal="true" aria-labelledby="tree-update-title" style={dialogStyle}>
-            <h2 id="tree-update-title" style={dialogTitleStyle}>Update to tree {visiblePending.targetVersion}?</h2>
+            <h2 id="tree-update-title" style={dialogTitleStyle}>Copy to tree {visiblePending.targetVersion}?</h2>
+            <p style={dialogTextStyle}>Your original build will be kept.</p>
             {visiblePending.droppedNames.length > 0 && (
               <>
                 <p style={dialogTextStyle}>
@@ -136,7 +155,7 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
             <div style={dialogActionsStyle}>
               <button type="button" onClick={() => setPending(null)} style={cancelButtonStyle}>Cancel</button>
               <button type="button" onClick={confirmUpdate} style={confirmButtonStyle} autoFocus>
-                Update tree
+                Update a copy
               </button>
             </div>
           </section>

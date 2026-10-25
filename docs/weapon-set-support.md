@@ -123,9 +123,11 @@ sets flips it on so points are never hidden.
 [`shareHash.ts`](../src/state/shareHash.ts)). Backward compatible: a
 pre-weapon-set build (single `allocated` list, or share hash with only `n=`)
 loads as shared-only. Share hash adds `w1=` / `w2=` for the set branches.
-Boot selects the installed URL version first, then the saved build's installed
-version, then the default. The restored build is saved immediately after a
-successful load, including patch updates, so reopening the base URL retains that
+Boot selects the installed URL version first, then the active saved build's
+installed version, then the default. The [local build library](build-library.md)
+stores independent named snapshots and an unnamed draft. Shared links open a
+draft without replacing named builds. Version changes save a separate copy and
+preserve the source; reopening the base URL restores the active copy and its
 version without another edit. Imports return editing to Main and clear hover,
 preview, search, and history. Reconciliation drops unknown keys, foreign
 ascendancy skills, and locked nodes; mismatched ascendancies become none.

@@ -17,14 +17,17 @@ Live: <https://poe2planner.app/>
   it.
 - Passive (123) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red.
 - Undo / redo and a one-click reset.
+- A local build library: name, rename, duplicate, switch between, and delete
+  builds from **My builds**. Edits autosave in this browser, and the last active
+  build reopens on your next visit. Shared links open as separate drafts.
 - Select a default bonus for new attribute travel nodes, override individual
   nodes, or fill unspecified nodes from older builds. Choices support undo/redo,
   saving, sharing, and in-game export recommendations.
 - Shareable URL hash encodes class, ascendancy, allocations, and version.
 - Older trees show an update notice when a newer patch in the same version line
   is bundled; compatible allocations carry forward, and any changes are shown
-  before applying the update. The updated build is saved immediately, so reopening
-  the planner keeps the chosen patch without requiring another edit.
+  before applying the update. Updates and version changes create a saved copy,
+  preserving the original. The updated copy reopens on the chosen patch.
 - Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
 - Responsive toolbar: Build toggle with a chevron in the heading font,
@@ -79,6 +82,25 @@ repository's **Settings → Pages → Custom domain** set to `poe2planner.app`
 and enable **Enforce HTTPS** once GitHub has provisioned the certificate.
 DNS is managed at Porkbun and points the apex domain and `www` to GitHub Pages.
 This repository deploys through GitHub Actions, so a `CNAME` file is not required.
+
+### Saved builds
+
+Open the toolbar and use **Save to my builds** to name your current draft.
+The **My builds** selector lists each saved build with its class, ascendancy,
+and tree version. Use **New** for a blank draft, **Rename** to change a name,
+**Duplicate** to experiment with a copy, or **Delete** to remove a saved build
+after confirmation. Changes save automatically; switching saves pending edits
+and clears undo/redo so history stays within one build.
+
+Existing single-build saves become **My build** automatically. A shared link
+opens as an independent draft; use **Save to my builds** to keep it. Changing
+tree versions creates a separate saved copy and keeps the original. The export
+dialog starts with the saved build's name.
+
+Builds are stored in this browser on this device. Clearing site data removes
+them; share links and exported files can serve as backups. Save failures appear
+in the toolbar. See [docs/build-library.md](docs/build-library.md) for storage
+and compatibility details.
 
 ### Export to the in-game Build Planner
 

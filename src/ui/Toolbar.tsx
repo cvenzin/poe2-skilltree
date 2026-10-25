@@ -10,6 +10,8 @@ import ShareButton from './ShareButton';
 import ExportBuildButton from './ExportBuildButton';
 import AttributeControls from './AttributeControls';
 import TreeVersionNotice from './TreeVersionNotice';
+import BuildLibraryControls from './BuildLibraryControls';
+import { changeBuildVersion } from '../state/buildActions';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, panelShadow } from './theme';
 import './Toolbar.css';
@@ -24,7 +26,6 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
   const activeVersion = useStore((s) => s.activeVersion);
   const setClass = useStore((s) => s.setClass);
   const setAscendancy = useStore((s) => s.setAscendancy);
-  const setActiveVersion = useStore((s) => s.setActiveVersion);
   const setAllocationMode = useStore((s) => s.setAllocationMode);
   const setWeaponSetsEnabled = useStore((s) => s.setWeaponSetsEnabled);
   const patchUpdateVersion = getPatchUpdateVersion(activeVersion);
@@ -78,7 +79,7 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
           <label className="toolbar-version">
             <span>Tree version</span>
             <select aria-label="Version" value={activeVersion ?? ''}
-              onChange={(e) => setActiveVersion(e.target.value)}>
+              onChange={(e) => { void changeBuildVersion(e.target.value); }}>
               {VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </label>
@@ -92,6 +93,7 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
       </header>
 
       <div id="tree-toolbar-content" className="toolbar-content">
+        <BuildLibraryControls data={data} />
         <SearchInput data={data} />
         <TreeVersionNotice data={data} />
         <div className="toolbar-character">
@@ -176,6 +178,7 @@ function unspentNote(unspent: number): string | undefined {
 const themeVars = {
   '--toolbar-bg': palette.panelBg,
   '--toolbar-header': palette.headerBg,
+  '--toolbar-dialog': palette.panelBgSolid,
   '--toolbar-field': palette.fieldBg,
   '--toolbar-border': palette.border,
   '--toolbar-divider': palette.divider,
