@@ -7,6 +7,7 @@ export default defineConfig({
   base: '/',
   plugins: [react()],
   build: {
+    chunkSizeWarningLimit: 750,
     rolldownOptions: {
       input: {
         planner: fileURLToPath(new URL('./index.html', import.meta.url)),
