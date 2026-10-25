@@ -47,7 +47,7 @@ Live: <https://poe2planner.app/>
 
 ## Tech stack
 
-React 19, TypeScript, Vite, [pixi.js] v8, [pixi-viewport], [zustand],
+React 19, TypeScript 7, Vite, [pixi.js] v8, [pixi-viewport], [zustand],
 [@floating-ui/react]. The viewer is a fully static SPA; GitHub Pages serves
 the build with no backend.
 
@@ -65,9 +65,14 @@ npm ci
 npm run dev      # vite dev server with HMR
 npm run build    # tsc -b && vite build, output to dist/
 npm run preview  # serve dist/ locally
-npm run lint
+npm run lint     # Oxlint (configuration in .oxlintrc.json)
 npm test         # Vitest regression suite, including all bundled tree exports
 ```
+
+Lint rules live in `.oxlintrc.json` and use Oxlint's native TypeScript and React
+plugins, including Hooks and Fast Refresh checks. The ESLint migration maps 94
+rules; unsupported rules and experimental nursery rules are omitted. TypeScript's
+strict compiler checks remain enabled for the app and tests.
 
 Tests, lint, and the production build run in CI via [.github/workflows/deploy.yml]
 on every push to `main`. Successful checks deploy `dist/` to GitHub Pages.
