@@ -115,7 +115,7 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
     <>
       <div style={noticeStyle}>
         <span>Patch {targetVersion} available</span>
-        <button type="button" onClick={checkUpdate} disabled={checking} style={updateButtonStyle}>
+        <button type="button" onClick={() => { void checkUpdate(); }} disabled={checking} style={updateButtonStyle}>
           {checking ? 'Checking…' : 'Update a copy'}
         </button>
         {error && <span role="alert" style={errorStyle}>{error}</span>}

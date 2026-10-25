@@ -49,7 +49,7 @@ export default function App() {
     let cancelled = false;
     let loadedBundle: AtlasBundle | null = null;
     let stopPersist: (() => void) | null = null;
-    (async () => {
+    void (async () => {
       try {
         setStatus({ kind: 'loading', version: activeVersion });
 

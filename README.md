@@ -70,9 +70,10 @@ npm test         # Vitest regression suite, including all bundled tree exports
 ```
 
 Lint rules live in `.oxlintrc.json` and use Oxlint's native TypeScript and React
-plugins, including Hooks and Fast Refresh checks. The ESLint migration maps 94
-rules; unsupported rules and experimental nursery rules are omitted. TypeScript's
-strict compiler checks remain enabled for the app and tests.
+plugins, including Hooks and Fast Refresh checks. Type-aware promise checks run
+through `oxlint-tsgolint`. The ESLint migration maps 94 rules; unsupported rules
+and experimental nursery rules are omitted. TypeScript's strict compiler checks
+remain enabled for the app and tests.
 
 Tests, lint, and the production build run in CI via [.github/workflows/deploy.yml]
 on every push to `main`. Successful checks deploy `dist/` to GitHub Pages.

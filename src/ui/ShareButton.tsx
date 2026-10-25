@@ -55,7 +55,7 @@ export default function ShareButton() {
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
         type="button"
-        onClick={onClick}
+        onClick={() => { void onClick(); }}
         style={buttonStyle}
         disabled={!className}
         title="Copy a shareable URL of this build"
