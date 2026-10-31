@@ -30,7 +30,12 @@ export default function Attribution() {
     <div ref={containerRef} style={wrapperStyle}>
       {showInfo && (
         <div style={popoverStyle}>
-          <div style={popoverTitleStyle}>PoE 2 Skill Tree</div>
+          <div style={popoverTitleStyle}>PoE 2 Planner</div>
+          <div style={popoverLineStyle}>
+            Plan a Path of Exile 2 passive tree for your class and ascendancy,
+            including weapon sets. Share your build or export it to the game.
+            Free on mobile and desktop.
+          </div>
           <div style={popoverLineStyle}>
             Created by cvenzin · MIT licensed
           </div>
