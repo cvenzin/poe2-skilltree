@@ -40,9 +40,24 @@ set2 ≤ WEAPON_SET_CAP + allocated weaponPassivePointsGranted
 ```
 
 The two sets can have different active totals and different unspent remainders.
-Base caps are constants in [`src/state/store.ts`](../src/state/store.ts): 123
-passives at level 100 with quest rewards, 24 specialized points per set, and
-8 ascendancy points counted separately. Effective caps use the selected
+Base caps enforced by the planner are constants in [`src/state/store.ts`](../src/state/store.ts):
+123 passives from levels and campaign rewards, 24 specialized points per set
+from the campaign, and 8 ascendancy points counted separately. These limits
+do not include the conditional additional passive point from the Site of the
+Chosen or the additional weapon-set point from Olroth's Boon. Consequently,
+the planner can reject an allocation that is valid for a character with those
+rewards. The Site of the Chosen reward depends on a Martyr in the character's
+league. Olroth's Boon grants a weapon-set point; whether it also grants an
+ordinary passive point has not been verified. See the wiki's
+[passive tree](https://www.poe2wiki.net/wiki/Passive_skill_tree) and
+[weapon-set rules](https://www.poe2wiki.net/wiki/Weapon_set), and
+[PoE2DB's item listing](https://poe2db.tw/us/Quest_Items). GGG's
+[0.5.3 patch notes](https://www.pathofexile.com/forum/view-thread/3968601)
+confirm the boon existed before that patch but do not establish its introduction
+date or point effect. Verify availability for each tree version before changing
+the budgets.
+
+Effective caps use the selected
 ascendancy's allocated shared skills and the fields in that version's export.
 Oracle and Pathfinder can grant ordinary passive points. Weapon Master adds
 100 specialized points per set; its conversion does not subtract from the active

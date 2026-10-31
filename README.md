@@ -15,7 +15,7 @@ Live: <https://poe2planner.app/>
   start; click again to allocate.
 - Click an allocated node to cascade-unallocate every node that depended on
   it.
-- Passive (123) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red.
+- Passive (123 base) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red. The planner does not yet account for the additional Site of the Chosen or Olroth's Boon rewards; see [weapon-set support](docs/weapon-set-support.md#points).
 - Free ascendancy skills, conditional node unlocks, Pathfinder starting paths
   and Oracle radius allocation are supported. Tooltips include Hulking Form
   scaling and Smith's Masterwork's current armour bonus; see
