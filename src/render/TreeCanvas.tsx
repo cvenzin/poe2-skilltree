@@ -92,6 +92,7 @@ export default function TreeCanvas({
       unsubscribeStore: null,
       pathing: null,
       hoverPreviewDependencies: null,
+      activationPreview: null,
       backdropLayer: null,
       mainCircleLayer: null,
       ascendancyLayer: null,

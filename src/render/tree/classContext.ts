@@ -35,6 +35,7 @@ export function swapContext(
 ): void {
   const generation = ++ctx.swapGeneration;
   ctx.hoverPreviewDependencies = null;
+  ctx.activationPreview = null;
   // Release the old overlay's hover reference before destroying its wraps.
   if (ctx.hoverScaledWrap && !ctx.hoverScaledWrap.destroyed) ctx.hoverScaledWrap.scale.set(1);
   ctx.hoverScaledWrap = null;

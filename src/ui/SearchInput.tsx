@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useStore } from '../state/store';
 import { allAllocated } from '../state/allocation';
 import type { TreeData } from '../data/types';
@@ -36,6 +36,7 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
 
   const index = useMemo(() => buildSearchIndex(data), [data]);
   const [draft, setDraft] = useState(query);
+  const pendingTimer = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
 
   // Sync the visible draft to external clears (Esc hotkey, context switch)
   // via the "set state during render" pattern. The conditional guards against
@@ -53,7 +54,7 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
   // "The Unseen Path" reveals/hides matching gated nodes without forcing the
   // user to retype.
   useEffect(() => {
-    const timer = globalThis.setTimeout(() => {
+    const timer = pendingTimer.current = globalThis.setTimeout(() => {
       if (draft.trim().length === 0) {
         if (matches.length === 0 && draft === query) return;
         setSearch(draft, []);
@@ -80,9 +81,17 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
+            // Enter is an explicit navigation request for the text on screen.
+            // Flush it now; neither an old result set nor its pending timer
+            // may select a different target after this key press.
+            globalThis.clearTimeout(pendingTimer.current);
+            const state = useStore.getState();
+            setSearch(draft, filterConstraintHidden(findMatches(draft, index), data,
+              state.ascendancyId, allAllocated(state.allocation)));
             stepSearch(e.shiftKey ? -1 : 1);
           } else if (e.key === 'Escape') {
             e.preventDefault();
+            globalThis.clearTimeout(pendingTimer.current);
             setDraft('');
             clearSearch();
             inputRef.current?.blur();
@@ -95,7 +104,7 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
       {hasQuery && (
         <button
           type="button"
-          onClick={() => { setDraft(''); clearSearch(); inputRef.current?.focus(); }}
+          onClick={() => { globalThis.clearTimeout(pendingTimer.current); setDraft(''); clearSearch(); inputRef.current?.focus(); }}
           style={clearButtonStyle}
           title="Clear search (Esc)"
           aria-label="Clear search"

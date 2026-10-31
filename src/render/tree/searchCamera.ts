@@ -3,7 +3,10 @@ import type { WorldSize } from './types';
 import { Container } from 'pixi.js';
 import { useStore } from '../../state/store';
 
-const SEARCH_MAX_ZOOM = 2.5;
+/** Keep neighboring paths and clusters visible, even for a single result.
+ *  Scale this world-space context to the shorter screen dimension so narrow
+ *  screens retain the same neighborhood rather than cropping to one node. */
+const SEARCH_MIN_WORLD_SPAN = 2800;
 
 const SEARCH_PADDING_FRACTION = 0.15;
 
@@ -13,7 +16,7 @@ const SEARCH_PADDING_FRACTION = 0.15;
  *      capture the camera into `preSearchCamera` so Esc can restore it.
  *   2. Matches or cursor changed (with matches > 0): frame the bbox of the
  *      relevant subset (cursor-focused = single node, else all matches),
- *      capped by `SEARCH_MAX_ZOOM`, floored at fit-to-screen.
+ *      with a minimum surrounding world area, floored at fit-to-screen.
  *   3. Search just cleared (`prev.searchQuery !== '' && next === ''`) AND a
  *      `preSearchCamera` snapshot exists: animate back to it.
  */
@@ -91,10 +94,9 @@ function frameCameraOnMatches(
   const h = Math.max(maxY - minY, 1);
   const padX = w * SEARCH_PADDING_FRACTION;
   const padY = h * SEARCH_PADDING_FRACTION;
-  const boxW = w + 2 * padX;
-  const boxH = h + 2 * padY;
+  const boxW = Math.max(w + 2 * padX, SEARCH_MIN_WORLD_SPAN);
+  const boxH = Math.max(h + 2 * padY, SEARCH_MIN_WORLD_SPAN);
   let scale = Math.min(vp.screenWidth / boxW, vp.screenHeight / boxH);
-  scale = Math.min(scale, SEARCH_MAX_ZOOM);
   scale = Math.max(scale, fitScale);
 
   // worldContainer is at position (-world.minX, -world.minY) inside the

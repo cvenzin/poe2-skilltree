@@ -36,6 +36,18 @@ documentation when behavior changes; avoid duplicating detailed design here.
 - `public/favicon.svg` is the icon source; regenerate PNGs with
   `node scripts/gen-icons.mjs` when changing it.
 
+### Preview browser and Vite connectivity
+
+Use the in-app preview browser for local manual checks. If navigation times out
+even though Vite reports ready, check whether the server is reachable: a
+network-restricted execution sandbox can block local sockets. Stop that Vite
+process and restart `npm run dev -- --host 0.0.0.0` outside the restricted
+sandbox through the normal execution approval mechanism, then open
+`http://127.0.0.1:5173/` in the preview browser. This sequence resolved the
+preview timeout during the passive-tree audit fixes. Use the actual port Vite
+reports if 5173 is occupied. Do not change firewall or browser security settings
+to work around a sandbox socket restriction.
+
 ## Behavior to preserve
 
 - Each node belongs to exactly one of `shared`, `set1`, or `set2`. Shared paths

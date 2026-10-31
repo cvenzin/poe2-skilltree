@@ -1,0 +1,51 @@
+import { readFileSync } from 'node:fs';
+import { Container, Graphics } from 'pixi.js';
+import type { Viewport } from 'pixi-viewport';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { normalizeTreeData } from '../src/data/normalize';
+import type { RawTreeData } from '../src/data/types';
+import { buildSearchIndex, findMatches, filterConstraintHidden } from '../src/interaction/search';
+import { handleSearchCameraTransition } from '../src/render/tree/searchCamera';
+import { computeWorldBounds } from '../src/render/tree/geometry';
+import { spritesForNode } from '../src/render/frameForNode';
+import { useStore } from '../src/state/store';
+
+beforeEach(() => useStore.setState(useStore.getInitialState(), true));
+
+it.each([[1280, 720], [390, 844]])('frames a 0.5.5 Witch life result with surrounding context at %s × %s', (width, height) => {
+  const data = normalizeTreeData(JSON.parse(readFileSync('public/trees/0.5.5/data.json', 'utf8')) as RawTreeData);
+  const matches = filterConstraintHidden(findMatches('life', buildSearchIndex(data)), data, null, new Set());
+  expect(matches.length).toBeGreaterThan(1);
+  const node = data.nodes[matches[0]!]!;
+  const atlas = JSON.parse(readFileSync('public/trees/0.5.5/assets/frame.json', 'utf8')) as {
+    frames: Record<string, { frame: { w: number; h: number } }>;
+    meta: { scale: number };
+  };
+  const frame = atlas.frames[spritesForNode(node).frame!.key]!.frame;
+  const size = { w: frame.w / Number(atlas.meta.scale), h: frame.h / Number(atlas.meta.scale) };
+  const container = new Container();
+  const wrap = new Container();
+  wrap.position.set(node.x, node.y);
+  wrap.addChild(new Graphics().rect(-size.w / 2, -size.h / 2, size.w, size.h).fill(0xffffff));
+  container.addChild(wrap);
+  const world = computeWorldBounds(data);
+  const fit = Math.min(width / world.width, height / world.height);
+  const animate = vi.fn();
+  const vp = { screenWidth: width, screenHeight: height, center: { x: 100, y: 200 }, scale: { x: fit }, animate } as unknown as Viewport;
+  const initial = useStore.getState();
+  initial.setSearch('life', matches);
+  handleSearchCameraTransition(vp, world, fit, new Map([[matches[0]!, wrap]]), container, false, initial, useStore.getState());
+  const beforeEnter = useStore.getState();
+  beforeEnter.stepSearch(1);
+  handleSearchCameraTransition(vp, world, fit, new Map([[matches[0]!, wrap]]), container, false, beforeEnter, useStore.getState());
+  const camera = animate.mock.lastCall![0] as { scale: number; position: { x: number; y: number } };
+  expect(Math.max(size.w, size.h) * camera.scale).toBeLessThanOrEqual(64);
+  expect(Math.min(width, height) / camera.scale).toBeGreaterThanOrEqual(2400);
+  expect(camera.scale).toBeGreaterThanOrEqual(fit);
+  expect(camera.position).toEqual({ x: node.x! - world.minX, y: node.y! - world.minY });
+  const beforeClear = useStore.getState();
+  beforeClear.clearSearch();
+  handleSearchCameraTransition(vp, world, fit, new Map(), container, true, beforeClear, useStore.getState());
+  expect(animate.mock.lastCall![0]).toMatchObject({ scale: fit, position: { x: 100, y: 200 }, time: 0 });
+  container.destroy({ children: true });
+});

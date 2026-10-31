@@ -175,6 +175,7 @@ export async function mount(
   ctx.unsubscribeStore = useStore.subscribe((s, prev) => {
     const allocationChanged = s.allocation !== prev.allocation;
     const modeChanged = s.allocationMode !== prev.allocationMode;
+    if (allocationChanged || modeChanged || s.previewPath === null) ctx.activationPreview = null;
     if (allocationChanged || modeChanged) ctx.hoverPreviewDependencies = null;
     if (allocationChanged && pathingAllocation !== s.allocation) {
       refreshConstraintState(ctx, data, s.allocation);

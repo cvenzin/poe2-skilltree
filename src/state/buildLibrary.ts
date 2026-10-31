@@ -17,6 +17,17 @@ export const useBuildLibrary = create<LibraryState>(() => ({
 
 const saveError = 'Could not save in this browser. Keep this page open and use Share or Export to back up your build.';
 
+/** randomUUID requires a secure context; LAN HTTP development still has
+ *  getRandomValues. Keep the same UUID v4 format for stored build IDs. */
+function newBuildId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 /** Write before committing library actions so failed saves never discard the current build. */
 export function writeLibrary(library: BuildLibrary): boolean {
   if (useBuildLibrary.getState().storageBlocked) {
@@ -45,7 +56,7 @@ export function initializeBuildLibrary(): void {
       // An unreadable legacy save stays as a backup without blocking a fresh library.
       try { snapshot = legacyRaw ? parseSnapshot(JSON.parse(legacyRaw)) : null; } catch { /* preserve legacy entry */ }
       if (snapshot) {
-        const id = crypto.randomUUID();
+        const id = newBuildId();
         library = { ...library, activeId: id, builds: [{ id, name: 'My build', updatedAt: Date.now(), snapshot }] };
       }
     }
@@ -81,7 +92,7 @@ export function nameCurrentBuild(name: string, snapshot: BuildSnapshot, duplicat
   name = name.trim();
   if (!name) return false;
   const { library } = useBuildLibrary.getState();
-  const id = duplicate || !library.activeId ? crypto.randomUUID() : library.activeId;
+  const id = duplicate || !library.activeId ? newBuildId() : library.activeId;
   const build = { id, name, snapshot, updatedAt: Date.now() };
   return writeLibrary({ ...library, activeId: id, draft: null,
     builds: library.builds.some((b) => b.id === id)

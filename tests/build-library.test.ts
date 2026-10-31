@@ -40,6 +40,30 @@ afterEach(() => {
 });
 
 describe('build library', () => {
+  it('supports HTTP without randomUUID for legacy migration, naming, duplication and version copies', () => {
+    vi.stubGlobal('crypto', { getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto) });
+    storage.set(LEGACY_KEY, JSON.stringify(snapshot));
+    boot();
+    const migrated = useBuildLibrary.getState().library;
+    expect(migrated.builds).toHaveLength(1);
+    expect(useBuildLibrary.getState().storageBlocked).toBe(false);
+    const migratedId = migrated.activeId;
+    expect(saveBuildName('Renamed legacy')).toBe(true);
+    expect(useBuildLibrary.getState().library.activeId).toBe(migratedId);
+    expect(saveBuildName('Copy', true)).toBe(true);
+    expect(newBuild()).toBe(true);
+    expect(saveBuildName('New HTTP build')).toBe(true);
+    expect(copyToTreeVersion('0.5.2', { ...snapshot, shared: ['2'] })).toBe(true);
+    const library = useBuildLibrary.getState().library;
+    expect(library.builds).toHaveLength(4);
+    const ids = library.builds.map((b) => b.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(id).toMatch(/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/);
+    useBuildLibrary.setState(useBuildLibrary.getInitialState(), true);
+    initializeBuildLibrary();
+    expect(useBuildLibrary.getState().library).toEqual(library);
+  });
+
   it('starts a usable library when the legacy save is corrupt, keeping the original entry', () => {
     storage.set(LEGACY_KEY, '{broken');
     boot();

@@ -136,6 +136,8 @@ export interface MountContext {
   pathing: PathingContext | null;
   /** One current-hover cache; individual node listeners must not retain old pathing contexts. */
   hoverPreviewDependencies: HoverPreviewDependencies | null;
+  /** First activation, distinct from hover; invalidated by target/context changes or gestures. */
+  activationPreview: HoverPreviewDependencies | null;
   /** Dedicated containers for the class/ascendancy-dependent layers. Kept in
    *  worldContainer across class/ascendancy switches — only their contents
    *  are cleared and re-drawn, avoiding a WebGL context teardown. */

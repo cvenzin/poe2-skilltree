@@ -53,6 +53,12 @@ requires the current build to save successfully.
 The library is local to this browser, device, and site origin. There is no cloud
 sync or cross-tab merge; avoid editing the library in multiple tabs at once.
 
+The library also works during ordinary LAN HTTP development and mobile testing
+(`npm run dev -- --host 0.0.0.0`). New IDs use `crypto.randomUUID` when available,
+or UUID v4 bytes from `crypto.getRandomValues` on HTTP. Naming, duplication,
+legacy migration and version copies use the same ID generator. Production
+continues to use HTTPS; HTTP and HTTPS origins have separate browser storage.
+
 ## Version changes and deletion
 
 The header's **Game patch** selector or accepting a patch update creates a named copy using

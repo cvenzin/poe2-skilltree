@@ -11,8 +11,10 @@ Live: <https://poe2planner.app/>
 - Class and ascendancy selection (filters to playable classes per export
   version).
 - Search nodes by name or stats to highlight matches with circles on the tree; Enter / Shift+Enter steps through matches.
-- Click an unallocated node to preview the cheapest path from your class
-  start; click again to allocate.
+  Enter uses the text currently in the field even before the debounce finishes;
+  focused results retain the surrounding paths and clusters on narrow screens too.
+- Hover an unallocated node with the mouse to preview the cheapest path;
+  click to allocate. On touch, tap once to preview and again to allocate.
 - Click an allocated node to cascade-unallocate every node that depended on
   it.
 - Passive (123 base) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red. The planner does not yet account for the additional Site of the Chosen or Olroth's Boon rewards; see [weapon-set support](docs/weapon-set-support.md#points).
@@ -34,6 +36,7 @@ Live: <https://poe2planner.app/>
   preserving the original. The updated copy reopens on the chosen patch.
 - Export a `.build` file for PoE 2's in-game Build Planner, including both weapon sets.
 - Pan, wheel-zoom, and pinch-zoom on touch.
+  Node interaction resumes after interrupted or cancelled touch gestures.
 - Responsive toolbar: Build toggle with a chevron in the heading font,
   in-panel close button, full-width search, paired class/ascendancy controls,
   and an accented export action. Mobile

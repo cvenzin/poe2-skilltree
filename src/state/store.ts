@@ -137,7 +137,7 @@ export interface AppState extends AttributeState {
   setAscendancy: (id: string | null) => void;
   setHovered: (h: HoveredNode | null) => void;
   /** Atomically publish a hover target and the path computed for that target. */
-  setHoverState: (h: HoveredNode, path: readonly string[] | null) => void;
+  setHoverState: (h: HoveredNode | null, path: readonly string[] | null) => void;
   /** Move the tooltip anchor within its current target without invalidating its preview. */
   updateHoveredPosition: (h: HoveredNode) => void;
   setPreviewPath: (path: readonly string[] | null) => void;
@@ -348,8 +348,8 @@ export const useStore = create<AppState>()((set, get, api) => ({
   setHoverState: (hovered, previewPath) => set((s) => {
     const samePath = s.previewPath === previewPath || (s.previewPath !== null && previewPath !== null &&
       s.previewPath.length === previewPath.length && s.previewPath.every((key, index) => key === previewPath[index]));
-    const sameHover = s.hovered?.nodeKey === hovered.nodeKey && s.hovered.clientX === hovered.clientX &&
-      s.hovered.clientY === hovered.clientY;
+    const sameHover = s.hovered === hovered || (hovered !== null && s.hovered?.nodeKey === hovered.nodeKey &&
+      s.hovered.clientX === hovered.clientX && s.hovered.clientY === hovered.clientY);
     if (sameHover && samePath) return s;
     return { hovered, previewPath: samePath ? s.previewPath : previewPath };
   }),
@@ -425,6 +425,8 @@ export const useStore = create<AppState>()((set, get, api) => ({
     return {
       allocation: prev.allocation,
       attributeChoices: prev.attributeChoices,
+      defaultAttribute: s.status.kind === 'ready' && !attributeOptions(s.status.data, prev.allocation, s.ascendancyId)
+        .some((option) => option.choice === s.defaultAttribute) ? null : s.defaultAttribute,
       attributeEditor: null,
       past: s.past.slice(0, -1),
       future: [...s.future, { allocation: s.allocation, attributeChoices: s.attributeChoices }],
@@ -438,6 +440,8 @@ export const useStore = create<AppState>()((set, get, api) => ({
     return {
       allocation: next.allocation,
       attributeChoices: next.attributeChoices,
+      defaultAttribute: s.status.kind === 'ready' && !attributeOptions(s.status.data, next.allocation, s.ascendancyId)
+        .some((option) => option.choice === s.defaultAttribute) ? null : s.defaultAttribute,
       attributeEditor: null,
       past: pushHistory(s.past, s),
       future: s.future.slice(0, -1),

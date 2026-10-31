@@ -11,6 +11,7 @@ import { decodeShareHash, encodeShareHash, reconcileShareHash } from '../src/sta
 import { loadPersistedSnapshot, readSnapshot, reconcileSnapshot, startPersistence } from '../src/state/persistence';
 import { bfsShortestPath, applyPathAllocation } from '../src/interaction/pathing';
 import { spritesForNode } from '../src/render/frameForNode';
+import { initializeBuildLibrary, useBuildLibrary } from '../src/state/buildLibrary';
 import { keys, makeTree } from './fixtures/tree';
 
 const data = makeTree({
@@ -165,12 +166,81 @@ describe('attribute allocation and editing', () => {
     state.setAscendancy(null);
     expect(useStore.getState().attributeChoices).toEqual({});
   });
+
+  it('undoing the Pathfinder unlock clears an unavailable default; redo restores choices, not the preference', () => {
+    const state = useStore.getState();
+    state.setAscendancy('Witch1');
+    state.commitAllocation(buildAllocation(['2'], [], []));
+    state.setDefaultAttribute('strength');
+    state.commitAllocation(buildAllocation(['2', '11'], [], []));
+    state.setDefaultAttribute('damage');
+    state.setNodeAttribute('2', 'damage');
+    state.undo(); // attribute choice
+    state.undo(); // Traveller's Wisdom
+    expect(useStore.getState().allocation.shared.has('11')).toBe(false);
+    expect(useStore.getState().defaultAttribute).toBeNull();
+    expect(useStore.getState().attributeChoices).toEqual({});
+    const snapshot = readSnapshot('0.5.2')!;
+    expect(snapshot.defaultAttribute).toBeUndefined();
+    state.redo(); // gate
+    state.redo(); // choice
+    expect(useStore.getState().attributeChoices['2']).toBe('damage');
+    expect(useStore.getState().defaultAttribute).toBeNull();
+    state.setDefaultAttribute('damage');
+    state.commitAllocation(buildAllocation(['2'], [], []));
+    state.undo(); // restore gate and choice
+    state.setDefaultAttribute('damage');
+    state.redo(); // remove gate again
+    expect(useStore.getState().defaultAttribute).toBeNull();
+    expect(useStore.getState().attributeChoices).toEqual({});
+    // Ordinary defaults remain preferences across history.
+    state.setDefaultAttribute('intelligence');
+    state.undo();
+    expect(useStore.getState().defaultAttribute).toBe('intelligence');
+    state.loadSnapshot(reconcileSnapshot(snapshot, data)!);
+    expect(useStore.getState().defaultAttribute).toBeNull();
+  });
 });
 
 describe('attribute sharing, persistence and export', () => {
   const raw = { version: '0.5.2', className: 'Witch', ascendancyId: null,
     sharedKeys: ['2', '3'], set1Keys: ['4'], set2Keys: ['5'],
     attributeChoices: { '2': 'intelligence', '4': 'dexterity', '5': 'strength' } as const, defaultAttribute: 'strength' as const };
+
+  it('autosaves the cleared Pathfinder default and choices, with the same state after reload', () => {
+    vi.useFakeTimers();
+    const storage = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value) });
+    useBuildLibrary.setState(useBuildLibrary.getInitialState(), true);
+    initializeBuildLibrary();
+    useStore.setState({ activeVersion: '0.5.2' });
+    const stop = startPersistence('0.5.2');
+    try {
+      const state = useStore.getState();
+      state.setAscendancy('Witch1');
+      state.commitAllocation(buildAllocation(['2', '3'], ['4'], ['5']));
+      state.commitAllocation(buildAllocation(['2', '3', '11'], ['4'], ['5']));
+      state.setDefaultAttribute('damage');
+      state.applyDefaultToUnspecified();
+      expect(useStore.getState().attributeChoices).toEqual({ '2': 'damage', '3': 'damage', '4': 'damage', '5': 'damage' });
+      state.undo(); state.undo();
+      vi.advanceTimersByTime(500);
+      const saved = loadPersistedSnapshot('0.5.2')!;
+      expect(saved.defaultAttribute).toBeUndefined();
+      expect(saved.attributeChoices).toBeUndefined();
+      expect(saved.shared).toEqual(['2', '3']);
+      const preview = attributeNode(data.nodes['2']!, useStore.getState().defaultAttribute ?? undefined, data);
+      expect(preview.name).not.toBe('Damage');
+      stop();
+      useBuildLibrary.setState(useBuildLibrary.getInitialState(), true);
+      initializeBuildLibrary();
+      state.loadSnapshot(reconcileSnapshot(loadPersistedSnapshot('0.5.2')!, data)!);
+      expect(readSnapshot('0.5.2')).toEqual(saved);
+      expect(useStore.getState().defaultAttribute).toBeNull();
+      expect(useStore.getState().attributeChoices).toEqual({});
+    } finally { stop(); useBuildLibrary.setState(useBuildLibrary.getInitialState(), true); vi.useRealTimers(); vi.unstubAllGlobals(); }
+  });
 
   it('round-trips all buckets and the default through canonical share links', () => {
     const hash = encodeShareHash(raw);

@@ -10,8 +10,10 @@ import { Viewport } from 'pixi-viewport';
 
 /**
  * Make a node sprite interactive: hover updates the cursor-anchored tooltip
- * AND computes a preview path; click commits the path (or cascades an
- * unallocate). Pixi's per-sprite event mode is fine at our node count
+ * AND computes a preview path; mouse click commits it. Touch uses a first
+ * tap to pin a preview and a second to commit. Allocated nodes edit/remove
+ * on first activation.
+ * Pixi's per-sprite event mode is fine at our node count
  * (~1500). If profiling later shows it as a hotspot, swap to a spatial grid.
  *
  * `pointertap` fires only when the down→up sequence doesn't drift, so a
@@ -50,6 +52,7 @@ export function attachNodeInteraction(
       clientY: e.client.y,
     };
     const dependencies = previewDependencies(nodeKey, state, ctx.pathing);
+    if (!samePreviewDependencies(ctx.activationPreview, dependencies)) ctx.activationPreview = null;
     const targetChanged = state.hovered?.nodeKey !== nodeKey;
     if (!targetChanged && samePreviewDependencies(ctx.hoverPreviewDependencies, dependencies)) {
       // Tooltip coordinates can move on every pointer event. Keep that update
@@ -67,7 +70,11 @@ export function attachNodeInteraction(
   wrap.on('pointermove', onHover);
   wrap.on('pointerout', () => {
     ctx.hoverPreviewDependencies = null;
-    useStore.getState().setHovered(null);
+    const state = useStore.getState();
+    // Touch pointers leave after each tap. Keep an explicitly pinned preview
+    // visible until the next activation, target change, or gesture.
+    state.setHoverState(null, samePreviewDependencies(ctx.activationPreview,
+      previewDependencies(nodeKey, state, ctx.pathing)) ? state.previewPath : null);
   });
 
   // Distinguish quick tap (intentional allocation) from long press (the
@@ -125,6 +132,17 @@ export function attachNodeInteraction(
     // Entwined Realities: any eligible target allocates as a single node into
     // the current tree, bypassing BFS entirely.
     if (pathing.blockedByMode[mode].has(nodeKey)) return;
+    if (pointerDownType === 'touch') {
+      const preview = computePreviewPathForNode(nodeKey, data, pathing, mode);
+      if (!preview?.length) return;
+      const dependencies = previewDependencies(nodeKey, state, pathing);
+      const confirmed = samePreviewDependencies(ctx.activationPreview, dependencies) && state.previewPath !== null;
+      ctx.activationPreview = confirmed ? null : dependencies;
+      if (!confirmed) {
+        state.setPreviewPath(preview);
+        return;
+      }
+    }
     if (pathing.entwinedKeys.has(nodeKey)) {
       state.tryAllocate(applyPathAllocation(data, alloc, [nodeKey], [], mode), data);
       return;
@@ -155,8 +173,8 @@ function previewDependencies(
   };
 }
 
-function samePreviewDependencies(a: HoverPreviewDependencies | null, b: HoverPreviewDependencies): boolean {
-  return a !== null && a.nodeKey === b.nodeKey && a.activeVersion === b.activeVersion && a.className === b.className &&
+function samePreviewDependencies(a: HoverPreviewDependencies | null | undefined, b: HoverPreviewDependencies): boolean {
+  return a != null && a.nodeKey === b.nodeKey && a.activeVersion === b.activeVersion && a.className === b.className &&
     a.ascendancyId === b.ascendancyId && a.allocation === b.allocation &&
     a.allocationMode === b.allocationMode && a.pathing === b.pathing;
 }
@@ -196,6 +214,7 @@ const TAP_SUPPRESS_AFTER_GESTURE_MS = 180;
 export function attachGestureSuppression(vp: Viewport, ctx: MountContext): void {
   const begin = () => {
     ctx.gestureActive = true;
+    ctx.activationPreview = null;
     ctx.hoverPreviewDependencies = null;
     const s = useStore.getState();
     if (s.hovered) s.setHovered(null);
@@ -209,4 +228,14 @@ export function attachGestureSuppression(vp: Viewport, ctx: MountContext): void 
   vp.on('pinch-start', begin);
   vp.on('drag-end', end);
   vp.on('pinch-end', end);
+  // A second finger can interrupt Drag before Pinch starts. In that sequence
+  // pixi-viewport emits neither end event. Its input listeners run first, so
+  // the final release/cancel can safely recover suppression from the count.
+  const release = () => {
+    if (ctx.gestureActive && vp.input.count() === 0) end();
+  };
+  vp.on('pointerup', release);
+  vp.on('pointerupoutside', release);
+  vp.on('pointercancel', release);
+  vp.on('pointerleave', release);
 }

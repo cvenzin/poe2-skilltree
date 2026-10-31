@@ -10,8 +10,11 @@ Open **Build** to find **Default for new attribute nodes**, below the point
 overview on desktop and mobile. Collapsing the toolbar hides the control to
 keep the tree clear; tree-triggered bonus and first-allocation dialogs remain available.
 Choose a default once; future path allocations apply it to all newly allocated
-generic nodes in one undo step. The first path containing an attribute node asks
-for a default before committing. Cancelling leaves the path unallocated.
+generic nodes in one undo step. Mouse hover previews a path and click allocates;
+on touch, tap once to pin the preview and tap the same target again to allocate.
+Changing targets or panning/pinching cancels that touch confirmation. The first
+confirmed path containing an attribute node asks for a default before committing.
+Cancelling leaves the path unallocated and requires a fresh touch preview.
 Changing the default never rewrites existing choices.
 
 Tap an allocated generic node in the tree currently being edited to open its
@@ -41,7 +44,9 @@ remain available. This adapter is verified against every bundled version.
 `dexterity`, `intelligence`, `damage`, `defences`, `cost_efficiency`). Missing
 entries mean unspecified. `defaultAttribute` is an optional build preference.
 Allocation edits and attribute edits share immutable history snapshots; defaults
-affect future edits and are saved separately from undo history.
+affect future edits and are saved separately from undo history. Undo and redo
+clear a default if their restored allocation no longer unlocks it. Restoring
+the unlock restores historical node choices, but does not reselect a cleared default.
 
 LocalStorage snapshots include these optional fields. Share hashes add one
 delta-encoded node list per chosen bonus (`at_strength=`, `at_dexterity=`, etc.)
