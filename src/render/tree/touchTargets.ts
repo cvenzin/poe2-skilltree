@@ -117,12 +117,14 @@ export function attachTouchTargets(canvas: HTMLCanvasElement, ctx: MountContext)
   window.addEventListener('pointerup', up, true);
   window.addEventListener('pointercancel', up, true);
   return () => {
-    window.removeEventListener('pointerdown', down, true);
-    window.removeEventListener('pointermove', move, true);
-    canvas.removeEventListener('wheel', wheel, true);
+    // Explicit options also match capture listeners in Node 24's EventTarget,
+    // which the teardown regression tests use in CI.
+    window.removeEventListener('pointerdown', down, { capture: true });
+    window.removeEventListener('pointermove', move, { capture: true });
+    canvas.removeEventListener('wheel', wheel, { capture: true });
     canvas.removeEventListener('contextmenu', contextMenu);
-    window.removeEventListener('pointerup', up, true);
-    window.removeEventListener('pointercancel', up, true);
+    window.removeEventListener('pointerup', up, { capture: true });
+    window.removeEventListener('pointercancel', up, { capture: true });
     pointers.clear();
     ambiguousTap = null;
   };
