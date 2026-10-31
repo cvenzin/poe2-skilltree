@@ -27,6 +27,7 @@ interface SearchInputProps {
  */
 export default function SearchInput({ data, inputRef }: Readonly<SearchInputProps>) {
   const query = useStore((s) => s.searchQuery);
+  const resetToken = useStore((s) => s.searchResetToken);
   const matches = useStore((s) => s.searchMatches);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const allocation = useStore((s) => s.allocation);
@@ -40,12 +41,15 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
 
   // Sync the visible draft to external clears (Esc hotkey, context switch)
   // via the "set state during render" pattern. The conditional guards against
-  // infinite re-render — we only update when `query` actually moved. Doing
-  // this in render (not useEffect) avoids an extra commit pass.
+  // infinite re-render — only query changes or explicit resets update state.
+  // The reset token also catches clears while the committed query is empty.
+  // Doing this in render (not useEffect) avoids an extra commit pass.
   const [lastQuery, setLastQuery] = useState(query);
-  if (query !== lastQuery) {
+  const [lastResetToken, setLastResetToken] = useState(resetToken);
+  if (query !== lastQuery || resetToken !== lastResetToken) {
     setLastQuery(query);
-    if (query === '') setDraft('');
+    setLastResetToken(resetToken);
+    if (query === '' || resetToken !== lastResetToken) setDraft('');
   }
 
   // Debounced commit: every time `draft` changes, schedule a commit; clear
@@ -55,6 +59,8 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
   // user to retype.
   useEffect(() => {
     const timer = pendingTimer.current = globalThis.setTimeout(() => {
+      // A reset may occur before React cleans up this effect.
+      if (useStore.getState().searchResetToken !== resetToken) return;
       if (draft.trim().length === 0) {
         if (matches.length === 0 && draft === query) return;
         setSearch(draft, []);
@@ -67,7 +73,7 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
       setSearch(draft, ms);
     }, DEBOUNCE_MS);
     return () => { globalThis.clearTimeout(timer); };
-  }, [draft, query, index, data, ascendancyId, allocation, matches.length, setSearch]);
+  }, [draft, query, resetToken, index, data, ascendancyId, allocation, matches.length, setSearch]);
 
   const hasQuery = draft.length > 0;
 

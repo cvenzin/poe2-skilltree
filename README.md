@@ -11,6 +11,7 @@ Live: <https://poe2planner.app/>
 - Class and ascendancy selection (filters to playable classes per export
   version).
 - Search nodes by name or stats to highlight matches with circles on the tree; Enter / Shift+Enter steps through matches.
+  Class, ascendancy and build switches clear the field and cancel pending searches.
   Enter uses the text currently in the field even before the debounce finishes;
   focused results retain the surrounding paths and clusters on narrow screens too.
 - Hover an unallocated node with the mouse to preview the cheapest path;

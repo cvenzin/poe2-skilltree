@@ -92,3 +92,38 @@ it('Escape cancels a pending draft instead of reviving it', () => {
   expect(useStore.getState().searchQuery).toBe('');
   expect(useStore.getState().searchMatches).toEqual([]);
 });
+
+it.each(['class', 'ascendancy', 'build', 'clear'].flatMap((context) => [false, true].map((committed) => ({ context, committed }))))('discards pending draft on $context reset (committed=$committed)', ({ context, committed }) => {
+  useStore.setState({ className: 'Witch' });
+  if (committed) {
+    type('mana'); vi.advanceTimersByTime(200); render(); enter();
+    useStore.getState().capturePreSearchCamera({ x: 10, y: 20, scale: 0.5 });
+  }
+  type('life');
+  expect(useStore.getState().searchQuery).toBe(committed ? 'mana' : '');
+  const state = useStore.getState();
+  if (context === 'class') state.setClass('Ranger');
+  if (context === 'ascendancy') state.setAscendancy('Witch1');
+  if (context === 'build') state.loadSnapshot({ className: 'Witch', ascendancyId: null, shared: [], set1: [], set2: [] });
+  if (context === 'clear') state.clearSearch();
+  // A reset also invalidates work before React cleans up the previous effect.
+  vi.advanceTimersByTime(200);
+  expect(useStore.getState().searchQuery).toBe('');
+  render(); render(); vi.advanceTimersByTime(200);
+  expect(render().value).toBe('');
+  expect(useStore.getState().searchQuery).toBe('');
+  expect(useStore.getState().searchMatches).toEqual([]);
+  expect(useStore.getState().searchCursor).toBe(-1);
+  expect(useStore.getState().preSearchCamera).toBeNull();
+});
+
+it('keeps the draft through no-op context selections and ordinary allocation changes', () => {
+  useStore.setState({ className: 'Witch' });
+  type('life');
+  useStore.getState().setClass('Witch');
+  useStore.getState().setAscendancy(null);
+  useStore.getState().commitAllocation({ shared: new Set(['2']), set1: new Set(), set2: new Set() });
+  render(); vi.advanceTimersByTime(200);
+  expect(useStore.getState().searchQuery).toBe('life');
+  expect(useStore.getState().searchMatches).toEqual(['2', '3']);
+});

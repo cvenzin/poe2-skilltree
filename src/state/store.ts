@@ -112,6 +112,8 @@ export interface AppState extends AttributeState {
   // --- 10b: search ---
   /** Raw text in the search input. Empty string = no search active. */
   searchQuery: string;
+  /** Invalidates local search drafts even when the committed query is empty. */
+  searchResetToken: number;
   /** Matched node keys for the current `searchQuery`. Order is index-stable
    *  so Enter / Shift+Enter step-through is deterministic. */
   searchMatches: readonly string[];
@@ -285,6 +287,7 @@ export const useStore = create<AppState>()((set, get, api) => ({
   weaponSet2RejectionTick: 0,
   resetConfirmOpen: false,
   searchQuery: '',
+  searchResetToken: 0,
   searchMatches: [],
   searchCursor: -1,
   preSearchCamera: null,
@@ -321,6 +324,7 @@ export const useStore = create<AppState>()((set, get, api) => ({
       future: [],
       previewPath: null,
       // Context switch — search is per-tree-view, clear it.
+      searchResetToken: s.searchResetToken + 1,
       searchQuery: '',
       searchMatches: [],
       searchCursor: -1,
@@ -342,6 +346,7 @@ export const useStore = create<AppState>()((set, get, api) => ({
         .some((option) => option.choice === s.defaultAttribute) ? null : s.defaultAttribute,
       attributeEditor: null, previewPath: null, validationMessage: null,
       past: [], future: [], searchQuery: '', searchMatches: [], searchCursor: -1, preSearchCamera: null,
+      searchResetToken: s.searchResetToken + 1,
     };
   }),
   setHovered: (h) => set({ hovered: h, previewPath: null }),
@@ -463,12 +468,13 @@ export const useStore = create<AppState>()((set, get, api) => ({
     s.preSearchCamera ? s : { preSearchCamera: cam }
   )),
 
-  clearSearch: () => set({
+  clearSearch: () => set((s) => ({
+    searchResetToken: s.searchResetToken + 1,
     searchQuery: '',
     searchMatches: [],
     searchCursor: -1,
     preSearchCamera: null,
-  }),
+  })),
 
   stepSearch: (delta) => set((s) => {
     if (s.searchMatches.length === 0) return s;
@@ -496,6 +502,7 @@ export const useStore = create<AppState>()((set, get, api) => ({
     }
     return {
       hovered: null, allocationMode: 'shared', validationMessage: null,
+      searchResetToken: s.searchResetToken + 1,
       searchQuery: '', searchMatches: [], searchCursor: -1, preSearchCamera: null, resetConfirmOpen: false,
       className: snap.className,
       ascendancyId: snap.ascendancyId,

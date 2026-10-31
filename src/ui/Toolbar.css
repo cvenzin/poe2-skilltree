@@ -119,6 +119,7 @@
 .toolbar-segments button:last-child { border-right: 1px solid var(--toolbar-border); border-radius: 0 5px 5px 0; }
 .toolbar-segments button[aria-pressed=true] { background: var(--toolbar-header); color: var(--toolbar-title); box-shadow: inset 0 -2px var(--toolbar-accent); font-weight: 600; }
 .toolbar-points { padding-top: 10px; border-top: 1px solid var(--toolbar-divider); }
+.toolbar-hint { margin: 8px 0 0; color: var(--toolbar-muted); font-size: 12px; line-height: 1.4; }
 .toolbar-weapon-sets { align-items: flex-end; }
 .toolbar-active-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
 .toolbar-active-totals .budget-chip { padding: 8px 10px; border: 1px solid var(--toolbar-divider); gap: 3px 6px; }

@@ -132,7 +132,10 @@ remain enabled; stroke boundary smoothing uses physical-pixel feathering.
 
 A "Weapon Sets" checkbox (off by default) gates the whole feature. When off:
 the edit selector is hidden, editing is forced to the main tree, counters
-collapse to a single passive counter with the effective cap, and tooltips omit weapon-set wording.
+collapse to a single passive counter with the effective cap for shared-only
+builds, and tooltips omit weapon-set wording. Builds retaining set allocations
+keep both active totals, remaining points and the shared/specialization breakdown
+visible, with a note to enable the controls to edit those allocations.
 It's a free user preference (not persisted); loading a build that already uses
 sets flips it on so points are never hidden.
 
@@ -143,7 +146,7 @@ are labelled **Set 1 passives** / **Set 2 passives** and show remaining points.
 A three-column breakdown shows shared passives and each set's specialization
 usage/cap, with labels above values. Ascendancy points have
 a separate row. These counters use `countBudgets` and `effectiveBudgetCaps`.
-Turning the toggle off hides the extra counters without removing set allocations.
+Turning the toggle off preserves set allocations and their budget counters.
 
 ## Persistence
 

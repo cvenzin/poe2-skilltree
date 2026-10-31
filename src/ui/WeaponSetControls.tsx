@@ -28,7 +28,9 @@ export default function WeaponSetControls({ data }: Readonly<{ data: TreeData }>
           </div>
         </fieldset>}
       </div>
-      {enabled ? <>
+      {!enabled && (counts.set1 > 0 || counts.set2 > 0) &&
+        <p className="toolbar-hint">Set allocations retained. Enable Weapon Sets to edit them.</p>}
+      {enabled || counts.set1 > 0 || counts.set2 > 0 ? <>
         <div className="toolbar-active-totals" aria-label="Active passive totals">
           <BudgetChip kind="passive" label="Set 1 passives" count={counts.activeIn1} cap={caps.passive}
             note={`${caps.passive - counts.activeIn1} remaining`} emphasized={mode === 'set1'} />
