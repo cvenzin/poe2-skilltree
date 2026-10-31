@@ -184,12 +184,10 @@ export function buildBlockedKeys(
  *  "Non-Keystone Passive Skills in Medium Radius of allocated Keystone Passive
  *  Skills can be allocated without being connected to your tree."
  *
- *  The export doesn't ship a numeric Medium Radius, so we use 1200 world units
- *  — the same approximation the jewel-socket overlay uses for PoE 1's medium
- *  jewels. Ascendancies don't have keystones, so only main-tree keystones gate
- *  the effect. */
+ *  PoE 2 Medium Radius is 1150 × the 1.2 passive-tree distance multiplier.
+ *  See docs/passive-tree-effects.md for sources and export cross-checks. */
 const ENTWINED_REALITIES_SKILL_ID = 32905;
-export const MEDIUM_RADIUS = 1200;
+export const MEDIUM_RADIUS = 1380;
 const MEDIUM_RADIUS_SQ = MEDIUM_RADIUS * MEDIUM_RADIUS;
 
 export function isEntwinedRealitiesActive(
@@ -241,6 +239,7 @@ function isEntwinedEligible(
   if (n.ascendancyId) return false;
   if (n.isKeystone) return false;
   if (n.isMastery) return false;
+  if (n.isJewelSocket || n.isBlighted) return false;
   if (n.classStartIndex && n.classStartIndex.length > 0) return false;
   if (n.x === undefined || n.y === undefined) return false;
   if (hiddenKeys.has(key)) return false;

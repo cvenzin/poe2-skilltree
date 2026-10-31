@@ -46,6 +46,7 @@ export function swapContext(
   for (const key of ctx.ascendancyNodeKeys) {
     ctx.nodeWraps.delete(key);
     ctx.nodeStates.delete(key);
+    ctx.constrainedWraps.delete(key);
   }
   ctx.ascendancyNodeKeys.clear();
 

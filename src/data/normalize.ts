@@ -50,10 +50,11 @@ export function normalizeTreeData(raw: RawTreeData): TreeData {
     if (node.ascendancyId) ascIdsWithNodes.add(node.ascendancyId);
   }
 
-  // Nodes whose visibility/allocation gates on `unlockConstraint`. In 0.5.0 the
-  // only emitter is Druid Oracle's "The Unseen Path" (skill 5571), which gates
-  // 200 main-tree "Forbidden Path" nodes. Iterated by pathing/render whenever
+  // Nodes whose visibility/allocation gates on `unlockConstraint`. Oracle's
+  // "The Unseen Path" (skill 5571) gates 197 main-tree nodes. Iterated whenever
   // allocation changes — keep the set hot so we don't re-scan ~5000 nodes.
+  // Combination gates also unlock The Hollowkeeper, Path of the Renegade
+  // and Spirit Walker's Sacred Unity.
   const constrainedNodeKeys = new Set<string>();
   for (const [key, node] of Object.entries(nodes)) {
     if (node.unlockConstraint) constrainedNodeKeys.add(key);

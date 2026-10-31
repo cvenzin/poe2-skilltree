@@ -93,3 +93,5 @@ export files are exempt from these guidelines.
   Keep GGG's versioned exports authoritative for the bundled tree data.
 - For requests to import or update tree releases, use the repository skill at
   [.agents/skills/update-poe2-tree/SKILL.md](.agents/skills/update-poe2-tree/SKILL.md).
+  Audit new and changed tree-modifying passives against supported metadata and
+  special-case logic; follow the skill's mechanics checklist and report gaps.

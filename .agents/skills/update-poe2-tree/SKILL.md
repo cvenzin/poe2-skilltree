@@ -66,12 +66,46 @@ paths from the repository root and follow its `AGENTS.md`.
   `docs/tree-imports.md`. Include the source and significant changes in the
   change description.
 
+## Audit tree-modifying passives
+
+- Compare new and changed node records with the prior bundled export, including
+  existing nodes whose stats, values, IDs, flags, constraints or connections
+  changed. Look for mechanics affecting allocation, alternate starting paths,
+  hidden nodes, point costs/budgets, attribute choices, radius allocation and
+  the effects of other passives. Do not limit this review to schema changes.
+- Check structured metadata first: `isFree`, `unlockConstraint`,
+  `grantedPassivePoints`, `weaponPassivePointsGranted`, multiple-choice flags,
+  `skillOverrides` and graph connections. Confirm the corresponding adapter
+  handles the incoming record and its scope; field presence alone does not
+  establish working behavior. Prefer generic metadata handling when supported.
+- Read `docs/passive-tree-effects.md` and inspect the current adapters in
+  `src/data/normalize.ts`, `src/interaction/pathing.ts`,
+  `src/interaction/passiveEffects.ts`, `src/state/buildRules.ts` and
+  `src/state/attributes.ts`. Recheck special-case IDs, ascendancy restrictions,
+  numerical constants and supported stat-text forms against the incoming
+  version. New equivalents and balance changes are not automatically covered
+  by existing node-specific logic.
+- When metadata does not express the effect, verify its mechanics and patch
+  context using the sources above. Keep the adaptation in application code;
+  do not edit upstream data or infer executable rules by scaling every number
+  in descriptive text. Distinguish modifier magnitudes from condition thresholds,
+  counts and distances. Radius lookup metadata may be incomplete for overlaps.
+- Implement the needed compatibility behavior and add meaningful regression
+  coverage using actual incoming records where practical. Check affected
+  preview/commit, cascade removal, weapon sets, budgets, undo/redo and
+  save/share/export flows as applicable. Preserve older versions' behavior
+  when the mechanic differs by patch.
+- Record the audit outcome in `docs/tree-imports.md`: changed mechanics,
+  metadata-backed or explicit support, verification, and unsupported or
+  unverified effects. Passing schema/atlas checks does not establish mechanics
+  compatibility; identify any remaining limitations in the final report.
+
 ## Verify the result
 
 - Parse the imported JSON and check required fields and referenced atlas images.
   Confirm every registered version has its expected directory. TypeScript and
   Vite builds alone do not validate runtime JSON or atlas content.
-- Run `npm run build` and `npm run lint`. Inspect the running app under
+- Run `npm test`, `npm run build` and `npm run lint`. Inspect the running app under
   `/poe2-skilltree/` for asset 404s, missing frames, and console/load errors.
 - Switch between the new and an older version. Check playable class and
   ascendancy selection, class backgrounds, search, tooltip stats, path preview

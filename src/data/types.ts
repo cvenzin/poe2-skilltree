@@ -70,6 +70,10 @@ export interface TreeNode {
   isMastery?: boolean;
   isJewelSocket?: boolean;
   isGenericAttribute?: boolean;
+  /** Allocatable without spending a point (e.g. Sanguimancy / Smith's Masterwork). */
+  isFree?: boolean;
+  /** Instilling-only skills cannot be reached by radius allocation effects. */
+  isBlighted?: boolean;
   grantedPassivePoints?: number;
   weaponPassivePointsGranted?: number;
   /** Multiple-choice hub: a stat-less ascendancy notable whose options are
@@ -158,9 +162,9 @@ export interface TreeData extends Omit<RawTreeData, 'edges'> {
    *  filter PoE 1 placeholder ascendancy nodes (Templar1, Marauder1…) whose parent
    *  class is hidden but whose nodes still exist in the data. */
   playableAscendancyIds: Set<string>;
-  /** Keys of nodes that carry an `unlockConstraint` — i.e. only allocatable
-   *  (and only visible) when a specific ascendancy notable is taken. In 0.5.0
-   *  all 200 such nodes gate on Druid Oracle's "The Unseen Path" (skill 5571).
+  /** Keys of nodes with allocation/visibility prerequisites. In bundled exports
+   *  197 main-tree nodes gate on Oracle's "The Unseen Path" (skill 5571);
+   *  other gates require combinations of allocated passives.
    *  Iterated on every allocation change to recompute hidden/blocked sets. */
   constrainedNodeKeys: Set<string>;
 }

@@ -190,7 +190,7 @@ export interface AppState extends AttributeState {
  *
  *  Ascendancy nodes are counted once toward the ascendancy budget regardless of
  *  bucket (they should always be `shared`, but the count is defensive).
- *  Ascendancy starts and multiple-choice hubs are free (never counted). */
+ *  Ascendancy starts, multiple-choice hubs and isFree skills are never counted. */
 export interface BudgetCounts {
   /** Main-tree (shared) passive nodes — active in both weapon sets. */
   shared: number;
@@ -223,8 +223,9 @@ export function countBudgets(
     if (node.isAscendancyStart || node.classStartIndex || node.isMastery || key === 'root') return;
     // Multiple-choice hubs (e.g. "Projectile Proximity Specialisation") have
     // no stats and exist only as routing nodes for the choice options. The
-    // chosen option carries the actual cost — the hub is free.
-    if (node.isMultipleChoice) return;
+    // chosen option carries the actual cost — the hub is free. Explicitly
+    // free skills (Sanguimancy, Smith's Masterwork, Sacred Unity) also cost 0.
+    if (node.isMultipleChoice || node.isFree) return;
     // Ascendancy points are a separate budget and aren't weapon-set-split —
     // count them once regardless of which bucket they happen to sit in.
     if (node.ascendancyId) {

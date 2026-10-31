@@ -78,9 +78,9 @@ export interface MountContext {
   /** Every drawn node wrap, keyed by node key. Used by the store-subscription
    *  to swap atlas textures when state changes (idle → preview → allocated). */
   nodeWraps: Map<string, Container>;
-  /** Keys of drawn main-tree wraps that carry an `unlockConstraint`. Iterated
+  /** Keys of drawn main-tree and ascendancy wraps with an `unlockConstraint`. Iterated
    *  on every allocation change to toggle visibility/interactivity in
-   *  {@link applyConstraintVisibility}. Built once in {@link drawNodes}. */
+   *  {@link applyConstraintVisibility}. Ascendancy keys are replaced on context swaps. */
   constrainedWraps: Set<string>;
   /** Last applied state per node — drives the rebuild diff in
    *  {@link applyNodeStates}. Updated atomically with the wrap's children. */

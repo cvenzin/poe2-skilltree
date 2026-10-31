@@ -5,6 +5,7 @@ import { useIsMobile } from './useIsMobile';
 import { palette, fontDisplay } from './theme';
 import type { TreeNode } from '../data/types';
 import { attributeNode } from '../state/attributes';
+import { passiveTooltipNode } from '../interaction/passiveEffects';
 import NodeTooltipFrame from './NodeTooltipFrame';
 
 /**
@@ -16,6 +17,7 @@ export default function NodeTooltip() {
   const hovered = useStore((s) => s.hovered);
   const allocation = useStore((s) => s.allocation);
   const choices = useStore((s) => s.attributeChoices);
+  const ascendancyId = useStore((s) => s.ascendancyId);
   // When the sets UI is off, suppress all weapon-set vocabulary in the tooltip.
   const showSets = useStore((s) => s.weaponSetsEnabled);
   const data = useStore((s) =>
@@ -25,7 +27,7 @@ export default function NodeTooltip() {
   if (!hovered || !data) return null;
   const original = data.nodes[hovered.nodeKey];
   if (!original?.name) return null;
-  const node = attributeNode(original, choices[hovered.nodeKey], data);
+  const node = passiveTooltipNode(attributeNode(original, choices[hovered.nodeKey], data), data, allocation, ascendancyId);
   // Ascendancy nodes aren't weapon-set-split — suppress the allocation-state
   // block for them (always shared). Also suppress entirely when the sets UI is
   // off, so new users never see weapon-set wording.

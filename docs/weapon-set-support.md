@@ -51,6 +51,12 @@ These exceptions are present in all bundled exports; see GGG's
 [Weapon Master patch notes](https://www.pathofexile.com/forum/view-thread/3826682)
 and the [weapon-set rules](https://www.poe2wiki.net/wiki/Weapon_set).
 
+Skills marked `isFree` in the export cost no points. Sanguimancy, Smith's
+Masterwork and Sacred Unity retain their connection and unlock requirements
+without consuming the eight paid ascendancy points. See
+[passive tree effects](passive-tree-effects.md) for prerequisite gates, verified
+Oracle radius sizes and derived tooltip values.
+
 Removing a point-granting skill or switching ascendancy is rejected if the
 surviving allocation would exceed its reduced budget. Refund the excess passive
 or specialization points first. Rejected edits preserve allocation and history.

@@ -16,6 +16,10 @@ Live: <https://poe2planner.app/>
 - Click an allocated node to cascade-unallocate every node that depended on
   it.
 - Passive (123) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red.
+- Free ascendancy skills, conditional node unlocks, Pathfinder starting paths
+  and Oracle radius allocation are supported. Tooltips include Hulking Form
+  scaling and Smith's Masterwork's current armour bonus; see
+  [passive tree effects](docs/passive-tree-effects.md).
 - Undo / redo and a one-click reset.
 - A local build library: name, rename, duplicate, switch between, and delete
   builds from **My builds**. Edits autosave in this browser, and the last active

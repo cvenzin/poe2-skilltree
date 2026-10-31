@@ -120,6 +120,7 @@ export function drawOverlayNodes(
     attachNodeInteraction(wrap, entry.key, data, ctx);
     ctx.nodeWraps.set(entry.key, wrap);
     ctx.ascendancyNodeKeys.add(entry.key);
+    if (entry.node.unlockConstraint) ctx.constrainedWraps.add(entry.key);
     overlay.addChild(wrap);
   }
 }

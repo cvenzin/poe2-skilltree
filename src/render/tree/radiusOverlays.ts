@@ -5,16 +5,15 @@ import { MEDIUM_RADIUS } from '../../interaction/pathing';
 import { ringRadiusForWrap, destroyChildren } from './nodes';
 import { isUnlockConstraintSatisfied } from '../../data/normalize';
 
-/** Jewel radii in world units. The 0.5.0 export doesn't ship per-socket radius
- *  metadata, so we draw all three (Small / Medium / Large) — same values PoE 1
- *  used and the magnitudes that match the distances in `keystonesInRadius`.
+/** PoE 2 jewel radii multiplied by the 1.2 passive-tree distance multiplier.
+ *  The export doesn't identify the equipped jewel, so show all three tiers.
  *  Each tier gets its own colour so the player can read which radius covers
  *  which nearby nodes. */
-const JEWEL_RADIUS_SMALL = 800;
+const JEWEL_RADIUS_SMALL = 1200;
 
-const JEWEL_RADIUS_MEDIUM = 1200;
+const JEWEL_RADIUS_MEDIUM = MEDIUM_RADIUS;
 
-const JEWEL_RADIUS_LARGE = 1500;
+const JEWEL_RADIUS_LARGE = 1560;
 
 const JEWEL_RING_SMALL_COLOR = 0x80ffc0;
 
