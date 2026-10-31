@@ -28,41 +28,39 @@ export default function Attribution() {
 
   return (
     <div ref={containerRef} style={wrapperStyle}>
-      {showInfo && (
-        <div style={popoverStyle}>
-          <div style={popoverTitleStyle}>PoE 2 Planner</div>
-          <div style={popoverLineStyle}>
-            Plan a Path of Exile 2 passive tree for your class and ascendancy,
-            including weapon sets. Share your build or export it to the game.
-            Free on mobile and desktop.
-          </div>
-          <div style={popoverLineStyle}>
-            Created by cvenzin · MIT licensed
-          </div>
-          {activeVersion && (
-            <div style={popoverLineStyle}>
-              Tree data: v{activeVersion}
-            </div>
-          )}
-          <div style={popoverDisclaimerStyle}>
-            Path of Exile 2 is a trademark of Grinding Gear Games Ltd.
-            This product isn&apos;t affiliated with or endorsed by Grinding
-            Gear Games in any way.
-          </div>
-          <a href={`${import.meta.env.BASE_URL}guides/export-to-poe2/`} target="_blank"
-            rel="noopener noreferrer" style={popoverLinkStyle}>
-            Export guide ↗
-          </a>
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={popoverLinkStyle}
-          >
-            Source on GitHub →
-          </a>
+      <div id="site-info" hidden={!showInfo} style={showInfo ? popoverStyle : undefined}>
+        <div style={popoverTitleStyle}>PoE 2 Planner</div>
+        <div style={popoverLineStyle}>
+          Plan a Path of Exile 2 passive tree for your class and ascendancy,
+          including weapon sets. Share your build or export it to the game.
+          Free on mobile and desktop.
         </div>
-      )}
+        <div style={popoverLineStyle}>
+          Created by cvenzin · MIT licensed
+        </div>
+        {activeVersion && (
+          <div style={popoverLineStyle}>
+            Tree data: v{activeVersion}
+          </div>
+        )}
+        <div style={popoverDisclaimerStyle}>
+          Path of Exile 2 is a trademark of Grinding Gear Games Ltd.
+          This product isn&apos;t affiliated with or endorsed by Grinding
+          Gear Games in any way.
+        </div>
+        <a href={`${import.meta.env.BASE_URL}guides/export-to-poe2/`} target="_blank"
+          rel="noopener noreferrer" style={popoverLinkStyle}>
+          Export guide ↗
+        </a>
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={popoverLinkStyle}
+        >
+          Source on GitHub →
+        </a>
+      </div>
       <div style={chipRowStyle}>
         {activeVersion && (
           <span style={versionStyle} aria-label={`Tree data version ${activeVersion}`}>
@@ -73,6 +71,7 @@ export default function Attribution() {
           type="button"
           aria-label="About this site"
           aria-expanded={showInfo}
+          aria-controls="site-info"
           onClick={() => setShowInfo((v) => !v)}
           style={infoButtonStyle}
         >
