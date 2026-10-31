@@ -76,7 +76,7 @@ the build with no backend.
 
 ## Development
 
-Use Node.js 24 (also used by CI).
+Use Node.js 26 (also used by CI).
 
 ```bash
 npm ci
