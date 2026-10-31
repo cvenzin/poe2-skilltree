@@ -114,6 +114,7 @@ export default function TreeCanvas({
 
     return () => {
       ctx.cancelled = true;
+      useStore.getState().dismissInspection();
       // Snapshot the camera so a future remount can restore it (version
       // switch unmounts TreeCanvas entirely, which clears the ref instead —
       // see comment above).
@@ -126,6 +127,7 @@ export default function TreeCanvas({
       }
       ctx.observer?.disconnect();
       ctx.unsubscribeStore?.();
+      ctx.removeTouchTargets?.();
       ctx.removeTickerCallback?.();
       ctx.removeVisibilityListener?.();
       destroySearchMatchLayer(ctx.searchMatchLayer);

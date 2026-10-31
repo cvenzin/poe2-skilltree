@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from './store';
 import { attributeOptions, isAttributeChoice, type AttributeChoice, type AttributeChoices } from './attributes';
-import { allAllocated, bucketOf, removeKey, type Allocation } from './allocation';
+import { allAllocated, bucketOf, type Allocation } from './allocation';
 import { pushHistory } from './buildHistory';
 
 export type AttributeEditor = { kind: 'default'; pending?: Allocation } | { kind: 'node'; nodeKey: string };
@@ -9,6 +9,8 @@ export interface AttributeState {
   attributeChoices: AttributeChoices;
   defaultAttribute: AttributeChoice | null;
   attributeEditor: AttributeEditor | null;
+  attributeRemovalPreview: string | null;
+  setAttributeRemovalPreview: (key: string | null) => void;
   openAttributeEditor: (editor: AttributeEditor | null) => void;
   setDefaultAttribute: (choice: AttributeChoice) => void;
   setNodeAttribute: (key: string, choice: AttributeChoice) => void;
@@ -21,7 +23,11 @@ export const createAttributeState: StateCreator<AppState, [], [], AttributeState
   attributeChoices: {},
   defaultAttribute: null,
   attributeEditor: null,
-  openAttributeEditor: (editor) => set({ attributeEditor: editor, hovered: null, previewPath: null }),
+  attributeRemovalPreview: null,
+  setAttributeRemovalPreview: (key) => set((s) => ({ attributeRemovalPreview: key && s.attributeEditor?.kind === 'node' &&
+    s.attributeEditor.nodeKey === key && bucketOf(s.allocation, key) === s.allocationMode ? key : null })),
+  openAttributeEditor: (editor) => set({ attributeEditor: editor, hovered: null, previewPath: null,
+    attributeRemovalPreview: null, pendingRemoval: null }),
   setDefaultAttribute: (choice) => set((s) => {
     if (!isAttributeChoice(choice) || s.status.kind !== 'ready' ||
       !attributeOptions(s.status.data, s.allocation, s.ascendancyId).some((option) => option.choice === choice)) return s;
@@ -49,6 +55,6 @@ export const createAttributeState: StateCreator<AppState, [], [], AttributeState
     const s = get();
     if (s.status.kind !== 'ready' || bucketOf(s.allocation, key) !== s.allocationMode ||
       !s.status.data.nodes[key]?.isGenericAttribute) return;
-    s.commitAllocation(removeKey(s.allocation, key), s.status.data);
+    s.requestRemoval(key, s.status.data);
   },
 });

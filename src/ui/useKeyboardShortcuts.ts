@@ -28,6 +28,9 @@ export function useKeyboardShortcuts() {
 
       // Ctrl/Cmd+F works even when an input is focused.
       if (meta && k === 'f') { handleFocusSearch(e); return; }
+      if (k === 'escape' && (useStore.getState().hovered || useStore.getState().pendingRemoval)) {
+        handleEscape(); return;
+      }
 
       // Everything else suppresses inside editable elements.
       if (isEditableTarget(e.target)) return;
@@ -84,6 +87,7 @@ function handleReset(e: KeyboardEvent): void {
  *  canvas-focused Esc so the user can clear search without clicking back. */
 function handleEscape(): void {
   const s = useStore.getState();
+  if (s.hovered || s.pendingRemoval) { s.dismissInspection(); return; }
   if (s.resetConfirmOpen) {
     s.setResetConfirmOpen(false);
     return;

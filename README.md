@@ -16,14 +16,15 @@ Live: <https://poe2planner.app/>
   focused results retain the surrounding paths and clusters on narrow screens too.
 - Hover an unallocated node with the mouse to preview the cheapest path;
   click to allocate. On touch, tap once to preview and again to allocate.
-- Click an allocated node to cascade-unallocate every node that depended on
-  it.
+- Hover allocated nodes to preview their removal and dependent branches in red;
+  one mouse click removes them. Touch and keyboard cascades use a confirmation.
 - Passive (123 base) and ascendancy (8) budget tracking; over-budget allocations are rejected and the chip flashes red. The planner does not yet account for the additional Site of the Chosen or Olroth's Boon rewards; see [weapon-set support](docs/weapon-set-support.md#points).
 - Free ascendancy skills, conditional node unlocks, Pathfinder starting paths
   and Oracle radius allocation are supported. Tooltips include Hulking Form
   scaling and Smith's Masterwork's current armour bonus; see
   [passive tree effects](docs/passive-tree-effects.md).
-- Undo / redo and a one-click reset.
+- Compact Undo / Redo controls inside the Build menu, with keyboard shortcuts,
+  and reset with confirmation for larger builds.
 - A local build library: name, rename, duplicate, switch between, and delete
   builds from **My builds**. Edits autosave in this browser, and the last active
   build reopens on your next visit. Shared links open as separate drafts.
@@ -42,7 +43,8 @@ Live: <https://poe2planner.app/>
   in-panel close button, full-width search, paired class/ascendancy controls,
   and an accented export action. Mobile
   controls have 44px touch targets; the panel scrolls on short screens while its
-  header stays visible. The toolbar opens by default on desktop and starts
+  header stays visible. Mobile action rows scroll with the settings, with bottom
+  spacing to keep the final controls clear of the panel edge. The toolbar opens by default on desktop and starts
   collapsed on mobile; opening and closing it keeps keyboard focus on the toggle.
   Ctrl/Cmd+F opens collapsed controls and focuses search. Each new query starts
   with all matches highlighted; Enter selects its first result.
@@ -50,7 +52,13 @@ Live: <https://poe2planner.app/>
   from the pressed node (bottom for upper-half nodes, top for lower-half nodes).
   The tooltip stays at that edge during the hold; the toolbar fades while a
   top tooltip overlays it, then returns to normal when inspection ends.
-  Long-press suppression prevents inspection from allocating nodes.
+  A long press keeps inspection and its path preview after release; one subsequent quick tap allocates.
+- Compact informational tooltips show a concise path cost where useful.
+  Escape dismisses inspection; touch tooltips scroll and have a dismiss control.
+  Alt+Enter in Search opens a separate, scrollable
+  keyboard inspection dialog with actions.
+  See [node interaction](docs/node-interaction.md) for touch targeting, cascade confirmation,
+  keyboard controls and pending-action invalidation.
 - Loading feedback appears only after 300 ms; the tree opens as soon as it is
   ready, with no minimum splash duration. The loader chooses its title font
   once when shown (the preloaded display face, or a stable system fallback).

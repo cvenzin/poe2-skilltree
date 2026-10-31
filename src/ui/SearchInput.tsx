@@ -4,6 +4,7 @@ import { allAllocated } from '../state/allocation';
 import type { TreeData } from '../data/types';
 import { buildSearchIndex, findMatches, filterConstraintHidden } from '../interaction/search';
 import { palette, controlHeight } from './theme';
+import { proposeNodeEdit } from '../interaction/nodeActions';
 
 const DEBOUNCE_MS = 120;
 
@@ -22,13 +23,15 @@ interface SearchInputProps {
  * only when a different version is loaded.
  *
  * Keyboard handled here (not in the global hook): Enter / Shift+Enter step
- * through matches; Esc clears. Global Ctrl/Cmd+F focuses this input via a
+ * through matches; Alt+Enter inspects the selected node; Esc clears.
+ * Global Ctrl/Cmd+F focuses this input via a
  * custom `poe2:focus-search` window event handled by the toolbar.
  */
 export default function SearchInput({ data, inputRef }: Readonly<SearchInputProps>) {
   const query = useStore((s) => s.searchQuery);
   const resetToken = useStore((s) => s.searchResetToken);
   const matches = useStore((s) => s.searchMatches);
+  const cursor = useStore((s) => s.searchCursor);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const allocation = useStore((s) => s.allocation);
   const setSearch = useStore((s) => s.setSearch);
@@ -94,9 +97,13 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
             const state = useStore.getState();
             setSearch(draft, filterConstraintHidden(findMatches(draft, index), data,
               state.ascendancyId, allAllocated(state.allocation)));
-            stepSearch(e.shiftKey ? -1 : 1);
+            if (e.altKey) {
+              if (useStore.getState().searchCursor < 0) stepSearch(1);
+              inspectSearchResult(data);
+            } else stepSearch(e.shiftKey ? -1 : 1);
           } else if (e.key === 'Escape') {
             e.preventDefault();
+            useStore.getState().dismissInspection();
             globalThis.clearTimeout(pendingTimer.current);
             setDraft('');
             clearSearch();
@@ -105,8 +112,13 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
         }}
         placeholder="Search passive tree"
         aria-label="Search passive tree"
+        aria-describedby="tree-search-help"
+        aria-keyshortcuts="Alt+Enter"
         style={inputStyle}
       />
+      <span className="visually-hidden" id="tree-search-help">Enter: next match. Shift+Enter: previous match. Alt+Enter: inspect and edit the selected node.</span>
+      <span className="visually-hidden" role="status">{cursor >= 0 && matches[cursor]
+        ? `Result ${cursor + 1} of ${matches.length}: ${data.nodes[matches[cursor]]?.name ?? 'Node'}` : `${matches.length} matches`}</span>
       {hasQuery && (
         <button
           type="button"
@@ -120,6 +132,18 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
       )}
     </div>
   );
+}
+
+/** Search is the keyboard entry point; its details never change the mouse tooltip. */
+function inspectSearchResult(data: TreeData): void {
+  let state = useStore.getState();
+  if (state.searchCursor < 0) { state.stepSearch(1); state = useStore.getState(); }
+  const key = state.searchMatches[state.searchCursor];
+  if (!key) return;
+  const proposal = proposeNodeEdit(key, data, state);
+  state.dismissInspection();
+  state.setHoverState({ nodeKey: key, clientX: 0, clientY: 0, inputType: 'keyboard' },
+    typeof proposal === 'string' ? null : proposal.path);
 }
 
 const containerStyle: React.CSSProperties = {

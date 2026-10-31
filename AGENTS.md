@@ -38,15 +38,17 @@ documentation when behavior changes; avoid duplicating detailed design here.
 
 ### Preview browser and Vite connectivity
 
-Use the in-app preview browser for local manual checks. If navigation times out
-even though Vite reports ready, check whether the server is reachable: a
-network-restricted execution sandbox can block local sockets. Stop that Vite
-process and restart `npm run dev -- --host 0.0.0.0` outside the restricted
-sandbox through the normal execution approval mechanism, then open
-`http://127.0.0.1:5173/` in the preview browser. This sequence resolved the
-preview timeout during the passive-tree audit fixes. Use the actual port Vite
-reports if 5173 is occupied. Do not change firewall or browser security settings
-to work around a sandbox socket restriction.
+Use the in-app preview browser for local manual checks. Start
+`npm run dev -- --host 0.0.0.0 --port 5188 --strictPort` outside the
+network-restricted execution sandbox through the normal execution approval
+mechanism from the outset. If the port is occupied, choose another explicit
+port. Wait for Vite to report ready and verify that an unrestricted
+`curl.exe --fail http://127.0.0.1:<port>/` succeeds before opening that URL in
+the preview browser. Do not first open a sandboxed server in the preview browser.
+Close any failed preview tabs and stop the Vite process started for the check
+when finished, including any child Vite process left behind. If navigation still times out, report the limitation rather than
+opening repeated dead tabs. Do not change firewall or browser security settings
+to work around a socket restriction.
 
 ## Behavior to preserve
 

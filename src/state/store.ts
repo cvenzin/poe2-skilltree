@@ -8,6 +8,7 @@ import { allAllocated, isAllocated, buildAllocation } from './allocation';
 import { createAttributeState, type AttributeState } from './attributeState';
 export type { AttributeEditor } from './attributeState';
 import { pushHistory, type BuildEdit } from './buildHistory';
+import { createNodeActionState, type NodeActionState } from './nodeActionState';
 import {
   type Allocation,
   type AllocationMode,
@@ -35,6 +36,7 @@ export interface HoveredNode {
   nodeKey: string;
   clientX: number;
   clientY: number;
+  inputType?: string;
 }
 
 /** Persisted view of the build — used by both localStorage restore
@@ -59,7 +61,7 @@ export interface BuildSnapshot {
   defaultAttribute?: AttributeChoice;
 }
 
-export interface AppState extends AttributeState {
+export interface AppState extends AttributeState, NodeActionState {
   status: LoadStatus;
   /** Which export version the App is currently loading or has loaded. Distinct
    *  from `status` so the version dropdown can read it independently of
@@ -266,6 +268,7 @@ export function allocationBudgetError(allocation: Allocation, ascendancyId: stri
 
 export const useStore = create<AppState>()((set, get, api) => ({
   ...createAttributeState(set, get, api),
+  ...createNodeActionState(set, get, api),
   status: { kind: 'idle' },
   activeVersion: null,
   pendingVersionMigration: null,
@@ -349,18 +352,19 @@ export const useStore = create<AppState>()((set, get, api) => ({
       searchResetToken: s.searchResetToken + 1,
     };
   }),
-  setHovered: (h) => set({ hovered: h, previewPath: null }),
+  setHovered: (h) => set({ hovered: h, previewPath: null, pendingRemoval: null }),
   setHoverState: (hovered, previewPath) => set((s) => {
     const samePath = s.previewPath === previewPath || (s.previewPath !== null && previewPath !== null &&
       s.previewPath.length === previewPath.length && s.previewPath.every((key, index) => key === previewPath[index]));
     const sameHover = s.hovered === hovered || (hovered !== null && s.hovered?.nodeKey === hovered.nodeKey &&
-      s.hovered.clientX === hovered.clientX && s.hovered.clientY === hovered.clientY);
+      s.hovered.clientX === hovered.clientX && s.hovered.clientY === hovered.clientY && s.hovered.inputType === hovered.inputType);
     if (sameHover && samePath) return s;
-    return { hovered, previewPath: samePath ? s.previewPath : previewPath };
+    return { hovered, previewPath: samePath ? s.previewPath : previewPath,
+      pendingRemoval: s.hovered?.nodeKey === hovered?.nodeKey ? s.pendingRemoval : null };
   }),
   updateHoveredPosition: (hovered) => set((s) => {
     if (!s.hovered || s.hovered.nodeKey !== hovered.nodeKey ||
-      (s.hovered.clientX === hovered.clientX && s.hovered.clientY === hovered.clientY)) return s;
+      (s.hovered.clientX === hovered.clientX && s.hovered.clientY === hovered.clientY && s.hovered.inputType === hovered.inputType)) return s;
     return { hovered };
   }),
   setPreviewPath: (path) => set({ previewPath: path }),
@@ -520,3 +524,18 @@ export const useStore = create<AppState>()((set, get, api) => ({
     };
   }),
 }));
+
+// Invalidate inspection synchronously even when edits originate outside the canvas.
+useStore.subscribe((s, prev) => {
+  const buildChanged = s.allocation !== prev.allocation || s.allocationMode !== prev.allocationMode ||
+    s.className !== prev.className || s.ascendancyId !== prev.ascendancyId ||
+    s.activeVersion !== prev.activeVersion || s.status !== prev.status ||
+    s.weaponSetsEnabled !== prev.weaponSetsEnabled;
+  if (buildChanged || s.attributeChoices !== prev.attributeChoices || s.defaultAttribute !== prev.defaultAttribute ||
+    s.searchQuery !== prev.searchQuery || s.searchCursor !== prev.searchCursor) {
+    if (s.hovered || s.previewPath || s.pendingRemoval || s.attributeRemovalPreview) s.dismissInspection();
+    // Choosing a default inside its picker is intentional. Keep the settings
+    // flow available for applying that default to existing unspecified nodes.
+    if (buildChanged && s.attributeEditor && s.attributeEditor === prev.attributeEditor) s.openAttributeEditor(null);
+  }
+});

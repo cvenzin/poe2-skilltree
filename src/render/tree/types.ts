@@ -53,6 +53,7 @@ export interface PathingContext {
 }
 
 export interface HoverPreviewDependencies {
+  inspectionRevision: number;
   nodeKey: string;
   activeVersion: string | null;
   className: string | null;
@@ -63,6 +64,8 @@ export interface HoverPreviewDependencies {
 }
 
 export interface MountContext {
+  touchTargetAmbiguous?: boolean;
+  removeTouchTargets?: () => void;
   cancelled: boolean;
   /** True while the viewport is being actively panned (drag) or pinch-zoomed.
    *  Gates node hit-detection so finger gestures don't flicker the tooltip,

@@ -10,8 +10,25 @@ import { EMPTY_ALLOCATION, buildAllocation } from '../src/state/allocation';
 import { useStore } from '../src/state/store';
 import { filterConstraintHidden } from '../src/interaction/search';
 import { makeTree } from './fixtures/tree';
+import { subscribeSceneState } from '../src/render/tree/storeSubscription';
 
 describe('context rendering', () => {
+  it('renders an allocation change once even when inspection invalidation publishes a nested update', () => {
+    useStore.setState(useStore.getInitialState(), true);
+    const source = buildAllocation(['2', '3'], [], []);
+    useStore.setState({ allocation: source, hovered: { nodeKey: '3', clientX: 10, clientY: 20 } });
+    const changes: Array<{ source: unknown; next: unknown; hovered: unknown }> = [];
+    const stop = subscribeSceneState((s, prev) => {
+      if (s.allocation !== prev.allocation) changes.push({ source: prev.allocation, next: s.allocation, hovered: s.hovered });
+    });
+    const next = buildAllocation(['2'], [], []);
+    useStore.getState().commitAllocation(next);
+    expect(changes).toEqual([{ source, next, hovered: null }]);
+    stop();
+    useStore.getState().undo();
+    expect(changes).toHaveLength(1);
+  });
+
   it('hides a gated ascendancy sprite until unlocked and removes its registration on a context swap', () => {
     const data = makeTree({ '10': { x: 0, y: 0 }, '11': { x: 100, y: 0, icon: 'missing.png',
       unlockConstraint: { nodes: [2, 3] } } });

@@ -1,159 +1,88 @@
 import { Container } from 'pixi.js';
+import type { FederatedPointerEvent } from 'pixi.js';
 import type { TreeData } from '../../data/types';
-import type { MountContext, HoverPreviewDependencies } from './types';
+import type { MountContext, HoverPreviewDependencies, PathingContext } from './types';
 import { useStore } from '../../state/store';
-import { bfsShortestPath, autoOptionsForPath, applyPathAllocation } from '../../interaction/pathing';
-import { isEmptyAllocation, bucketOf, removeKey } from '../../state/allocation';
-import type { AllocationMode } from '../../state/allocation';
-import type { PathingContext } from './types';
+import { bfsShortestPath, autoOptionsForPath } from '../../interaction/pathing';
+import { bucketOf, type AllocationMode } from '../../state/allocation';
+import { proposeNodeEdit } from '../../interaction/nodeActions';
 import { Viewport } from 'pixi-viewport';
 
-/**
- * Make a node sprite interactive: hover updates the cursor-anchored tooltip
- * AND computes a preview path; mouse click commits it. Touch uses a first
- * tap to pin a preview and a second to commit. Allocated nodes edit/remove
- * on first activation.
- * Pixi's per-sprite event mode is fine at our node count
- * (~1500). If profiling later shows it as a hotspot, swap to a spatial grid.
- *
- * `pointertap` fires only when the down→up sequence doesn't drift, so a
- * drag-pan over a node never accidentally allocates.
- *
- * Handlers read class/ascendancy-derived pathing state from `ctx.pathing` at
- * event time, not at attachment. That lets the user switch class/ascendancy
- * without re-attaching every node's listeners (the main-tree nodes are
- * attached once for the lifetime of the Pixi app).
- */
-export function attachNodeInteraction(
-  wrap: Container,
-  nodeKey: string,
-  data: TreeData,
-  ctx: MountContext,
-): void {
+/** Input type, rather than viewport width, selects tap confirmation. */
+export function attachNodeInteraction(wrap: Container, nodeKey: string, data: TreeData, ctx: MountContext): void {
   wrap.eventMode = 'static';
-  // Ascendancy start nodes are not allocatable in-game — they're implicit
-  // when the ascendancy is selected, like the class start node for the
-  // main tree. Default cursor to hint that clicking does nothing.
-  // Multiple-choice hubs (e.g. "Projectile Proximity Specialisation") are
-  // routing nodes — the player picks an option, not the hub itself.
-  const isAscStart = data.nodes[nodeKey]?.isAscendancyStart === true;
-  const isMcHub = data.nodes[nodeKey]?.isMultipleChoice === true;
-  wrap.cursor = isAscStart || isMcHub ? 'default' : 'pointer';
-
-  const onHover = (e: import('pixi.js').FederatedPointerEvent) => {
-    // While the user is panning/pinching, ignore the pointermove stream so the
-    // tooltip doesn't flicker across every node the finger slides over and we
-    // don't burn cycles recomputing preview paths mid-gesture.
-    if (ctx.gestureActive) return;
-    const state = useStore.getState();
-    const hovered = {
-      nodeKey,
-      clientX: e.client.x,
-      clientY: e.client.y,
-    };
-    const dependencies = previewDependencies(nodeKey, state, ctx.pathing);
-    if (!samePreviewDependencies(ctx.activationPreview, dependencies)) ctx.activationPreview = null;
-    const targetChanged = state.hovered?.nodeKey !== nodeKey;
-    if (!targetChanged && samePreviewDependencies(ctx.hoverPreviewDependencies, dependencies)) {
-      // Tooltip coordinates can move on every pointer event. Keep that update
-      // separate from the node-target preview so unchanged targets don't
-      // rebuild pathing or repaint the tree.
-      state.updateHoveredPosition(hovered);
-      return;
+  wrap.cursor = 'pointer';
+  const inspect = (e: FederatedPointerEvent, explicit = false) => {
+    if (ctx.cancelled || ctx.gestureActive || ctx.touchTargetAmbiguous) return;
+    const current = useStore.getState();
+    if (!explicit && current.hovered?.inputType === 'keyboard') return;
+    const pending = useStore.getState().pendingRemoval;
+    if (pending) {
+      if (!explicit || pending.key === nodeKey) return;
+      useStore.getState().dismissInspection();
     }
-
-    ctx.hoverPreviewDependencies = dependencies;
+    const state = useStore.getState();
+    const hovered = { nodeKey, clientX: e.client.x, clientY: e.client.y,
+      ...(e.pointerType ? { inputType: e.pointerType } : {}) };
+    const deps = previewDependencies(nodeKey, state, ctx.pathing);
+    if (!samePreviewDependencies(ctx.activationPreview, deps)) ctx.activationPreview = null;
+    if (state.hovered?.nodeKey === nodeKey && samePreviewDependencies(ctx.hoverPreviewDependencies, deps)) {
+      state.updateHoveredPosition(hovered); return;
+    }
+    ctx.hoverPreviewDependencies = deps;
     state.setHoverState(hovered, computePreviewPathForNode(nodeKey, data, ctx.pathing, state.allocationMode));
   };
-
-  wrap.on('pointerover', onHover);
-  wrap.on('pointermove', onHover);
+  wrap.on('pointerover', (e: FederatedPointerEvent) => { ctx.hoverPreviewDependencies = null; inspect(e); });
+  wrap.on('pointermove', (e: FederatedPointerEvent) => {
+    if (ctx.hoverPreviewDependencies && !useStore.getState().hovered) return;
+    inspect(e);
+  });
   wrap.on('pointerout', () => {
     ctx.hoverPreviewDependencies = null;
-    const state = useStore.getState();
-    // Touch pointers leave after each tap. Keep an explicitly pinned preview
-    // visible until the next activation, target change, or gesture.
-    state.setHoverState(null, samePreviewDependencies(ctx.activationPreview,
-      previewDependencies(nodeKey, state, ctx.pathing)) ? state.previewPath : null);
+    const s = useStore.getState();
+    if (s.pendingRemoval || s.hovered?.inputType === 'touch' || s.hovered?.inputType === 'keyboard') return;
+    s.dismissInspection();
   });
-
-  // Distinguish quick tap (intentional allocation) from long press (the
-  // user dwelling on a node to read the tooltip). Mouse clicks are always
-  // honoured — only touch needs the duration filter.
-  let pointerDownAt = 0;
-  let pointerDownType: string | null = null;
-  wrap.on('pointerdown', (e: import('pixi.js').FederatedPointerEvent) => {
-    pointerDownAt = performance.now();
-    pointerDownType = e.pointerType;
+  let downAt = 0, downType = '', cancelled = true;
+  let downDeps: HoverPreviewDependencies | null = null;
+  wrap.on('pointerdown', (e: FederatedPointerEvent) => {
+    cancelled = e.button > 0 || !!ctx.touchTargetAmbiguous || ctx.gestureActive;
+    downAt = performance.now(); downType = e.pointerType;
+    downDeps = previewDependencies(nodeKey, useStore.getState(), ctx.pathing);
+    if (downType !== 'touch' && !cancelled && (useStore.getState().hovered?.inputType === 'keyboard' || useStore.getState().pendingRemoval)) inspect(e, true);
+    if (downType === 'touch' && !cancelled) {
+      inspect(e, true);
+    }
   });
-
+  const cancel = () => { cancelled = true; ctx.activationPreview = null; useStore.getState().dismissInspection(); };
+  wrap.on('pointercancel', cancel);
+  wrap.on('pointerupoutside', cancel);
   wrap.on('pointertap', () => {
-    // A pan/pinch is in progress, or just ended — don't let the finger-lift
-    // commit an allocation on whatever node sits under the release point.
-    if (ctx.gestureActive) return;
-    if (performance.now() - ctx.lastGestureEndAt < TAP_SUPPRESS_AFTER_GESTURE_MS) return;
-    if (isAscStart) return; // ascendancy start is implicit, not allocatable
-    if (isMcHub) return;    // multiple-choice hub — players click an option, not the hub
-    // 300ms matches the threshold most mobile UIs treat as "quick tap"
-    // (Android's onClick fires up to ~500ms, iOS double-tap window is 300ms).
-    // Anything longer reads as a deliberate hold for inspection, not a commit.
-    if (pointerDownType === 'touch' && performance.now() - pointerDownAt > 300) {
+    if (ctx.cancelled || cancelled || ctx.gestureActive || performance.now() - ctx.lastGestureEndAt < TAP_SUPPRESS_AFTER_GESTURE_MS) return;
+    const s = useStore.getState();
+    if (s.pendingRemoval) return;
+    const deps = previewDependencies(nodeKey, s, ctx.pathing);
+    if (!samePreviewDependencies(downDeps, deps)) return;
+    const touch = downType === 'touch';
+    const proposal = proposeNodeEdit(nodeKey, data, s, ctx.pathing);
+    const hold = touch && performance.now() - downAt > 300;
+    if (hold) {
+      ctx.activationPreview = deps;
       return;
     }
-    const pathing = ctx.pathing;
-    if (!pathing) return;
-    const state = useStore.getState();
-    const alloc = state.allocation;
-    const mode = state.allocationMode;
-    // Clicking the class start while editing the Main tree zeroes everything
-    // out (every node ultimately roots here). In a weapon-set edit mode it's a
-    // no-op — the start belongs to the main tree.
-    if (nodeKey === pathing.classStartKey) {
-      if (mode === 'shared' && !isEmptyAllocation(alloc)) state.resetAllocation();
+    if (typeof proposal === 'string') { s.setValidationMessage(proposal); return; }
+    const bucket = bucketOf(s.allocation, nodeKey);
+    if (bucket) {
+      if (data.nodes[nodeKey]?.isGenericAttribute) s.openAttributeEditor({ kind: 'node', nodeKey });
+      else s.requestRemoval(nodeKey, data, touch);
       return;
     }
-    const bucket = bucketOf(alloc, nodeKey);
-    // The node belongs to a different tree than the one being edited — editing
-    // is scoped to the selected tree, so this is a no-op.
-    if (bucket !== null && bucket !== mode) return;
-    // Allocated in the tree being edited → unallocate it and revalidate. The
-    // main tree is shared-only; removing a shared node can orphan weapon-set
-    // branches that hung off it (resolveCascade drops them).
-    if (bucket === mode) {
-      if (data.nodes[nodeKey]?.isGenericAttribute) {
-        state.openAttributeEditor({ kind: 'node', nodeKey });
-        return;
-      }
-      // The store settles both connectivity and lost constraint/radius gates
-      // before checking whether this removal also loses a needed point bonus.
-      state.commitAllocation(removeKey(alloc, nodeKey), data);
-      return;
+    if (touch) {
+      const confirmed = samePreviewDependencies(ctx.activationPreview, deps) && s.hovered?.nodeKey === nodeKey && s.previewPath !== null;
+      ctx.activationPreview = confirmed ? null : deps;
+      if (!confirmed) { s.setPreviewPath(proposal.path); return; }
     }
-    // Entwined Realities: any eligible target allocates as a single node into
-    // the current tree, bypassing BFS entirely.
-    if (pathing.blockedByMode[mode].has(nodeKey)) return;
-    if (pointerDownType === 'touch') {
-      const preview = computePreviewPathForNode(nodeKey, data, pathing, mode);
-      if (!preview?.length) return;
-      const dependencies = previewDependencies(nodeKey, state, pathing);
-      const confirmed = samePreviewDependencies(ctx.activationPreview, dependencies) && state.previewPath !== null;
-      ctx.activationPreview = confirmed ? null : dependencies;
-      if (!confirmed) {
-        state.setPreviewPath(preview);
-        return;
-      }
-    }
-    if (pathing.entwinedKeys.has(nodeKey)) {
-      state.tryAllocate(applyPathAllocation(data, alloc, [nodeKey], [], mode), data);
-      return;
-    }
-    // Path the new nodes through the current tree's frontier, not routing
-    // through nodes that tree can't use (other set, or — in Main — either set).
-    const frontier = pathing.frontierByMode[mode];
-    const path = bfsShortestPath(data, frontier, pathing.classStartKey, nodeKey, pathing.blockedByMode[mode]);
-    if (!path || path.length === 0) return;
-    const autoOptions = autoOptionsForPath(data, path, frontier);
-    state.tryAllocate(applyPathAllocation(data, alloc, path, autoOptions, mode), data);
+    s.requestNodeAllocation(nodeKey, data);
   });
 }
 
@@ -163,6 +92,7 @@ function previewDependencies(
   pathing: PathingContext | null,
 ): HoverPreviewDependencies {
   return {
+    inspectionRevision: state.inspectionRevision,
     nodeKey,
     activeVersion: state.activeVersion,
     className: state.className,
@@ -174,7 +104,7 @@ function previewDependencies(
 }
 
 function samePreviewDependencies(a: HoverPreviewDependencies | null | undefined, b: HoverPreviewDependencies): boolean {
-  return a != null && a.nodeKey === b.nodeKey && a.activeVersion === b.activeVersion && a.className === b.className &&
+  return a != null && a.inspectionRevision === b.inspectionRevision && a.nodeKey === b.nodeKey && a.activeVersion === b.activeVersion && a.className === b.className &&
     a.ascendancyId === b.ascendancyId && a.allocation === b.allocation &&
     a.allocationMode === b.allocationMode && a.pathing === b.pathing;
 }
@@ -217,8 +147,7 @@ export function attachGestureSuppression(vp: Viewport, ctx: MountContext): void 
     ctx.activationPreview = null;
     ctx.hoverPreviewDependencies = null;
     const s = useStore.getState();
-    if (s.hovered) s.setHovered(null);
-    if (s.previewPath) s.setPreviewPath(null);
+    s.dismissInspection();
   };
   const end = () => {
     ctx.gestureActive = false;
@@ -236,6 +165,6 @@ export function attachGestureSuppression(vp: Viewport, ctx: MountContext): void 
   };
   vp.on('pointerup', release);
   vp.on('pointerupoutside', release);
-  vp.on('pointercancel', release);
+  vp.on('pointercancel', () => { begin(); release(); });
   vp.on('pointerleave', release);
 }

@@ -86,13 +86,17 @@ editing; clicks add/remove nodes only in that tree:
 - **Set 2** — frontier `shared ∪ set2`, blocks `set1`.
 
 Per-mode frontier/blocked sets come from `frontierForMode` / `blockedForMode`.
-Clicking a node that belongs to a different tree is a no-op. There is no
+Clicking a node that belongs to a different tree explains which Editing mode to select. There is no
 node-conversion between trees — switch mode and re-allocate.
 
 `resolveCascade` ([`src/interaction/pathing.ts`](../src/interaction/pathing.ts))
 revalidates after every edit: the main tree is pruned to shared-only
 reachability first, then each set is pruned against the *surviving* main tree —
 so removing a shared node correctly drops any branch that hung off it.
+Mouse hover previews cascades with red rings and a concise refund; clicking
+commits once, with Undo recovery. Touch and keyboard cascades use confirmation,
+with per-tree counts only when multiple trees are affected. Leaf removal can be immediate;
+attribute nodes keep their bonus editor. See [node interaction](node-interaction.md).
 Constraint gates, radius anchors, and optionless multiple-choice hubs are
 recomputed until the cascade settles. Replacing a multiple-choice option
 prunes the previous option's dependent branch in the same undoable edit.

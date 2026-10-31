@@ -20,6 +20,8 @@ export function buildPathingContext(
   const all = allAllocated(allocation);
   const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, all);
   const base = buildBlockedKeys(data, classStartKey, ascendancyId, all);
+  const frontier = (mode: import('../../state/allocation').AllocationMode) =>
+    new Set([...frontierKeys, ...frontierForMode(allocation, mode)]);
   const withBlocked = (extra: ReadonlySet<string>, exclusive = false): Set<string> => {
     const out = new Set(base);
     for (const k of extra) out.add(k);
@@ -36,9 +38,9 @@ export function buildPathingContext(
     frontierKeys,
     allAllocated: all,
     frontierByMode: {
-      shared: frontierForMode(allocation, 'shared'),
-      set1: frontierForMode(allocation, 'set1'),
-      set2: frontierForMode(allocation, 'set2'),
+      shared: frontier('shared'),
+      set1: frontier('set1'),
+      set2: frontier('set2'),
     },
     blockedByMode: {
       shared: withBlocked(blockedForMode(allocation, 'shared')),

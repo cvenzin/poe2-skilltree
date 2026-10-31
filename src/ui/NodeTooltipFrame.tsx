@@ -40,7 +40,7 @@ export default function NodeTooltipFrame({ hovered, isMobile, children }: Readon
       left: MOBILE_MARGIN,
       [mobileEdge]: `max(${MOBILE_MARGIN}px, env(safe-area-inset-${mobileEdge}))`,
       maxWidth: `calc(100vw - ${MOBILE_MARGIN * 2}px)`,
-      maxHeight: `calc(100dvh - ${MOBILE_MARGIN * 2}px - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
+      maxHeight: `calc(45dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
       overflowY: 'auto',
     };
   } else if (position) {
@@ -49,7 +49,9 @@ export default function NodeTooltipFrame({ hovered, isMobile, children }: Readon
     style = { ...containerStyle, left: -9999, top: -9999, visibility: 'hidden' };
   }
 
-  return <div ref={ref} style={style} data-mobile-tooltip-edge={isMobile ? mobileEdge : undefined}>{children}</div>;
+  return <div ref={ref} className="node-tooltip" role="region" aria-label="Node inspection"
+    style={{ ...style, pointerEvents: isMobile ? 'auto' : 'none' }} data-mobile-tooltip-edge={isMobile ? mobileEdge : undefined}>
+    {children}</div>;
 }
 
 // Header and body supply their own padding so the header spans the frame.
@@ -59,7 +61,9 @@ const containerStyle: CSSProperties = {
   background: palette.panelBg,
   border: `1px solid ${palette.border}`,
   borderRadius: 6,
-  overflow: 'hidden',
+  overflowY: 'auto',
+  maxHeight: 'calc(100dvh - 16px)',
+  touchAction: 'pan-y',
   color: palette.textPrimary,
   fontFamily: fontBody,
   fontSize: 13,

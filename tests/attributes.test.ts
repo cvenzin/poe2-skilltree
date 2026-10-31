@@ -13,6 +13,7 @@ import { bfsShortestPath, applyPathAllocation } from '../src/interaction/pathing
 import { spritesForNode } from '../src/render/frameForNode';
 import { initializeBuildLibrary, useBuildLibrary } from '../src/state/buildLibrary';
 import { keys, makeTree } from './fixtures/tree';
+import { removalPreviewKeys } from '../src/render/tree/removalPreview';
 
 const data = makeTree({
   '2': { id: 'strength48', isGenericAttribute: true, name: 'Attribute' },
@@ -37,6 +38,18 @@ beforeEach(() => {
 });
 
 describe('attribute allocation and editing', () => {
+  it('keeps default settings open after choosing a bonus so unspecified nodes can be filled', () => {
+    const state = useStore.getState();
+    state.loadSnapshot({ className: 'Witch', ascendancyId: null, shared: ['2', '3'], set1: [], set2: [] });
+    const editor = { kind: 'default' } as const;
+    state.openAttributeEditor(editor);
+    state.setDefaultAttribute('strength');
+    expect(useStore.getState().attributeEditor).toBe(editor);
+    state.applyDefaultToUnspecified();
+    expect(useStore.getState().attributeChoices).toEqual({ '2': 'strength', '3': 'strength' });
+    expect(useStore.getState().past).toHaveLength(1);
+  });
+
   it('previews without choices and asks once before committing a new attribute path', () => {
     const state = useStore.getState();
     const path = bfsShortestPath(data, new Set(), '1', '4', new Set())!;
@@ -81,6 +94,9 @@ describe('attribute allocation and editing', () => {
     state.tryAllocate(buildAllocation(['2', '3'], ['4'], ['5']), data);
     const original = useStore.getState().attributeChoices;
     state.removeAttributeNode('3');
+    expect(useStore.getState().pendingRemoval?.proposal.removed).toHaveLength(3);
+    expect(useStore.getState().attributeChoices).toBe(original);
+    useStore.getState().confirmRemoval();
     expect(useStore.getState().attributeChoices).toEqual({ '2': 'strength' });
     expect(useStore.getState().allocation.set1.size).toBe(0);
     expect(useStore.getState().allocation.set2.size).toBe(0);
@@ -88,6 +104,79 @@ describe('attribute allocation and editing', () => {
     expect(useStore.getState().attributeChoices).toBe(original);
     state.redo();
     expect(useStore.getState().attributeChoices).toEqual({ '2': 'strength' });
+  });
+
+  it('previews and reviews a cascade inside the same editor, supports cancellation, and commits once', () => {
+    const state = useStore.getState();
+    state.setDefaultAttribute('strength');
+    state.tryAllocate(buildAllocation(['2', '3'], ['4'], ['5']), data);
+    const source = useStore.getState().allocation;
+    const choices = useStore.getState().attributeChoices;
+    const historyLength = useStore.getState().past.length;
+    const editor = { kind: 'node', nodeKey: '3' } as const;
+    state.openAttributeEditor(editor);
+    state.setAttributeRemovalPreview('3');
+    expect(removalPreviewKeys(useStore.getState(), data)).toEqual(['3', '4', '5']);
+    expect(useStore.getState().pendingRemoval).toBeNull();
+    state.removeAttributeNode('3');
+    expect(useStore.getState().attributeEditor).toBe(editor);
+    expect(useStore.getState().pendingRemoval?.proposal.removed).toEqual(['3', '4', '5']);
+    expect(useStore.getState().allocation).toBe(source);
+    expect(useStore.getState().past).toHaveLength(historyLength);
+    state.cancelRemoval();
+    expect(useStore.getState().attributeEditor).toBe(editor);
+    expect(useStore.getState().pendingRemoval).toBeNull();
+    expect(removalPreviewKeys(useStore.getState(), data)).toEqual([]);
+    state.removeAttributeNode('3'); state.confirmRemoval();
+    expect([...useStore.getState().allocation.shared]).toEqual(['2']);
+    expect(useStore.getState().allocation.set1.size + useStore.getState().allocation.set2.size).toBe(0);
+    expect(useStore.getState().attributeEditor).toBeNull();
+    expect(useStore.getState().past).toHaveLength(historyLength + 1);
+    state.undo(); expect(useStore.getState().allocation).toBe(source);
+    expect(useStore.getState().attributeChoices).toBe(choices);
+    state.redo(); expect([...useStore.getState().allocation.shared]).toEqual(['2']);
+  });
+
+  it('removes a leaf immediately from the editor and clears its transient preview', () => {
+    const state = useStore.getState();
+    state.commitAllocation(buildAllocation(['2'], [], []), data);
+    const historyLength = useStore.getState().past.length;
+    state.openAttributeEditor({ kind: 'node', nodeKey: '2' });
+    state.setAttributeRemovalPreview('2'); state.removeAttributeNode('2');
+    expect(useStore.getState().allocation.shared.size).toBe(0);
+    expect(useStore.getState().attributeEditor).toBeNull();
+    expect(useStore.getState().pendingRemoval).toBeNull();
+    expect(useStore.getState().attributeRemovalPreview).toBeNull();
+    expect(useStore.getState().past).toHaveLength(historyLength + 1);
+  });
+
+  it.each(['mode', 'target', 'dismiss'] as const)('invalidates inline removal when %s changes', (change) => {
+    const state = useStore.getState();
+    state.commitAllocation(buildAllocation(['2', '3', '4'], [], []), data);
+    const source = useStore.getState().allocation;
+    state.openAttributeEditor({ kind: 'node', nodeKey: '3' });
+    state.setAttributeRemovalPreview('3'); state.removeAttributeNode('3');
+    if (change === 'mode') state.setAllocationMode('set1');
+    if (change === 'target') state.openAttributeEditor({ kind: 'node', nodeKey: '4' });
+    if (change === 'dismiss') state.openAttributeEditor(null);
+    expect(useStore.getState().pendingRemoval).toBeNull();
+    expect(useStore.getState().attributeRemovalPreview).toBeNull();
+    state.confirmRemoval(); expect(useStore.getState().allocation).toBe(source);
+  });
+
+  it.each(['set1', 'set2'] as const)('keeps inline %s cascade removal in its own branch', (mode) => {
+    const state = useStore.getState();
+    const other = mode === 'set1' ? 'set2' : 'set1';
+    const source = buildAllocation(['2'], mode === 'set1' ? ['3', '4', '5'] : ['6'], mode === 'set2' ? ['3', '4', '5'] : ['6']);
+    useStore.setState({ allocation: source, allocationMode: mode });
+    state.openAttributeEditor({ kind: 'node', nodeKey: '3' }); state.removeAttributeNode('3');
+    expect(useStore.getState().attributeEditor?.kind).toBe('node');
+    expect(useStore.getState().allocation).toBe(source);
+    state.confirmRemoval();
+    expect(useStore.getState().allocation[mode].size).toBe(0);
+    expect([...useStore.getState().allocation[other]]).toEqual(['6']);
+    expect([...useStore.getState().allocation.shared]).toEqual(['2']);
+    state.undo(); expect(useStore.getState().allocation).toBe(source);
   });
 
   it.each(['set1', 'set2'] as const)('scopes editing and removal to %s', (mode) => {

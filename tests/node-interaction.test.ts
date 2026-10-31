@@ -1,6 +1,6 @@
 import { Container, EventBoundary, FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildPathingContext } from '../src/render/tree/pathingContext';
 import { attachGestureSuppression, attachNodeInteraction, computePreviewPathForNode } from '../src/render/tree/nodeInteraction';
 import type { MountContext } from '../src/render/tree/types';
@@ -8,7 +8,8 @@ import { useStore } from '../src/state/store';
 import { buildAllocation, EMPTY_ALLOCATION } from '../src/state/allocation';
 import { makeTree } from './fixtures/tree';
 
-beforeEach(() => useStore.setState(useStore.getInitialState(), true));
+beforeEach(() => { vi.useFakeTimers(); useStore.setState(useStore.getInitialState(), true); });
+afterEach(() => vi.useRealTimers());
 
 describe('hover dependency lifetime', () => {
   function pointer(x = 10, y = 20) {

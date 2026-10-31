@@ -166,7 +166,7 @@
   .toolbar-title { font-size: 15px; }
   .tree-toolbar select, .tree-search input { font-size: 16px; }
   .toolbar-version select { width: 90px; font-size: 14px; }
-  .toolbar-content { gap: 14px; }
+  .toolbar-content { gap: 14px; padding-bottom: 24px; }
   .toolbar-actions { flex-direction: column; }
   .toolbar-output { justify-content: stretch; }
   .toolbar-history button { min-width: 44px; }

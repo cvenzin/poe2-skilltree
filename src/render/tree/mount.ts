@@ -3,7 +3,9 @@ import type { AtlasBundle } from '../atlas';
 import type { MountContext } from './types';
 import { createPixiApp, createViewport, computeFitScale, configureViewport, setInitialCamera, attachResizeObserver } from './viewport';
 import { computeWorldBounds, computeMainTreeBounds } from './geometry';
-import { Container } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
+import { attachTouchTargets } from './touchTargets';
+import { drawRemovalPreview, removalPreviewKeys } from './removalPreview';
 import { drawBackground } from './decorations';
 import { drawMasteries } from '../drawMasteries';
 import { drawEdges } from './edges';
@@ -16,7 +18,8 @@ import { applyUnlockHighlight, applyJewelOverlay } from './radiusOverlays';
 import { swapContext } from './classContext';
 import { useStore } from '../../state/store';
 import { handleSearchCameraTransition } from './searchCamera';
-import { attachGestureSuppression, computePreviewPathForNode } from './nodeInteraction';
+import { attachGestureSuppression } from './nodeInteraction';
+import { subscribeSceneState } from './storeSubscription';
 
 export async function mount(
   host: HTMLDivElement,
@@ -92,16 +95,25 @@ export async function mount(
   worldContainer.addChild(searchMatchLayer);
   ctx.searchMatchLayer = searchMatchLayer;
   ctx.worldContainer = worldContainer;
+  const removalLayer = new Graphics();
+  removalLayer.eventMode = 'none';
+  worldContainer.addChild(removalLayer);
   ctx.fitScale = computeFitScale(app, world);
 
   const pulseStart = performance.now();
   let lastRingScale = viewport.scale.x;
+  let lastRemovalScale = viewport.scale.x;
+  let removalKeys: readonly string[] = [];
   const tickerCb = () => {
+    const scale = viewport.scale.x;
+    if (scale !== lastRemovalScale) {
+      lastRemovalScale = scale;
+      if (removalKeys.length) drawRemovalPreview(removalLayer, removalKeys, ctx, worldContainer);
+    }
     if (!searchMatchLayer.children[0]?.visible) return;
     // Keep the ring stroke a constant *screen* width across zoom. Doing this
     // in the ticker covers every path that can change scale (wheel/pinch,
     // search framing animation, initial fit, resize) without per-event hooks.
-    const scale = viewport.scale.x;
     if (scale !== lastRingScale) {
       refreshSearchRingUniforms(searchMatchLayer, scale);
       lastRingScale = scale;
@@ -172,7 +184,13 @@ export async function mount(
   // Initial jewel overlay (nothing hovered yet — clears the layer).
   applyJewelOverlay(useStore.getState().hovered, data, ctx.nodeWraps, jewelOverlay, worldContainer, ctx.pathing);
 
-  ctx.unsubscribeStore = useStore.subscribe((s, prev) => {
+  ctx.unsubscribeStore = subscribeSceneState((s, prev) => {
+    if (s.pendingRemoval !== prev.pendingRemoval || s.attributeRemovalPreview !== prev.attributeRemovalPreview ||
+      s.allocation !== prev.allocation || s.allocationMode !== prev.allocationMode ||
+      s.hovered?.nodeKey !== prev.hovered?.nodeKey || s.hovered?.inputType !== prev.hovered?.inputType) {
+      removalKeys = removalPreviewKeys(s, data);
+      drawRemovalPreview(removalLayer, removalKeys, ctx, worldContainer);
+    }
     const allocationChanged = s.allocation !== prev.allocation;
     const modeChanged = s.allocationMode !== prev.allocationMode;
     if (allocationChanged || modeChanged || s.previewPath === null) ctx.activationPreview = null;
@@ -182,21 +200,9 @@ export async function mount(
       pathingAllocation = s.allocation;
     }
 
-    const previewInputsChanged = allocationChanged || modeChanged;
-    const refreshedPreview = previewInputsChanged && s.hovered
-      ? computePreviewPathForNode(s.hovered.nodeKey, data, ctx.pathing, s.allocationMode)
-      : s.previewPath;
-    const needsPreviewRefresh = refreshedPreview !== s.previewPath &&
-      !(refreshedPreview !== null && s.previewPath !== null && refreshedPreview.length === s.previewPath.length &&
-        refreshedPreview.every((key, index) => key === s.previewPath?.[index]));
-    if (needsPreviewRefresh && s.hovered) {
-      // Allocation and edit-mode changes invalidate the old path. Recompute it
-      // immediately for a stationary pointer so the state never holds a stale
-      // preview (and publish the target/path together).
-      s.setHoverState(s.hovered, refreshedPreview);
-    } else if (allocationChanged || s.previewPath !== prev.previewPath ||
+    if (allocationChanged || s.previewPath !== prev.previewPath ||
       s.attributeChoices !== prev.attributeChoices || s.defaultAttribute !== prev.defaultAttribute) {
-      applyAll(s.allocation, refreshedPreview);
+      applyAll(s.allocation, s.previewPath);
     }
     if (s.searchMatches !== prev.searchMatches || s.searchCursor !== prev.searchCursor) {
       applySearchHighlight(s.searchMatches, s.searchCursor, ctx.nodeWraps, searchMatchLayer, worldContainer, viewport.scale.x);
@@ -216,6 +222,7 @@ export async function mount(
 
   configureViewport(viewport, app, world, ctx.reduceMotion);
   attachGestureSuppression(viewport, ctx);
+  ctx.removeTouchTargets = attachTouchTargets(app.canvas, ctx);
   const mainTree = computeMainTreeBounds(data);
   setInitialCamera(viewport, app, world, mainTree, null);
   ctx.edgeReferenceScale = viewport.scale.x;

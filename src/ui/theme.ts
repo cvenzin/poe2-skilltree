@@ -74,3 +74,12 @@ export const panelShadow =
 
 /** Responsive height for toolbar controls. Other overlays keep the 28px fallback. */
 export const controlHeight = 'var(--toolbar-control-height, 28px)';
+
+/** Shared inspection/review chrome uses the same tokens as the toolbar. */
+export const nodePanelTheme = {
+  '--node-bg': palette.panelBgSolid,
+  '--node-field': palette.fieldBg,
+  '--node-border': palette.border,
+  '--node-text': palette.textPrimary,
+  '--node-accent': palette.rune,
+} as React.CSSProperties;

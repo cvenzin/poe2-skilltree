@@ -3,6 +3,8 @@ import type { TreeData } from '../data/types';
 import { useStore, type AttributeEditor } from '../state/store';
 import { allAllocated, bucketOf } from '../state/allocation';
 import { attributeOptions, attributeRecommendation, type AttributeChoice } from '../state/attributes';
+import { pathCost } from '../interaction/nodeActions';
+import AttributeRemoval from './AttributeRemoval';
 
 export default function AttributeDialog({ data, editor }: Readonly<{ data: TreeData; editor: AttributeEditor }>) {
   const allocation = useStore((s) => s.allocation);
@@ -34,6 +36,7 @@ export default function AttributeDialog({ data, editor }: Readonly<{ data: TreeD
   };
   const choose = (choice: AttributeChoice) => {
     const state = useStore.getState();
+    if (state.attributeEditor !== editor) return;
     if (nodeKey) {
       state.setNodeAttribute(nodeKey, choice);
       dismiss();
@@ -49,9 +52,13 @@ export default function AttributeDialog({ data, editor }: Readonly<{ data: TreeD
 
   return (
     <dialog className="attribute-dialog" ref={ref} aria-labelledby={titleId} aria-describedby={descriptionId}
-      onCancel={(event) => { event.preventDefault(); dismiss(); }} onKeyDown={(event) => event.stopPropagation()}>
+      onCancel={(event) => {
+        event.preventDefault();
+        if (nodeKey && useStore.getState().pendingRemoval?.key === nodeKey) useStore.getState().cancelRemoval();
+        else dismiss();
+      }} onKeyDown={(event) => event.stopPropagation()}>
       <header>
-        <h2 id={titleId}>{nodeKey ? 'Choose this node’s bonus' : 'New attribute nodes'}</h2>
+        <h2 id={titleId}>{nodeKey ? 'Choose this node’s bonus' : pending ? 'New attribute nodes' : 'Default attribute'}</h2>
         <button type="button" className="attribute-dialog__close" aria-label="Close attribute picker" onClick={dismiss}>
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M4 4L16 16M16 4L4 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -61,6 +68,7 @@ export default function AttributeDialog({ data, editor }: Readonly<{ data: TreeD
       <p id={descriptionId}>{nodeKey ? 'Change the bonus without removing your path.'
         : pending ? `Choose a default for the ${pendingCount} new attribute ${pendingCount === 1 ? 'node' : 'nodes'} in this path.`
           : 'Your default applies to future allocations. Existing choices stay as they are.'}</p>
+      {pending && <p>Path cost: {pathCost(allocation, pending, data, ascendancyId)}</p>}
       {nodeKey && <p className="attribute-dialog__status">{selected
         ? `Selected: ${options.find((option) => option.choice === selected)?.override.name ?? 'Unspecified'}` : 'Selected: Unspecified'}
         {bucketOf(allocation, nodeKey) === 'shared' ? ' · Shared' : mode === 'set1' ? ' · Weapon Set 1' : ' · Weapon Set 2'}</p>}
@@ -79,11 +87,7 @@ export default function AttributeDialog({ data, editor }: Readonly<{ data: TreeD
           Apply default to {unspecified} unspecified {unspecified === 1 ? 'node' : 'nodes'}
         </button>
       )}
-      {nodeKey && <div className="attribute-dialog__remove">
-        <p>Removing this node also removes any passives that depend on its path.</p>
-        <button type="button" className="attribute-dialog__action attribute-dialog__danger" disabled={!editable}
-          onClick={() => { useStore.getState().removeAttributeNode(nodeKey); dismiss(); }}>Remove node</button>
-      </div>}
+      {nodeKey && <AttributeRemoval nodeKey={nodeKey} data={data} editable={editable} />}
       <button type="button" className="attribute-dialog__action" onClick={dismiss}>{pending ? 'Cancel path' : 'Done'}</button>
     </dialog>
   );

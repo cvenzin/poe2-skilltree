@@ -1,4 +1,5 @@
 import type { ReactElement, InputHTMLAttributes } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import SearchInput from '../src/ui/SearchInput';
 import { useStore } from '../src/state/store';
@@ -37,7 +38,7 @@ function render() {
   const tree = SearchInput({ data, inputRef: { current: null } });
   const input = (tree.props as { children: ReactElement[] }).children[0]! as ReactElement<InputHTMLAttributes<HTMLInputElement>>;
   hooks.effects.forEach((effect) => { const stop = effect(); if (stop) cleanup.push(stop); });
-  return input.props;
+  return { ...input.props, markup: renderToStaticMarkup(tree) };
 }
 function type(query: string) {
   render().onChange!({ target: { value: query } } as never);
@@ -87,10 +88,42 @@ it.each(['zz-no-match', ''])('immediate Enter on a fresh no-result query (%s) se
 
 it('Escape cancels a pending draft instead of reviving it', () => {
   type('life');
+  useStore.getState().setHovered({ nodeKey: '3', clientX: 10, clientY: 20 });
   render().onKeyDown!({ key: 'Escape', preventDefault: vi.fn() } as never);
+  expect(useStore.getState().hovered).toBeNull();
   render(); vi.advanceTimersByTime(200);
   expect(useStore.getState().searchQuery).toBe('');
   expect(useStore.getState().searchMatches).toEqual([]);
+});
+
+it('keeps keyboard inspection and selected search highlighting without a visible inspection control', () => {
+  useStore.setState({ className: 'Witch', status: { kind: 'ready', version: 'test', data, atlases: {} as never } });
+  type('life'); enter(); enter();
+  const input = render();
+  expect(input.markup).not.toContain('ⓘ');
+  expect(input.markup).not.toContain('Inspect selected node');
+  expect(input.markup).toContain('aria-label="Clear search"');
+  expect(input.markup).toContain('role="status">Result 2 of 2: Life');
+  expect(input.markup).toContain('Alt+Enter: inspect and edit the selected node.');
+  expect(input['aria-keyshortcuts']).toBe('Alt+Enter');
+  expect(input['aria-describedby']).toBe('tree-search-help');
+  render().onKeyDown!({ key: 'Enter', altKey: true, preventDefault: vi.fn() } as never);
+  expect(useStore.getState().searchMatches).toEqual(['2', '3']);
+  expect(useStore.getState().searchCursor).toBe(1);
+  expect(useStore.getState().hovered).toEqual({ nodeKey: '3', clientX: 0, clientY: 0, inputType: 'keyboard' });
+  expect(useStore.getState().previewPath).toEqual(['2', '3']);
+  expect(useStore.getState().allocation.shared.size).toBe(0);
+  expect(useStore.getState().past).toHaveLength(0);
+});
+
+it('Alt+Enter on an unselected draft selects and inspects its first match', () => {
+  useStore.setState({ className: 'Witch', status: { kind: 'ready', version: 'test', data, atlases: {} as never } });
+  type('life');
+  render().onKeyDown!({ key: 'Enter', altKey: true, preventDefault: vi.fn() } as never);
+  expect(useStore.getState().searchMatches).toEqual(['2', '3']);
+  expect(useStore.getState().searchCursor).toBe(0);
+  expect(useStore.getState().hovered?.nodeKey).toBe('2');
+  expect(useStore.getState().allocation.shared.size).toBe(0);
 });
 
 it.each(['class', 'ascendancy', 'build', 'clear'].flatMap((context) => [false, true].map((committed) => ({ context, committed }))))('discards pending draft on $context reset (committed=$committed)', ({ context, committed }) => {

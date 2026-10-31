@@ -1,7 +1,9 @@
 import { useStore } from '../state/store';
 import { bucketOf, type AllocationMode } from '../state/allocation';
 import { tokenizeStatLine } from '../interaction/statsMarkup';
-import { useIsMobile } from './useIsMobile';
+import { useMemo } from 'react';
+import KeyboardNodeInspector from './KeyboardNodeInspector';
+import { pathCost, proposeNodeEdit } from '../interaction/nodeActions';
 import { palette, fontDisplay } from './theme';
 import type { TreeNode } from '../data/types';
 import { attributeNode } from '../state/attributes';
@@ -15,16 +17,25 @@ import NodeTooltipFrame from './NodeTooltipFrame';
  */
 export default function NodeTooltip() {
   const hovered = useStore((s) => s.hovered);
+  const pending = useStore((s) => s.pendingRemoval);
   const allocation = useStore((s) => s.allocation);
   const choices = useStore((s) => s.attributeChoices);
   const ascendancyId = useStore((s) => s.ascendancyId);
+  const className = useStore((s) => s.className);
+  const allocationMode = useStore((s) => s.allocationMode);
+  const previewPath = useStore((s) => s.previewPath);
   // When the sets UI is off, suppress all weapon-set vocabulary in the tooltip.
   const showSets = useStore((s) => s.weaponSetsEnabled);
   const data = useStore((s) =>
     s.status.kind === 'ready' ? s.status.data : null
   );
-  const isMobile = useIsMobile();
-  if (!hovered || !data) return null;
+  const isMobile = hovered?.inputType === 'touch';
+  const nodeKey = hovered?.nodeKey;
+  const pointerRemoval = hovered?.inputType === 'mouse' || hovered?.inputType === 'pen';
+  const proposal = useMemo(() => nodeKey && data && (bucketOf(allocation, nodeKey) === null || (pointerRemoval && !data.nodes[nodeKey]?.isGenericAttribute))
+    ? proposeNodeEdit(nodeKey, data, { allocation, ascendancyId, className, allocationMode }) : null,
+    [nodeKey, data, allocation, ascendancyId, className, allocationMode, pointerRemoval]);
+  if (!hovered || !data || pending) return null;
   const original = data.nodes[hovered.nodeKey];
   if (!original?.name) return null;
   const node = passiveTooltipNode(attributeNode(original, choices[hovered.nodeKey], data), data, allocation, ascendancyId);
@@ -32,24 +43,34 @@ export default function NodeTooltip() {
   // block for them (always shared). Also suppress entirely when the sets UI is
   // off, so new users never see weapon-set wording.
   const bucket = (!showSets || node.ascendancyId) ? null : bucketOf(allocation, hovered.nodeKey);
+  const refund = proposal && typeof proposal !== 'string' && !proposal.error && proposal.path.length === 0 && proposal.removed.length > 0
+    ? pathCost(proposal.next, allocation, data, ascendancyId) : null;
 
+  const contents = <>
+    <NodeTooltipContents node={node} bucket={bucket} dismissible={isMobile} />
+    {proposal && typeof proposal !== 'string' && !proposal.error && proposal.path.length > 0 &&
+      <div className="node-tooltip-note">{pathCost(allocation, proposal.next, data, ascendancyId)}</div>}
+    {refund && <div className="node-tooltip-note">{refund === 'Free' ? 'No points refunded' : `${refund} refunded`}</div>}
+    {isMobile && previewPath?.length && proposal && typeof proposal !== 'string' && !proposal.error
+      ? <div className="node-tooltip-note">Tap again to allocate</div> : null}
+  </>;
+  if (hovered.inputType === 'keyboard') return <KeyboardNodeInspector nodeKey={hovered.nodeKey} data={data}>{contents}</KeyboardNodeInspector>;
   return (
     <NodeTooltipFrame key={`${isMobile}:${hovered.nodeKey}`} hovered={hovered} isMobile={isMobile}>
-      <NodeTooltipContents node={node} bucket={bucket} />
-      {original.isGenericAttribute && bucketOf(allocation, hovered.nodeKey) !== null && (
-        <div style={{ padding: '8px 14px', color: palette.textMuted }}>
-          {choices[hovered.nodeKey] ? 'Tap to change attribute or remove node.' : 'Unspecified · Tap to choose an attribute.'}
-        </div>
-      )}
+      {contents}
     </NodeTooltipFrame>
   );
 }
 
-function NodeTooltipContents({ node, bucket }: Readonly<{ node: TreeNode; bucket: AllocationMode | null }>) {
+function NodeTooltipContents({ node, bucket, dismissible }: Readonly<{ node: TreeNode; bucket: AllocationMode | null; dismissible?: boolean }>) {
   const stats = node.stats ?? [];
   return (
     <>
-      <div style={headerStyle}>{node.name}</div>
+      <div style={dismissible ? { ...headerStyle, position: 'sticky', top: 0, zIndex: 1, padding: '8px 40px', background: palette.panelBgSolid } : headerStyle}>
+        {node.name}
+        {dismissible && <button className="node-tooltip-close" type="button" aria-label="Dismiss node inspection"
+          onClick={() => useStore.getState().dismissInspection()}>×</button>}
+      </div>
       {stats.length > 0 && (
         <ul style={statsListStyle}>
           {stats.map((s) => (

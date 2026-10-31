@@ -15,12 +15,19 @@ on touch, tap once to pin the preview and tap the same target again to allocate.
 Changing targets or panning/pinching cancels that touch confirmation. The first
 confirmed path containing an attribute node asks for a default before committing.
 Cancelling leaves the path unallocated and requires a fresh touch preview.
-Changing the default never rewrites existing choices.
+Changing the default never rewrites existing choices. Future-node settings are
+titled **Default attribute**; the pending-path picker remains **New attribute
+nodes** and shows its prospective **Path cost**, before allocation is committed.
 
 Tap an allocated generic node in the tree currently being edited to open its
 bonus picker. On phones this is a bottom sheet with large labelled buttons.
-Changing the bonus leaves the path intact. **Remove node** is a separate action
-that uses the same cascade rules as ordinary removal. Pan, pinch and long-press
+Changing the bonus leaves the path intact. Hovering or focusing **Remove node**
+previews affected nodes in red. A leaf is removed immediately; a cascade shows
+its affected count and refund with **Cancel / Remove inside this same editor**,
+near the original removal button. Cancel (or Escape) returns to bonus editing;
+closing the editor cancels the pending removal and clears its preview. Confirmation
+removes the cascade in one undoable edit, using the ordinary allocation and budget
+rules. Pan, pinch and long-press
 inspection retain their gesture suppression.
 
 Older builds remain **Unspecified**. **Unspecified allocated nodes** displays

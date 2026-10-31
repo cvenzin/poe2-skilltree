@@ -15,6 +15,7 @@ import { applyBootSnapshot, bootClassNameWithoutData, handleSharedHashChange, re
 import TreeCanvas from './render/TreeCanvas';
 import Toolbar from './ui/Toolbar';
 import NodeTooltip from './ui/NodeTooltip';
+import RemovalConfirmation from './ui/RemovalConfirmation';
 import ValidationToast from './ui/ValidationToast';
 import Attribution from './ui/Attribution';
 import LoadingScreen from './ui/LoadingScreen';
@@ -175,6 +176,7 @@ export default function App() {
         />
         <Toolbar data={status.data} />
         <NodeTooltip />
+        <RemovalConfirmation />
         <ValidationToast />
         <Attribution />
       </>
