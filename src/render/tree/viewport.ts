@@ -34,6 +34,9 @@ export function createViewport(app: Application, world: WorldSize): Viewport {
     worldHeight: world.height,
     events: app.renderer.events,
   });
+  // Apply camera movement to the group on the GPU instead of updating every
+  // node's transform and sprite buffer when the viewport pans or zooms.
+  vp.enableRenderGroup();
   app.stage.addChild(vp);
   return vp;
 }
