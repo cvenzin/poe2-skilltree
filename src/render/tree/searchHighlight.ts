@@ -1,5 +1,6 @@
 import { Container, Mesh, MeshGeometry, Shader, Texture, UniformGroup } from 'pixi.js';
 import { ringRadiusForWrap } from './nodes';
+import { createSearchPulse } from './searchPulse';
 
 const RING_SEGMENTS = 48;
 const NORMAL_STROKE_WIDTH = 3;
@@ -49,6 +50,7 @@ export interface SearchRingGeometryInput {
 
 interface SearchRingState {
   layer: Container;
+  pulse: ReturnType<typeof createSearchPulse>;
   mesh: Mesh<MeshGeometry, Shader>;
   shader: Shader;
   uniforms: UniformGroup;
@@ -80,6 +82,7 @@ export function createSearchMatchLayer(): Container {
 
   states.set(layer, {
     layer,
+    pulse: createSearchPulse(layer),
     mesh,
     shader,
     uniforms,
@@ -121,8 +124,12 @@ export function applySearchHighlight(
   }
 
   refreshSearchRingUniforms(layer, viewportScale);
-  // Reset alpha so the pulse starts at the same point after each search edit.
-  layer.alpha = 1;
+}
+
+/** Paint the brief result pulse; false lets the render loop sleep. */
+export function updateSearchHighlightPulse(layer: Container, reduceMotion: boolean): boolean {
+  const state = states.get(layer);
+  return state?.pulse.update(!reduceMotion && state.mesh.visible) ?? false;
 }
 
 function rebuildSearchRings(
@@ -153,6 +160,7 @@ function rebuildSearchRings(
   state.mesh.geometry = buildSearchRingGeometry(inputs);
   oldGeometry.destroy(true);
   state.mesh.visible = inputs.length > 0;
+  state.pulse.restart();
   state.focusedKey = null;
   state.uniforms.uniforms.uFocusedRing = -1;
   state.uniforms.update();

@@ -49,19 +49,19 @@ describe('canvas initialization errors', () => {
   });
 
   it('releases partially mounted scene resources after a setup failure', async () => {
-    const destroy = vi.fn(), disconnect = vi.fn(), unsubscribe = vi.fn(), ticker = vi.fn(), visibility = vi.fn();
+    const destroy = vi.fn(), disconnect = vi.fn(), unsubscribe = vi.fn(), ticker = vi.fn(), renderLoop = vi.fn();
     vi.mocked(mount).mockImplementation(async (_host, _data, _atlases, _props, ctx) => {
       ctx.app = { destroy } as never;
       ctx.observer = { disconnect } as never;
       ctx.unsubscribeStore = unsubscribe;
       ctx.removeTickerCallback = ticker;
-      ctx.removeVisibilityListener = visibility;
+      ctx.removeRenderLoop = renderLoop;
       throw new Error('Scene setup failed');
     });
     mountCanvas(); await Promise.resolve();
     expect(useStore.getState().status.kind).toBe('error');
     cleanup?.(); cleanup = undefined;
-    for (const release of [destroy, disconnect, unsubscribe, ticker, visibility]) expect(release).toHaveBeenCalledOnce();
+    for (const release of [destroy, disconnect, unsubscribe, ticker, renderLoop]) expect(release).toHaveBeenCalledOnce();
   });
 
   it.each(['cancelled', 'replaced'])('ignores a late failure from a %s canvas', async (kind) => {

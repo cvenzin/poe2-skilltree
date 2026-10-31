@@ -128,9 +128,10 @@ export interface MountContext {
   reduceMotion: boolean;
   /** Detach the pulse ticker callback in destroy. */
   removeTickerCallback: (() => void) | null;
-  /** Detach the `visibilitychange` listener that pauses the ticker on
-   *  hidden tabs. */
-  removeVisibilityListener: (() => void) | null;
+  /** Wake rendering after a scene change, including asynchronously loaded art. */
+  requestRender: (() => void) | null;
+  /** Stop the render loop and detach its input/visibility listeners. */
+  removeRenderLoop: (() => void) | null;
   /** Unsubscribe handle for the store-subscription set up in {@link mount}. */
   unsubscribeStore: (() => void) | null;
   /** Class/ascendancy-derived pathing state. Rewritten in place by

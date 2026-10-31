@@ -10,7 +10,7 @@ import { drawBackground } from './decorations';
 import { drawMasteries } from '../drawMasteries';
 import { drawEdges } from './edges';
 import { drawNodes, applyNodeStates, applyHoverScale } from './nodes';
-import { refreshSearchRingUniforms, applySearchHighlight, createSearchMatchLayer } from './searchHighlight';
+import { refreshSearchRingUniforms, applySearchHighlight, createSearchMatchLayer, updateSearchHighlightPulse } from './searchHighlight';
 import { allAllocated } from '../../state/allocation';
 import type { Allocation } from '../../state/allocation';
 import { refreshConstraintState, applyConstraintVisibility } from './pathingContext';
@@ -20,6 +20,7 @@ import { useStore } from '../../state/store';
 import { handleSearchCameraTransition } from './searchCamera';
 import { attachGestureSuppression } from './nodeInteraction';
 import { subscribeSceneState } from './storeSubscription';
+import { startRenderLoop } from './renderLoop';
 
 export async function mount(
   host: HTMLDivElement,
@@ -100,11 +101,12 @@ export async function mount(
   worldContainer.addChild(removalLayer);
   ctx.fitScale = computeFitScale(app, world);
 
-  const pulseStart = performance.now();
+  let searchPulsing = false;
   let lastRingScale = viewport.scale.x;
   let lastRemovalScale = viewport.scale.x;
   let removalKeys: readonly string[] = [];
   const tickerCb = () => {
+    searchPulsing = updateSearchHighlightPulse(searchMatchLayer, ctx.reduceMotion);
     const scale = viewport.scale.x;
     if (scale !== lastRemovalScale) {
       lastRemovalScale = scale;
@@ -118,22 +120,9 @@ export async function mount(
       refreshSearchRingUniforms(searchMatchLayer, scale);
       lastRingScale = scale;
     }
-    if (ctx.reduceMotion) { searchMatchLayer.alpha = 1; return; }
-    // 1 Hz sine, alpha 0.6 ↔ 1.0
-    const t = (performance.now() - pulseStart) / 1000;
-    searchMatchLayer.alpha = 0.8 + 0.2 * Math.sin(t * 2 * Math.PI);
   };
   app.ticker.add(tickerCb);
   ctx.removeTickerCallback = () => { app.ticker.remove(tickerCb); };
-
-  // Stop the ticker when the tab is hidden — Pixi otherwise keeps the WebGL
-  // RAF loop running and burns battery for nothing. Resume on visibility.
-  const onVisibility = () => {
-    if (document.hidden) app.ticker.stop();
-    else app.ticker.start();
-  };
-  document.addEventListener('visibilitychange', onVisibility);
-  ctx.removeVisibilityListener = () => { document.removeEventListener('visibilitychange', onVisibility); };
 
   // Repaint nodes (texture swap) and edges (five state-coloured stroke layers)
   // whenever allocation or preview changes. Subscribe AFTER the draws so
@@ -217,6 +206,14 @@ export async function mount(
       ctx.hoverScaledWrap = applyHoverScale(ctx.nodeWraps, ctx.hoverScaledWrap, s.hovered?.nodeKey ?? null);
     }
     handleSearchCameraTransition(viewport, world, ctx.fitScale, ctx.nodeWraps, worldContainer, ctx.reduceMotion, prev, s);
+    // Tooltip coordinates and unrelated toolbar state do not change the canvas.
+    if (allocationChanged || modeChanged || s.previewPath !== prev.previewPath ||
+      s.attributeChoices !== prev.attributeChoices || s.defaultAttribute !== prev.defaultAttribute ||
+      s.pendingRemoval !== prev.pendingRemoval || s.attributeRemovalPreview !== prev.attributeRemovalPreview ||
+      s.hovered?.nodeKey !== prev.hovered?.nodeKey || s.hovered?.inputType !== prev.hovered?.inputType ||
+      s.searchQuery !== prev.searchQuery || s.searchMatches !== prev.searchMatches || s.searchCursor !== prev.searchCursor) {
+      ctx.requestRender?.();
+    }
   });
   console.log(`[TreeCanvas] drew ${drawn} main-tree nodes, ${data.edges.length} edges; initial ascendancy=${propsRef.current.ascendancyId ?? '(none)'}`);
 
@@ -228,4 +225,7 @@ export async function mount(
   ctx.edgeReferenceScale = viewport.scale.x;
   if (savedCamera) setInitialCamera(viewport, app, world, mainTree, savedCamera);
   ctx.observer = attachResizeObserver(host, app, viewport, world, ctx);
+  const loop = startRenderLoop(app, viewport, () => searchPulsing);
+  ctx.requestRender = loop.requestRender;
+  ctx.removeRenderLoop = loop.destroy;
 }

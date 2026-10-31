@@ -68,6 +68,13 @@ Build menu and are also available through their keyboard shortcuts.
 
 ## Shared behavior
 
+- **Idle rendering:** A stationary tree stops rendering until input or a visual
+  change wakes it. Camera animations, pan inertia, wheel smoothing, and pulsing
+  search results keep rendering until they finish, capped at 60 FPS even on
+  high-refresh displays. Search results pulse once for one second when their
+  highlights are rebuilt, then remain at full opacity so an idle search can
+  sleep too. Moving between matches does not restart the pulse. Hidden tabs pause
+  the scene; returning repaints it. Reduced-motion search highlights remain static.
 - **Costs and availability:** Show the actual cost of a proposed path,
   accounting for free skills, automatic options, ascendancy points, and the
   edited tree. Explain rejected or unavailable edits when the reason is known.

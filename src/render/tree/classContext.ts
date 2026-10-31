@@ -84,6 +84,7 @@ export function swapContext(
       if (!added || ctx.cancelled || generation !== ctx.swapGeneration || !ctx.backdropLayer) return;
       destroyChildren(ctx.backdropLayer);
       drawCentralBackdrop(ctx.backdropLayer, atlases, data, className, ascendancyId);
+      ctx.requestRender?.();
     }).catch(() => { /* missing/failed background — leave the backdrop empty */ });
   }
 
@@ -96,6 +97,7 @@ export function swapContext(
   if (ctx.searchMatchLayer && ctx.worldContainer && ctx.viewport) {
     applySearchHighlight(state.searchMatches, state.searchCursor, ctx.nodeWraps, ctx.searchMatchLayer, ctx.worldContainer, ctx.viewport.scale.x, true);
   }
+  ctx.requestRender?.();
 }
 
 /**

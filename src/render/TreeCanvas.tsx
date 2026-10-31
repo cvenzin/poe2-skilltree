@@ -88,7 +88,8 @@ export default function TreeCanvas({
       edgeReferenceScale: 1,
       reduceMotion: prefersReducedMotion(),
       removeTickerCallback: null,
-      removeVisibilityListener: null,
+      requestRender: null,
+      removeRenderLoop: null,
       unsubscribeStore: null,
       pathing: null,
       hoverPreviewDependencies: null,
@@ -129,7 +130,7 @@ export default function TreeCanvas({
       ctx.unsubscribeStore?.();
       ctx.removeTouchTargets?.();
       ctx.removeTickerCallback?.();
-      ctx.removeVisibilityListener?.();
+      ctx.removeRenderLoop?.();
       destroySearchMatchLayer(ctx.searchMatchLayer);
       // destroy(removeView, opts) — true tears down the WebGL context and
       // releases textures we own; atlases manage their own lifecycle.

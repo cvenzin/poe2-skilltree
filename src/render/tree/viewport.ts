@@ -13,6 +13,7 @@ export function prefersReducedMotion(): boolean {
 export async function createPixiApp(host: HTMLDivElement): Promise<Application> {
   const app = new Application();
   await app.init({
+    autoStart: false,            // scene render loop wakes only when needed
     resizeTo: host,
     antialias: true,
     backgroundAlpha: 0,           // page background bleeds through
@@ -33,6 +34,7 @@ export function createViewport(app: Application, world: WorldSize): Viewport {
     worldWidth: world.width,
     worldHeight: world.height,
     events: app.renderer.events,
+    noTicker: true,             // scene render loop updates the camera on demand
   });
   // Apply camera movement to the group on the GPU instead of updating every
   // node's transform and sprite buffer when the viewport pans or zooms.
@@ -125,6 +127,7 @@ export function attachResizeObserver(
         ease: 'easeInOutCubic',
       });
     }
+    ctx.requestRender?.();
   });
   ro.observe(host);
   return ro;
