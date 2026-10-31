@@ -19,6 +19,9 @@ export async function createPixiApp(host: HTMLDivElement): Promise<Application> 
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
     preference: 'webgl',          // WebGPU is not yet widely available
+    // Nodes and pixi-viewport use targeted pointer events. Global movement
+    // would walk and notify the entire interactive tree on every mouse move.
+    eventFeatures: { globalMove: false },
   });
   return app;
 }
