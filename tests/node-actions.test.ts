@@ -153,7 +153,8 @@ it('enlarges touch targets, rejects overlap, restores mouse hit areas, and remov
   const stop = attachTouchTargets(canvas, ctx);
   const send = (type: string, pointerType: string, x = 10) => {
     const event = Object.assign(new Event(type), { pointerId: 1, pointerType, clientX: x, clientY: 0 });
-    canvas.dispatchEvent(event);
+    Object.defineProperty(event, 'target', { value: canvas });
+    win.dispatchEvent(event);
   };
   send('pointerdown', 'touch');
   expect((wraps[0]!.hitArea as Rectangle).width).toBe(10);
@@ -192,7 +193,8 @@ it.each(['pan', 'pan back', 'pinch', 'cancel', 'release outside', 'release moved
     const stop = attachTouchTargets(canvas, ctx);
     const send = (type: string, x = 10, id = 1) => {
       const event = Object.assign(new Event(type), { pointerId: id, pointerType: 'touch', clientX: x, clientY: 10 });
-      (type === 'pointerdown' ? canvas : win).dispatchEvent(event);
+      Object.defineProperty(event, 'target', { value: canvas });
+      win.dispatchEvent(event);
     };
     const sourceAllocation = useStore.getState().allocation;
     send('pointerdown');

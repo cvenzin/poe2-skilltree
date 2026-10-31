@@ -44,7 +44,9 @@ uses mobile interactions.
   not edit the build.
 - Favor the node directly under the finger. When a touch is too ambiguous to
   choose safely, ask the user to tap closer or zoom in rather than choosing a
-  different node silently.
+  different node silently. Resolve touch targets during ancestor capture,
+  before Pixi processes the canvas press, so the first tap can use the expanded
+  target area.
 
 ### Remove
 

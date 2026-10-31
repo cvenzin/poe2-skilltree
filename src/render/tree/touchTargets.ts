@@ -23,6 +23,7 @@ export function attachTouchTargets(canvas: HTMLCanvasElement, ctx: MountContext)
   let lastType = '';
   let ambiguousTap: { id: number; x: number; y: number; gestureEndAt: number } | null = null;
   const down = (e: PointerEvent) => {
+    if (e.target !== canvas) return;
     pointers.add(e.pointerId);
     ambiguousTap = null;
     ctx.touchTargetAmbiguous = false;
@@ -105,7 +106,9 @@ export function attachTouchTargets(canvas: HTMLCanvasElement, ctx: MountContext)
       useStore.getState().dismissInspection();
     }
   };
-  canvas.addEventListener('pointerdown', down, true);
+  // Pixi installs its canvas capture listener during app.init(). Preprocess on
+  // an ancestor so hit areas and ambiguity are ready before Pixi hit-tests down.
+  window.addEventListener('pointerdown', down, true);
   window.addEventListener('pointermove', move, true);
   const wheel = () => { ctx.activationPreview = null; useStore.getState().dismissInspection(); };
   const contextMenu = (event: Event) => event.preventDefault();
@@ -114,7 +117,7 @@ export function attachTouchTargets(canvas: HTMLCanvasElement, ctx: MountContext)
   window.addEventListener('pointerup', up, true);
   window.addEventListener('pointercancel', up, true);
   return () => {
-    canvas.removeEventListener('pointerdown', down, true);
+    window.removeEventListener('pointerdown', down, true);
     window.removeEventListener('pointermove', move, true);
     canvas.removeEventListener('wheel', wheel, true);
     canvas.removeEventListener('contextmenu', contextMenu);
