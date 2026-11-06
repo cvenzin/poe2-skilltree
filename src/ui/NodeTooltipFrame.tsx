@@ -37,7 +37,9 @@ export default function NodeTooltipFrame({ hovered, isMobile, children }: Readon
     // Temporary inspection may cover the toolbar; keep the tooltip above it.
     style = {
       ...containerStyle,
-      left: MOBILE_MARGIN,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: 'max-content',
       [mobileEdge]: `max(${MOBILE_MARGIN}px, env(safe-area-inset-${mobileEdge}))`,
       maxWidth: `calc(100vw - ${MOBILE_MARGIN * 2}px)`,
       maxHeight: `calc(45dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,

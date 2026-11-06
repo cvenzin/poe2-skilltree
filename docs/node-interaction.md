@@ -36,7 +36,8 @@ uses mobile interactions.
 - Tap an unallocated node to show its details and highlighted path; tap the
   same node again to allocate. Alternatively, long press to inspect, release,
   and tap the same node once to allocate. A long press alone never allocates.
-- Keep the tooltip at the top or bottom of the screen, opposite the finger.
+- Center the tooltip card horizontally at the top or bottom of the screen,
+  opposite the finger. Keep its title centered and stat text left-aligned.
   Once a valid path is ready, show its cost and a quiet “Tap again to allocate”
   cue. Keep inspection visible after release so the user can read it.
 - Allow long tooltip content to scroll. The close control, a tap on empty tree
