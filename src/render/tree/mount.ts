@@ -5,6 +5,7 @@ import { createPixiApp, createViewport, computeFitScale, configureViewport, setI
 import { computeWorldBounds, computeMainTreeBounds } from './geometry';
 import { Container, Graphics } from 'pixi.js';
 import { attachTouchTargets } from './touchTargets';
+import { attachCanvasInputGuard } from './canvasInputGuard';
 import { drawRemovalPreview, removalPreviewKeys } from './removalPreview';
 import { drawBackground } from './decorations';
 import { drawMasteries } from '../drawMasteries';
@@ -34,6 +35,7 @@ export async function mount(
   if (ctx.cancelled) { app.destroy(true, { children: true }); return; }
   ctx.app = app;
   host.appendChild(app.canvas);
+  ctx.removeCanvasInputGuard = attachCanvasInputGuard(app.canvas, app.renderer.events.rootBoundary);
 
   const world = computeWorldBounds(data);
 

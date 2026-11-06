@@ -66,6 +66,7 @@ const containerStyle: CSSProperties = {
   overflowY: 'auto',
   maxHeight: 'calc(100dvh - 16px)',
   touchAction: 'pan-y',
+  overscrollBehavior: 'contain',
   color: palette.textPrimary,
   fontFamily: fontBody,
   fontSize: 'var(--font-node)',

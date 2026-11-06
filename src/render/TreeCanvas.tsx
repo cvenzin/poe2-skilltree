@@ -129,6 +129,7 @@ export default function TreeCanvas({
       ctx.observer?.disconnect();
       ctx.unsubscribeStore?.();
       ctx.removeTouchTargets?.();
+      ctx.removeCanvasInputGuard?.();
       ctx.removeTickerCallback?.();
       ctx.removeRenderLoop?.();
       destroySearchMatchLayer(ctx.searchMatchLayer);

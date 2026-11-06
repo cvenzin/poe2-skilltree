@@ -98,3 +98,9 @@ Build menu and are also available through their keyboard shortcuts.
   must not allocate or remove nodes. Changes to the build or editing context
   invalidate any pending preview or confirmation rather than committing a
   stale action.
+  DOM overlays (including the planner menu, dialogs, and touch tooltips) own
+  any pointer gesture that starts on them until release or cancellation, even
+  if the finger moves onto the tree. A canvas input guard filters Pixi's
+  document-level events before hit-testing, so scrolling an overlay cannot
+  change the inspected node, preview a path, or activate a background node.
+  Canvas-origin drags still receive outside releases for normal cleanup.
