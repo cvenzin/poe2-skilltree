@@ -173,6 +173,8 @@ export function buildBlockedKeys(
     // its own non-mastery chain. Verified safe — no normal node is reachable
     // only through a mastery in the 0.5.0 main tree.
     if (node.isMastery) blocked.add(key);
+    // Instilments are item-granted references, never passive-point paths.
+    if (node.isBlighted) blocked.add(key);
   }
   for (const key of computeConstraintHiddenKeys(data, selectedAscendancyId, allocated)) {
     blocked.add(key);

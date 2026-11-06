@@ -43,7 +43,7 @@ export function revalidateAllocation(
   const keep = (bucket: ReadonlySet<string>) => [...bucket].filter((key) => {
     const node = data.nodes[key];
     return node && key !== 'root' && !node.classStartIndex?.length && !node.isAscendancyStart &&
-      !node.isMastery && (!node.ascendancyId || node.ascendancyId === ascendancyId);
+      !node.isMastery && !node.isBlighted && (!node.ascendancyId || node.ascendancyId === ascendancyId);
   });
   let current = buildAllocation(keep(allocation.shared), keep(allocation.set1), keep(allocation.set2));
   const roots = className ? frontierKeysFor(data, className, ascendancyId) : null;

@@ -69,6 +69,14 @@ Build menu and are also available through their keyboard shortcuts.
 
 ## Shared behavior
 
+- **Instilling-only passives:** Delirium anoints stay visible and searchable.
+  Hover, tap, long press, and keyboard inspection show their stats, an
+  “Instilling only” explanation, and the selected export's recipe in order,
+  with locally hosted Liquid Emotion icons and full ingredient names. They
+  have no path preview, point cost, allocation action, or jewel-radius rings
+  (including Zarokh's Gift). Repeated taps only inspect. Item instilments are
+  outside the build model. The 0.5.0 export's unnamed placeholders remain
+  unchanged; newer names and recipes are not backfilled into older trees.
 - **Idle rendering:** A stationary tree stops rendering until input or a visual
   change wakes it. Camera animations, pan inertia, wheel smoothing, and pulsing
   search results keep rendering until they finish, capped at 60 FPS even on

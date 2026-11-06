@@ -60,6 +60,8 @@ Live: <https://poe2planner.app/>
   top tooltip overlays it, then returns to normal when inspection ends.
   A long press keeps inspection and its path preview after release; one subsequent quick tap allocates.
 - Compact informational tooltips show a concise path cost where useful.
+  Disconnected Delirium anoints are inspection-only, with ordered Liquid
+  Emotion recipes and icons; they cannot be allocated with passive points.
   Escape dismisses inspection; touch tooltips scroll and have a dismiss control.
   Alt+Enter in Search opens a separate, scrollable
   keyboard inspection dialog with actions.

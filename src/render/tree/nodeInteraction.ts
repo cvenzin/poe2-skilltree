@@ -11,7 +11,7 @@ import { Viewport } from 'pixi-viewport';
 /** Input type, rather than viewport width, selects tap confirmation. */
 export function attachNodeInteraction(wrap: Container, nodeKey: string, data: TreeData, ctx: MountContext): void {
   wrap.eventMode = 'static';
-  wrap.cursor = 'pointer';
+  wrap.cursor = data.nodes[nodeKey]?.isBlighted ? 'help' : 'pointer';
   const inspect = (e: FederatedPointerEvent, explicit = false) => {
     if (ctx.cancelled || ctx.gestureActive || ctx.touchTargetAmbiguous) return;
     const current = useStore.getState();
@@ -61,6 +61,7 @@ export function attachNodeInteraction(wrap: Container, nodeKey: string, data: Tr
     if (ctx.cancelled || cancelled || ctx.gestureActive || performance.now() - ctx.lastGestureEndAt < TAP_SUPPRESS_AFTER_GESTURE_MS) return;
     const s = useStore.getState();
     if (s.pendingRemoval) return;
+    if (data.nodes[nodeKey]?.isBlighted) return;
     const deps = previewDependencies(nodeKey, s, ctx.pathing);
     if (!samePreviewDependencies(downDeps, deps)) return;
     const touch = downType === 'touch';
@@ -117,7 +118,7 @@ export function computePreviewPathForNode(
   mode: AllocationMode,
 ): readonly string[] | null {
   const node = data.nodes[nodeKey];
-  if (!pathing || !node || node.isAscendancyStart || node.isMultipleChoice || pathing.allAllocated.has(nodeKey)) return null;
+  if (!pathing || !node || node.isBlighted || node.isAscendancyStart || node.isMultipleChoice || pathing.allAllocated.has(nodeKey)) return null;
   if (pathing.blockedByMode[mode].has(nodeKey)) return null;
   // Entwined Realities allows an eligible target to allocate without a path.
   if (pathing.entwinedKeys.has(nodeKey)) return [nodeKey];

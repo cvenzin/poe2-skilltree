@@ -139,3 +139,38 @@ it('renders attribute confirmation inside its editor without a floating confirma
   expect(html).not.toContain('Remove node</button>');
   expect(renderToStaticMarkup(<RemovalConfirmation />)).toBe('');
 });
+
+it.each(['mouse', 'touch', 'keyboard'] as const)('shows anoint ingredients in order with no editing UI for %s', (inputType) => {
+  const tree = makeTree({ '3': { name: 'Anoint', isBlighted: true,
+    stats: ['+5% to Quality of all Skills'], recipe: ['PotentLiquidFerocity', 'LiquidDespair', 'LiquidDespair'] } });
+  useStore.setState({ status: { kind: 'ready', version: 'test', data: tree, atlases: {} as never },
+    weaponSetsEnabled: true });
+  useStore.setState({ hovered: { nodeKey: '3', clientX: 100, clientY: 100, inputType }, previewPath: ['3'] });
+  const html = renderToStaticMarkup(<NodeTooltip />);
+  expect(html).toContain('Instilling only');
+  expect(html).toContain('Cannot be allocated with passive points.');
+  expect(html).toContain('+5% to Quality of all Skills');
+  expect(html).toContain('aria-label="Instilling recipe"');
+  expect(html.indexOf('Potent Liquid Ferocity')).toBeLessThan(html.indexOf('Liquid Despair'));
+  expect(html.match(/<img /g)).toHaveLength(3);
+  expect(html.match(/<span>Liquid Despair<\/span>/g)).toHaveLength(2);
+  expect(html).toContain('/liquid-emotions/UniqueConstructsEmotion.webp');
+  expect(html).not.toContain('Tap again');
+  expect(html).not.toContain('Allocate path');
+  expect(html).not.toContain('Editing:');
+  expect(html).not.toContain('No reachable path');
+  expect(html).not.toContain('Free');
+  expect(html).not.toContain('1 passive point');
+});
+
+it('keeps recipes off ordinary notables and provides text for future unknown ingredients', () => {
+  const tree = makeTree({ '3': { name: 'Normal notable', recipe: ['LiquidDespair'] },
+    '5': { name: 'Future anoint', isBlighted: true, recipe: ['FutureLiquidEmotion'] } });
+  useStore.setState({ status: { kind: 'ready', version: 'test', data: tree, atlases: {} as never } });
+  useStore.setState({ hovered: { nodeKey: '3', clientX: 0, clientY: 0, inputType: 'keyboard' } });
+  expect(renderToStaticMarkup(<NodeTooltip />)).not.toContain('Instilling recipe');
+  useStore.setState({ hovered: { nodeKey: '5', clientX: 0, clientY: 0, inputType: 'keyboard' } });
+  const html = renderToStaticMarkup(<NodeTooltip />);
+  expect(html).toContain('Future Liquid Emotion');
+  expect(html).not.toContain('<img');
+});

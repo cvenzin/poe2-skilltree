@@ -9,6 +9,7 @@ import type { TreeNode } from '../data/types';
 import { attributeNode } from '../state/attributes';
 import { passiveTooltipNode } from '../interaction/passiveEffects';
 import NodeTooltipFrame from './NodeTooltipFrame';
+import InstillingInfo from './InstillingInfo';
 
 /**
  * DOM-overlay tooltip anchored near the cursor at the hovered node's client
@@ -32,7 +33,7 @@ export default function NodeTooltip() {
   const isMobile = hovered?.inputType === 'touch';
   const nodeKey = hovered?.nodeKey;
   const pointerRemoval = hovered?.inputType === 'mouse' || hovered?.inputType === 'pen';
-  const proposal = useMemo(() => nodeKey && data && (bucketOf(allocation, nodeKey) === null || (pointerRemoval && !data.nodes[nodeKey]?.isGenericAttribute))
+  const proposal = useMemo(() => nodeKey && data && !data.nodes[nodeKey]?.isBlighted && (bucketOf(allocation, nodeKey) === null || (pointerRemoval && !data.nodes[nodeKey]?.isGenericAttribute))
     ? proposeNodeEdit(nodeKey, data, { allocation, ascendancyId, className, allocationMode }) : null,
     [nodeKey, data, allocation, ascendancyId, className, allocationMode, pointerRemoval]);
   if (!hovered || !data || pending) return null;
@@ -42,7 +43,7 @@ export default function NodeTooltip() {
   // Ascendancy nodes aren't weapon-set-split — suppress the allocation-state
   // block for them (always shared). Also suppress entirely when the sets UI is
   // off, so new users never see weapon-set wording.
-  const bucket = (!showSets || node.ascendancyId) ? null : bucketOf(allocation, hovered.nodeKey);
+  const bucket = (!showSets || node.ascendancyId || node.isBlighted) ? null : bucketOf(allocation, hovered.nodeKey);
   const refund = proposal && typeof proposal !== 'string' && !proposal.error && proposal.path.length === 0 && proposal.removed.length > 0
     ? pathCost(proposal.next, allocation, data, ascendancyId) : null;
 
@@ -81,6 +82,7 @@ function NodeTooltipContents({ node, bucket, dismissible }: Readonly<{ node: Tre
         </ul>
       )}
       {bucket && <AllocationState bucket={bucket} />}
+      {node.isBlighted && <InstillingInfo node={node} />}
     </>
   );
 }

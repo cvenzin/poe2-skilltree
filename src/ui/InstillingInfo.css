@@ -1,0 +1,8 @@
+.instilling-info { padding: 10px 14px; border-top: 1px solid; font-size: var(--font-hint); }
+.instilling-info-title { font-weight: 600; }
+.instilling-info p { margin: 4px 0 10px; }
+.instilling-info-label { margin-bottom: 5px; }
+.instilling-info ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 5px; }
+.instilling-info li { display: flex; align-items: center; gap: 8px; }
+.instilling-info img { flex: 0 0 32px; object-fit: contain; }
+.instilling-step { opacity: .65; font-variant-numeric: tabular-nums; }

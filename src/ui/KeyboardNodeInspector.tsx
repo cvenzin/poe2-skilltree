@@ -13,8 +13,9 @@ export default function KeyboardNodeInspector({ nodeKey, data, children }: Reado
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const state = useStore();
-  const proposal = proposeNodeEdit(nodeKey, data, state);
-  const error = typeof proposal === 'string' ? proposal : proposal.error;
+  const inspectionOnly = data.nodes[nodeKey]?.isBlighted;
+  const proposal = inspectionOnly ? null : proposeNodeEdit(nodeKey, data, state);
+  const error = typeof proposal === 'string' ? proposal : proposal?.error;
   const allocated = bucketOf(state.allocation, nodeKey) !== null;
   const attribute = allocated && data.nodes[nodeKey]?.isGenericAttribute;
   useEffect(() => {
@@ -29,10 +30,10 @@ export default function KeyboardNodeInspector({ nodeKey, data, children }: Reado
     <h2 id={titleId} className="visually-hidden">{data.nodes[nodeKey]?.name}</h2>
     {children}
     <div className="keyboard-node-actions">
-      {state.weaponSetsEnabled && <p>Editing: {modeName[state.allocationMode]}</p>}
+      {!inspectionOnly && state.weaponSetsEnabled && <p>Editing: {modeName[state.allocationMode]}</p>}
       {error && <p role="status">{error}</p>}
       <button type="button" onClick={dismiss}>Close</button>
-      {!error && <button type="button" onClick={() => {
+      {!inspectionOnly && !error && <button type="button" onClick={() => {
         const live = useStore.getState();
         if (live.hovered?.nodeKey !== nodeKey || live.status.kind !== 'ready' || live.status.data !== data) return;
         ref.current?.close();

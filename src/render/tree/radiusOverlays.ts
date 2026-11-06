@@ -66,7 +66,7 @@ export function applyJewelOverlay(
   layer.removeChildren();
   if (!hovered) return;
   const node = data.nodes[hovered.nodeKey];
-  if (!node) return;
+  if (!node || node.isBlighted) return;
   const wrap = wraps.get(hovered.nodeKey);
   if (!wrap) return;
 

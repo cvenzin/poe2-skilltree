@@ -21,6 +21,7 @@ export type ProposalState = Pick<AppState, 'className' | 'ascendancyId' | 'alloc
 export function proposeNodeEdit(key: string, data: TreeData, state: ProposalState, suppliedPathing?: PathingContext | null): EditProposal | string {
   const node = data.nodes[key];
   if (!node || !state.className) return 'Select a class to edit this tree.';
+  if (node.isBlighted) return 'Instilling only. Cannot be allocated with passive points.';
   if (node.classStartIndex?.length) return 'Class starts are implicit. Use Reset in the build controls to clear the build.';
   if (node.isAscendancyStart) return 'Ascendancy starts are included automatically.';
   if (node.isMultipleChoice) return 'Select an option connected to this skill.';

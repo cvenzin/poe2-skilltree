@@ -72,8 +72,10 @@ export interface TreeNode {
   isGenericAttribute?: boolean;
   /** Allocatable without spending a point (e.g. Sanguimancy / Smith's Masterwork). */
   isFree?: boolean;
-  /** Instilling-only skills cannot be reached by radius allocation effects. */
+  /** Instilling-only skills are inspectable but cannot be allocated with points. */
   isBlighted?: boolean;
+  /** Liquid Emotion IDs in instilling order, supplied by the selected export. */
+  recipe?: string[];
   grantedPassivePoints?: number;
   weaponPassivePointsGranted?: number;
   /** Multiple-choice hub: a stat-less ascendancy notable whose options are
