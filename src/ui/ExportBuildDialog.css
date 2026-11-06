@@ -11,7 +11,7 @@
   color: var(--export-text);
   border: 1px solid var(--export-border);
   border-radius: 8px;
-  font: 14px / 1.5 var(--export-body-font);
+  font: var(--font-body) / 1.5 var(--export-body-font);
 }
 
 .build-export::backdrop {
@@ -33,18 +33,18 @@
 
 .build-export h2 {
   margin: 0;
-  font: 20px / 1.3 var(--export-title-font);
+  font: 1.25rem / 1.3 var(--export-title-font);
   color: var(--export-title);
 }
 
 .build-export h3 {
   margin: 0 0 6px;
-  font-size: 15px;
+  font-size: .9375rem;
   color: var(--export-title);
 }
 
 .build-export p { margin: 8px 0 12px; }
-.build-export__summary { font-size: 12px; }
+.build-export__summary { font-size: var(--font-hint); }
 .build-export section { margin-top: 20px; }
 .build-export__label { display: grid; gap: 6px; }
 
@@ -58,7 +58,7 @@
   border: 1px solid var(--export-border);
   border-radius: 4px;
   font: inherit;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .build-export__action, .build-export__close {
@@ -72,6 +72,7 @@
   border: 1px solid var(--export-border);
   border-radius: 4px;
   font: inherit;
+  font-size: var(--font-ui);
   cursor: pointer;
 }
 
@@ -84,5 +85,5 @@
 .build-export__status { margin-top: 10px; color: var(--export-success); overflow-wrap: anywhere; }
 .build-export__status:empty { display: none; }
 .build-export__error { color: var(--export-error); }
-.build-export .build-export__hint { margin: 16px 0 0; font-size: 12px; }
+.build-export .build-export__hint { margin: 16px 0 0; font-size: var(--font-hint); }
 .build-export__guide { display: inline-flex; align-items: center; min-height: 44px; color: var(--export-accent); text-underline-offset: 3px; }

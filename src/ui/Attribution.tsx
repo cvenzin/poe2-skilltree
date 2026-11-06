@@ -102,7 +102,7 @@ const chipRowStyle: React.CSSProperties = {
 };
 
 const versionStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 'var(--font-meta)',
   fontVariantNumeric: 'tabular-nums',
   color: palette.textMetal,
   background: palette.panelBg,
@@ -140,7 +140,7 @@ const popoverStyle: React.CSSProperties = {
   border: `1px solid ${palette.border}`,
   borderRadius: 6,
   color: palette.textPrimary,
-  fontSize: 12,
+  fontSize: 'var(--font-hint)',
   lineHeight: 1.5,
   boxShadow: panelShadow,
   display: 'flex',
@@ -149,7 +149,7 @@ const popoverStyle: React.CSSProperties = {
 };
 
 const popoverTitleStyle: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: 'var(--font-ui)',
   fontWeight: 600,
   fontFamily: fontDisplay,
   color: palette.textTitle,
@@ -162,8 +162,8 @@ const popoverLineStyle: React.CSSProperties = {
 };
 
 const popoverDisclaimerStyle: React.CSSProperties = {
-  opacity: 0.65,
-  fontSize: 11,
+  opacity: 0.85,
+  fontSize: 'var(--font-meta)',
   borderTop: `1px solid ${palette.divider}`,
   paddingTop: 6,
 };

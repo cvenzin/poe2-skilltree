@@ -46,7 +46,7 @@ export const palette = {
    *  `runeDark` entry stripe is the only accent that still pops. */
   textMetal: '#c2c8d0',
   /** Muted steel for labels, captions, disabled. */
-  textMuted: '#6f8398',
+  textMuted: '#91a1b4',
 
   /** Warning / over-cap red, tinted cool to sit with the palette. */
   dangerBg: '#3a1620',

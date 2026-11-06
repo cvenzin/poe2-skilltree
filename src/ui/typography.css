@@ -1,0 +1,24 @@
+/* Semantic sizes use the browser's root font size. Keep desktop controls
+ * compact while giving phone labels and reading content more room. */
+:root {
+  --font-ui: .8125rem;
+  --font-input: .8125rem;
+  --font-label: .75rem;
+  --font-hint: .75rem;
+  --font-meta: .6875rem;
+  --font-body: .875rem;
+  --font-node: .8125rem;
+  --font-node-title: 1.0625rem;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --font-ui: .875rem;
+    --font-input: 1rem;
+    --font-label: .8125rem;
+    --font-hint: .8125rem;
+    --font-meta: .75rem;
+    --font-body: .9375rem;
+    --font-node: .9375rem;
+  }
+}

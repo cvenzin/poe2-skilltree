@@ -24,5 +24,5 @@ export default function ExportBuildButton({ data }: Readonly<{ data: TreeData }>
 const buttonStyle: React.CSSProperties = {
   background: palette.runeDark, color: palette.textTitle,
   border: `1px solid ${palette.rune}`, borderRadius: 5,
-  height: controlHeight, padding: '0 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  minHeight: controlHeight, padding: '6px 12px', fontSize: 'var(--font-ui)', fontWeight: 600, cursor: 'pointer',
 };

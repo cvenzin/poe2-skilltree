@@ -42,7 +42,9 @@ Live: <https://poe2planner.app/>
 - Responsive toolbar: Build toggle with a chevron in the heading font,
   in-panel close button, full-width search, paired class/ascendancy controls,
   and an accented export action. Mobile
-  controls have 44px touch targets; the panel scrolls on short screens while its
+  controls have 44px touch targets and a shared, root-relative type scale: 16px
+  inputs, 14px buttons, 13px labels/hints, and 15px node descriptions at the
+  default browser font size. Labels wrap as needed; the panel scrolls on short screens while its
   header stays visible. Mobile action rows scroll with the settings, with bottom
   spacing to keep the final controls clear of the panel edge. The toolbar opens by default on desktop and starts
   collapsed on mobile; opening and closing it keeps keyboard focus on the toggle.

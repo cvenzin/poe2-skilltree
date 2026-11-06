@@ -76,15 +76,16 @@ canvas { -webkit-touch-callout: none; user-select: none; }
 }
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.node-tooltip-note { padding: 3px 14px 7px; opacity: .7; font-size: 12px; }
+.node-tooltip-note { padding: 3px 14px 7px; opacity: .85; font-size: var(--font-hint); }
 .node-tooltip .node-tooltip-close { position: absolute; top: 0; right: 0; margin: 0; width: 40px; height: 100%; border: 0; background: transparent; color: inherit; font-size: 18px; cursor: pointer; touch-action: manipulation; }
-.keyboard-node-inspector, .removal-confirmation { background: var(--node-bg); color: var(--node-text); border: 1px solid var(--node-border); border-radius: 6px; font: 13px/1.45 system-ui, sans-serif; }
+.keyboard-node-inspector, .removal-confirmation { background: var(--node-bg); color: var(--node-text); border: 1px solid var(--node-border); border-radius: 6px; font: var(--font-node)/1.5 system-ui, sans-serif; overflow-wrap: anywhere; }
 .keyboard-node-inspector { padding: 0; width: min(420px, calc(100vw - 32px)); max-height: calc(85dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; touch-action: pan-y; }
 .keyboard-node-inspector::backdrop { background: #0008; }
-.keyboard-node-actions { padding: 8px 14px; }
+.keyboard-node-actions { padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+.keyboard-node-actions p { flex-basis: 100%; }
 .keyboard-node-actions p, .removal-confirmation p { margin: 0 0 8px; }
-.keyboard-node-actions button, .removal-confirmation button { min-height: 34px; padding: 4px 12px; margin-right: 6px; border: 1px solid var(--node-border); border-radius: 5px; background: var(--node-field); color: var(--node-text); cursor: pointer; font: inherit; touch-action: manipulation; }
+.keyboard-node-actions button, .removal-confirmation button { min-height: 34px; padding: 4px 12px; margin-right: 6px; border: 1px solid var(--node-border); border-radius: 5px; background: var(--node-field); color: var(--node-text); cursor: pointer; font: inherit; font-size: var(--font-ui); touch-action: manipulation; }
 .keyboard-node-actions button:focus-visible, .removal-confirmation button:focus-visible, .node-tooltip-close:focus-visible { outline: 2px solid var(--node-accent, #5db4ff); outline-offset: 2px; }
 .removal-confirmation { position: fixed; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); z-index: 110; width: min(320px, calc(100vw - 48px)); max-height: 55dvh; overflow-y: auto; padding: 12px; touch-action: pan-y; }
-.removal-confirmation h2 { font-size: 15px; margin: 0 0 8px; }
+.removal-confirmation h2 { font-size: .9375rem; margin: 0 0 8px; }
 @media (max-width: 640px) { .keyboard-node-actions button, .removal-confirmation button { min-height: 44px; } }

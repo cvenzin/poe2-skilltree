@@ -157,7 +157,7 @@ const containerStyle: React.CSSProperties = {
   background: palette.fieldBg,
   border: `1px solid ${palette.border}`,
   borderRadius: 5,
-  height: controlHeight,
+  minHeight: controlHeight,
   boxSizing: 'border-box',
 };
 
@@ -166,7 +166,7 @@ const inputStyle: React.CSSProperties = {
   color: palette.textPrimary,
   border: 'none',
   outline: 'none',
-  fontSize: 'var(--toolbar-input-font-size, 13px)',
+  fontSize: 'var(--font-input)',
   fontFamily: 'inherit',
   flex: 1,
   minWidth: 0,
@@ -177,7 +177,7 @@ const clearButtonStyle: React.CSSProperties = {
   background: 'transparent',
   color: palette.textMuted,
   border: 'none',
-  fontSize: 16,
+  fontSize: '1rem',
   lineHeight: 1,
   cursor: 'pointer',
   padding: '0 2px',

@@ -42,7 +42,7 @@ const toastStyle: React.CSSProperties = {
   borderRadius: 6,
   color: palette.dangerText,
   fontFamily: fontBody,
-  fontSize: 13,
+  fontSize: 'var(--font-ui)',
   textAlign: 'center',
   boxShadow: '0 6px 18px rgba(0, 0, 0, 0.55)',
   zIndex: 130,

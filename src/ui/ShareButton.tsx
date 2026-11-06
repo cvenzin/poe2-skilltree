@@ -79,10 +79,10 @@ const buttonStyle: React.CSSProperties = {
   color: palette.textPrimary,
   border: `1px solid ${palette.border}`,
   borderRadius: 5,
-  height: controlHeight,
+  minHeight: controlHeight,
   boxSizing: 'border-box',
-  padding: '0 12px',
-  fontSize: 13,
+  padding: '6px 12px',
+  fontSize: 'var(--font-ui)',
   cursor: 'pointer',
 };
 
@@ -91,7 +91,7 @@ const toastBaseStyle: React.CSSProperties = {
   bottom: 'calc(100% + 6px)',
   left: 0,
   whiteSpace: 'nowrap',
-  fontSize: 11,
+  fontSize: 'var(--font-meta)',
   padding: '3px 8px',
   borderRadius: 5,
   pointerEvents: 'none',

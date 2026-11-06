@@ -173,7 +173,7 @@ const noticeStyle: React.CSSProperties = {
   minHeight: controlHeight,
   boxSizing: 'border-box',
   color: palette.textStat,
-  fontSize: 12,
+  fontSize: 'var(--font-hint)',
   fontFamily: fontBody,
 };
 
@@ -185,7 +185,7 @@ const updateButtonStyle: React.CSSProperties = {
   borderRadius: 3,
   background: palette.fieldBg,
   color: palette.textTitle,
-  fontSize: 12,
+  fontSize: 'var(--font-ui)',
   fontFamily: fontBody,
   cursor: 'pointer',
 };
@@ -193,7 +193,7 @@ const updateButtonStyle: React.CSSProperties = {
 const errorStyle: React.CSSProperties = {
   flexBasis: '100%',
   color: palette.dangerText,
-  fontSize: 11,
+  fontSize: 'var(--font-hint)',
 };
 
 const backdropStyle: React.CSSProperties = {
@@ -210,6 +210,8 @@ const backdropStyle: React.CSSProperties = {
 
 const dialogStyle: React.CSSProperties = {
   width: 'min(420px, 100%)',
+  maxHeight: 'calc(100dvh - 32px)',
+  overflowY: 'auto',
   padding: 18,
   boxSizing: 'border-box',
   border: `1px solid ${palette.border}`,
@@ -223,13 +225,13 @@ const dialogStyle: React.CSSProperties = {
 const dialogTitleStyle: React.CSSProperties = {
   margin: '0 0 10px',
   color: palette.textTitle,
-  fontSize: 17,
+  fontSize: 'var(--font-node-title)',
   fontWeight: 600,
 };
 
 const dialogTextStyle: React.CSSProperties = {
   margin: '0 0 8px',
-  fontSize: 13,
+  fontSize: 'var(--font-body)',
   lineHeight: 1.5,
 };
 
@@ -237,12 +239,13 @@ const nodeListStyle: React.CSSProperties = {
   margin: '0 0 16px',
   paddingLeft: 20,
   color: palette.textMetal,
-  fontSize: 12,
+  fontSize: 'var(--font-hint)',
   lineHeight: 1.6,
 };
 
 const dialogActionsStyle: React.CSSProperties = {
   display: 'flex',
+  flexWrap: 'wrap',
   justifyContent: 'flex-end',
   gap: 8,
 };
@@ -253,7 +256,7 @@ const cancelButtonStyle: React.CSSProperties = {
   borderRadius: 3,
   background: 'transparent',
   color: palette.textPrimary,
-  fontSize: 13,
+  fontSize: 'var(--font-ui)',
   fontFamily: fontBody,
   cursor: 'pointer',
 };

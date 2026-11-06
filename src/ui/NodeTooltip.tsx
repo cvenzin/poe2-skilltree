@@ -183,7 +183,7 @@ const allocStateStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 3,
-  fontSize: 12,
+  fontSize: 'var(--font-hint)',
 };
 
 const allocLineStyle: React.CSSProperties = {
@@ -196,13 +196,14 @@ const allocLabelStyle: React.CSSProperties = {
   color: palette.textMuted,
   textTransform: 'uppercase',
   letterSpacing: 0.6,
-  fontSize: 11,
-  minWidth: 72,
+  fontSize: 'var(--font-meta)',
+  minWidth: '5.5em',
+  flexShrink: 0,
 };
 
 const headerStyle: React.CSSProperties = {
   textAlign: 'center',
-  fontSize: 17,
+  fontSize: 'var(--font-node-title)',
   fontWeight: 700,
   fontFamily: fontDisplay,
   color: palette.textTitle,

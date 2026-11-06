@@ -83,10 +83,10 @@ const buttonStyle: React.CSSProperties = {
   color: palette.textPrimary,
   border: `1px solid ${palette.border}`,
   borderRadius: 5,
-  height: controlHeight,
+  minHeight: controlHeight,
   boxSizing: 'border-box',
-  padding: '0 12px',
-  fontSize: 13,
+  padding: '6px 12px',
+  fontSize: 'var(--font-ui)',
   cursor: 'pointer',
 };
 
@@ -97,14 +97,14 @@ const popoverStyle: React.CSSProperties = {
   padding: 10,
   width: '100%',
   boxSizing: 'border-box',
-  fontSize: 13,
+  fontSize: 'var(--font-ui)',
   color: palette.textPrimary,
   boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
   zIndex: 20,
 };
 
 const cancelStyle: React.CSSProperties = {
-  height: controlHeight,
+  minHeight: controlHeight,
   background: 'transparent',
   color: palette.textPrimary,
   border: `1px solid ${palette.border}`,
@@ -114,7 +114,7 @@ const cancelStyle: React.CSSProperties = {
 };
 
 const confirmStyle: React.CSSProperties = {
-  height: controlHeight,
+  minHeight: controlHeight,
   background: palette.dangerBg,
   color: palette.dangerText,
   border: `1px solid ${palette.dangerBorder}`,
