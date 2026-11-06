@@ -43,8 +43,12 @@ Live: <https://poe2planner.app/>
   in-panel close button, full-width search, paired class/ascendancy controls,
   and an accented export action. Mobile
   controls have 44px touch targets and a shared, root-relative type scale: 16px
-  inputs, 14px buttons, 13px labels/hints, and 15px node descriptions at the
-  default browser font size. Labels wrap as needed; the panel scrolls on short screens while its
+  inputs and node descriptions, 15px buttons, 14px labels/hints, and 12px
+  metadata at the default browser font size. This reading scale applies up to
+  1024px wide and on devices with a coarse primary pointer, keeping landscape
+  phones and tablets readable too. The toolbar heading stays at 16px on small
+  screens. Tree zoom gestures control the camera independently of text sizing.
+  Labels wrap as needed; the panel scrolls on short screens while its
   header stays visible. Mobile action rows scroll with the settings, with bottom
   spacing to keep the final controls clear of the panel edge. The toolbar opens by default on desktop and starts
   collapsed on mobile; opening and closing it keeps keyboard focus on the toggle.
