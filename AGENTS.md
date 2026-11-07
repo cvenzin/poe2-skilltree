@@ -2,117 +2,144 @@
 
 ## Scope and architecture
 
-This is a static Path of Exile 2 passive-tree viewer and build planner, using
+This is a static Path of Exile 2 passive-tree viewer and build planner using
 React, TypeScript, Vite, PixiJS v8, pixi-viewport, and Zustand. GitHub Pages
-serves it at `https://poe2planner.app/`; use `import.meta.env.BASE_URL` for public
-asset URLs.
+serves it at `https://poe2planner.app/`. Use `import.meta.env.BASE_URL` for
+public asset URLs.
 
-- `src/data/`: export types, loading, normalization, and available versions.
-- `src/interaction/`: graph pathing, search, and stat markup.
-- `src/state/`: allocation rules, Zustand state, undo/redo, persistence, and sharing.
-- `src/render/`: Pixi canvas, atlas loading, textures, and node visuals.
-  `TreeCanvas.tsx` owns the React lifecycle; `render/tree/` contains scene mounting,
-  class/ascendancy swaps, pointer interaction, camera, edges, nodes, and overlays.
-- `src/ui/`: React controls, tooltips, keyboard shortcuts, and theme.
-- `public/trees/<version>/`: upstream `data.json` and `assets/` for each tree version.
+- `src/data/` covers export types, loading, normalization, and available versions.
+- `src/interaction/` covers graph pathing, search, and stat markup.
+- `src/state/` covers allocation rules, Zustand state, undo/redo, persistence,
+  and sharing. The budget constants currently live in `src/state/store.ts`.
+- `src/render/` covers the Pixi canvas, atlas loading, textures, and node visuals.
+  `TreeCanvas.tsx` owns the Pixi scene lifecycle in React. `render/tree/` handles
+  scene mounting, class/ascendancy swaps, pointer interaction, camera, edges,
+  nodes, and overlays.
+- `src/ui/` covers React controls, tooltips, keyboard shortcuts, and theme.
+- `public/trees/<version>/` contains upstream `data.json` and `assets/` for each
+  tree version.
 
-Use [README.md](README.md) for setup. Read
-[docs/weapon-set-support.md](docs/weapon-set-support.md) when changing allocation,
-pathing, budgets, weapon-set visuals, or build serialization. Update relevant
-documentation when behavior changes; avoid duplicating detailed design here.
+Use [README.md](README.md) for setup. Consult the relevant design docs before
+changing behavior and update them when supported behavior changes.
+
+- [Weapon-set support](docs/weapon-set-support.md) covers allocation, pathing,
+  budgets, weapon-set visuals, and build serialization.
+- [Build library](docs/build-library.md) covers storage, restore, and sharing.
+- [Node interaction](docs/node-interaction.md) covers pointer, touch, and
+  keyboard behavior.
+- [Passive tree effects](docs/passive-tree-effects.md) covers special passive
+  mechanics.
 
 ## Commands and verification
 
 - Install dependencies with `npm ci` using the committed lockfile.
 - `npm run dev` starts Vite; `npm run preview` serves the production build.
-- Run `npm test`, `npm run build`, and `npm run lint` for application-code changes.
+- Run relevant targeted tests during development. Before completing
+  application-code changes, run `npm test`, `npm run build`, and `npm run lint`.
 - Vitest regression tests live in `tests/` and cover allocation, pathing, budgets,
   history, persistence, sharing, and every bundled export's data/atlas compatibility.
-  For behavior changes, also manually check affected flows and report verification.
-  Allocation changes should cover preview/commit, cascade removal, both weapon
-  sets, budget rejection, and undo/redo. Persistence changes should cover share
-  round-trips, reload, and legacy builds. UI changes should include desktop and
-  mobile interaction where relevant.
-- `public/favicon.svg` is the icon source; regenerate PNGs with
-  `node scripts/gen-icons.mjs` when changing it.
+- Add or update regression coverage when the existing suite would miss a
+  meaningful behavior or compatibility change.
+- Perform manual browser checks for affected runtime behavior when the
+  environment permits.
+  - For allocation, check path preview and commit, cascade removal, both weapon
+    sets, budget rejection, and undo/redo.
+  - For persistence, check share round-trips, reload, and legacy builds.
+  - For rendering, check asset loading, missing frames, version/class switching,
+    and resource cleanup.
+  - For UI changes, check desktop and mobile interactions where relevant.
+- Report verification as **passed, failed, skipped, or blocked**. Report a check
+  as passed only after performing it. Explain failures and incomplete checks.
+- Regenerate PNGs with `node scripts/gen-icons.mjs` when changing the icon
+  source, `public/favicon.svg`.
 
 ### Preview browser and Vite connectivity
 
-Use the in-app preview browser for local manual checks. Start
-`npm run dev -- --host 0.0.0.0 --port 5188 --strictPort` outside the
-network-restricted execution sandbox through the normal execution approval
-mechanism from the outset. If the port is occupied, choose another explicit
-port. Wait for Vite to report ready and verify that an unrestricted
-`curl.exe --fail http://127.0.0.1:<port>/` succeeds before opening that URL in
-the preview browser. Do not first open a sandboxed server in the preview browser.
-Close any failed preview tabs and stop the Vite process started for the check
-when finished, including any child Vite process left behind. If navigation still times out, report the limitation rather than
-opening repeated dead tabs. Do not change firewall or browser security settings
-to work around a socket restriction.
+Use the in-app preview browser for local manual checks in this workspace. Start
+Vite outside the network-restricted execution sandbox from the outset through
+the normal execution approval mechanism.
+
+```sh
+npm run dev -- --host 0.0.0.0 --port 5188 --strictPort
+```
+
+- If the port is occupied, choose another explicit port.
+- Wait for Vite to report ready. Verify HTTP connectivity from outside the
+  network-restricted sandbox before opening the preview browser. Use
+  `curl.exe --fail http://127.0.0.1:<port>/` on Windows or
+  `curl --fail http://127.0.0.1:<port>/` elsewhere.
+- Open the verified URL and inspect the affected flows, console errors, and
+  failed asset requests.
+- If navigation times out, close the failed preview tab and report the limitation.
+- Stop the Vite process started for the check when finished, including its
+  child processes.
+- Keep firewall and browser security settings intact.
 
 ## Behavior to preserve
 
-- Each node belongs to exactly one of `shared`, `set1`, or `set2`. Shared paths
-  connect using shared nodes only; each weapon-set branch connects through
-  `shared` plus its own set. Removing shared nodes must prune dependent branches.
+- Each allocated node belongs to exactly one of `shared`, `set1`, or `set2`.
+  Shared paths connect using shared nodes only. Each weapon-set branch connects
+  through `shared` plus its own set. Removing shared nodes must prune dependent
+  branches.
 - Allocation sets and undo/redo snapshots are immutable. Return fresh objects
   for changes so Zustand and history retain correct identity and contents.
-- Budget constants live in `src/state/store.ts`. Validate passive totals per
-  weapon set and specialization limits independently; keep ascendancy accounting
-  separate. Verify mechanics before changing these rules or constants.
+- Validate passive totals per weapon set and specialization limits independently.
+  Keep ascendancy accounting separate. Verify mechanics and patch applicability
+  before changing these rules or constants.
 - Preserve legacy localStorage builds (`allocated` becomes `shared`) and share
   links with only `n=`. Keep class names, ascendancy IDs, node keys, and version
   handling stable. Boot precedence is URL hash, saved build, then defaults.
-- Keep export quirks in normalization or rendering adapters. Respect playable
-  class/ascendancy filtering and unlock constraints across pathing and search.
+- Handle upstream export quirks in normalization or rendering adapters. Respect
+  playable class/ascendancy filtering and unlock constraints across pathing
+  and search.
 - Release Pixi textures, subscriptions, listeners, and ticker callbacks when
   switching versions or unmounting. Preserve pan/zoom and mobile long-press
   behavior when changing canvas interaction.
 
 ## File size and cohesion
 
-Use these as practical guidelines, counting the whole file. At the review
-threshold, consider whether independent responsibilities deserve separate
-components, hooks, or modules. Prefer cohesive files and clear boundaries;
-avoid fragmentation or abstractions created solely to meet a line count.
+Prefer cohesive modules with clear responsibilities. Use the whole file's line
+count as a cue to review whether it has independent responsibilities.
 
-| File type | Ideal size (lines) | Consider refactoring at (lines) |
-| --- | --- | --- |
-| React component (`.tsx`) | 50–150 | 200–250 |
-| Page / container component | 100–250 | 300–400 |
-| Custom hook (`useX.ts`) | 30–100 | 150–200 |
-| Service / API client (`.ts`) | 50–150 | 200–300 |
-| Utility / helper (`.ts`) | 20–100 | 150–200 |
-| Context / provider (`.tsx`) | 50–150 | 200–250 |
-| Types / interfaces (`.ts`) | 30–150 | 250–300 |
-| Constants / configuration | No strict limit | Based on complexity |
-| Test files (`.test.ts`, `.test.tsx`) | 100–300 | 400–500 |
+- Consider refactoring React components, hooks, services, and utilities around
+  200–300 lines.
+- Consider refactoring page and container components around 300–400 lines.
+- Consider splitting test files around 400–500 lines.
+- Group types, interfaces, and configuration by concept.
 
-For existing large modules, extract cohesive pieces when related work benefits
-from it. Keep unrelated refactors out of focused fixes. Generated and upstream
-export files are exempt from these guidelines.
+During related work, extract cohesive pieces when doing so improves readability,
+testing, or maintainability. Keep unrelated refactors out of focused changes.
+Generated files and upstream exports are exempt.
 
 ## PoE 2 sources and tree updates
 
-- Use [GGG's official PoE 2 forums](https://www.pathofexile.com/forum/view-category/poe2)
-  as the source of truth for official announcements, game status, and developer
-  clarifications. Prefer GGG-authored posts and check their date and patch context;
-  distinguish community discussion and bug reports from confirmed GGG information.
-- Use GGG's official [export releases](https://github.com/grindinggear/poe2-skilltree-export/releases)
-  and [version-labelled commits on the default branch](https://github.com/grindinggear/poe2-skilltree-export/commits/main/)
-  for tree data and assets. Preserve versioned exports and upstream attribution.
-  Make app-specific adaptations in code rather than editing exported data.
-- Check [GGG's Early Access patch notes](https://www.pathofexile.com/forum/view-forum/2212)
-  for version-specific changes and use official material to resolve conflicts.
-- Use the [Path of Exile 2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki)
-  for mechanics, terminology, and other game context. Read the relevant article
-  and check its patch context; prefer official GGG material when sources conflict.
-  Avoid applying PoE 1 mechanics or assuming the newest wiki describes older trees.
-- Use [PoE2DB](https://poe2db.tw/) for game-data lookups, stat wording, and
-  cross-checking passives, skills, and items. Check the page's patch/version
-  context and distinguish released content from previews or unused entries.
-  Keep GGG's versioned exports authoritative for the bundled tree data.
-- For requests to import or update tree releases, use the repository skill at
-  [.agents/skills/update-poe2-tree/SKILL.md](.agents/skills/update-poe2-tree/SKILL.md).
-  Audit new and changed tree-modifying passives against supported metadata and
-  special-case logic; follow the skill's mechanics checklist and report gaps.
+Check publication dates, patch applicability, and whether content is released,
+previewed, unused, or historical.
+
+- **Official announcements and clarifications.** Use [GGG's official PoE 2 forums](https://www.pathofexile.com/forum/view-category/poe2)
+  for announcements, game status, and developer clarifications. Prefer GGG-authored
+  posts. Distinguish community discussion and bug reports from confirmed GGG information.
+- **Tree data and assets.** Use GGG's official [export releases](https://github.com/grindinggear/poe2-skilltree-export/releases)
+  and [version-labelled commits on the default branch](https://github.com/grindinggear/poe2-skilltree-export/commits/main/).
+  Preserve versioned exports, exact upstream provenance, and attribution. Keep
+  exports intact and make application-specific adaptations in code.
+- **Patch-specific behavior.** Check [GGG's Early Access patch notes](https://www.pathofexile.com/forum/view-forum/2212)
+  for version-specific changes. Use official GGG material to resolve conflicts.
+- **Mechanics and terminology.** Use the [Path of Exile 2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki)
+  for mechanics and game context. Use PoE 2 mechanics that apply to the tree's patch.
+- **Game-data cross-checks.** Use [PoE2DB](https://poe2db.tw/) for stat wording
+  and cross-checking passives, skills, and items.
+
+The selected, versioned GGG export is authoritative for bundled tree data.
+Verify executable allocation rules and gameplay compatibility separately from
+stat wording and data import checks.
+
+For requests to check for new tree exports, import one, or update bundled exports,
+follow the [tree-import skill](.agents/skills/update-poe2-tree/SKILL.md). Audit new
+and changed tree-modifying passives against supported metadata and special-case
+logic. Follow the skill's mechanics checklist, preserve older-version behavior,
+and document unsupported or unverified effects.
+
+You can select a candidate export as the default locally for verification. Ship
+it as the default only after critical schema, atlas, allocation, and serialization
+checks pass. Report remaining limitations.
