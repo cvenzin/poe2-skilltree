@@ -1,5 +1,6 @@
 import type { TreeData } from '../data/types';
-import { useStore, countBudgets, effectiveBudgetCaps, ASCENDANCY_CAP } from '../state/store';
+import { countBudgets, effectiveBudgetCaps, ASCENDANCY_CAP } from '../state/budgets';
+import { useStore } from '../state/store';
 import BudgetChip from './BudgetChip';
 
 /** Editing context and its independent budgets share one compact area. */

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useStore, PASSIVE_CAP } from '../src/state/store';
+import { PASSIVE_CAP } from '../src/state/budgets';
+import { useStore } from '../src/state/store';
 import { buildAllocation } from '../src/state/allocation';
 import { attributeNode, attributeOptions, attributeRecommendation, reconcileAttributeChoices } from '../src/state/attributes';
 import { normalizeTreeData } from '../src/data/normalize';

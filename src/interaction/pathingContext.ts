@@ -1,9 +1,23 @@
-import type { TreeData } from '../../data/types';
-import { allAllocated, frontierForMode, blockedForMode } from '../../state/allocation';
-import type { Allocation } from '../../state/allocation';
-import type { PathingContext, MountContext } from './types';
-import { computeConstraintHiddenKeys } from '../../data/normalize';
-import { buildBlockedKeys, computeEntwinedAllocatableKeys, isEntwinedRealitiesActive } from '../../interaction/pathing';
+import { computeConstraintHiddenKeys } from '../data/normalize';
+import type { TreeData } from '../data/types';
+import { allAllocated, frontierForMode, blockedForMode, type Allocation, type AllocationMode } from '../state/allocation';
+import { buildBlockedKeys, computeEntwinedAllocatableKeys, isEntwinedRealitiesActive } from './pathing';
+
+/** Allocation and graph context shared by previews and committed node edits. */
+export interface PathingContext {
+  classStartKey: string;
+  ascendancyId: string | null;
+  allAllocated: ReadonlySet<string>;
+  frontierKeys: ReadonlySet<string>;
+  /** Roots and connectable allocations for each editing mode. */
+  frontierByMode: Record<AllocationMode, ReadonlySet<string>>;
+  /** Graph exclusions and allocations the mode cannot route through. */
+  blockedByMode: Record<AllocationMode, ReadonlySet<string>>;
+  hiddenKeys: ReadonlySet<string>;
+  /** Nodes accessible without a connecting path through Entwined Realities. */
+  entwinedKeys: ReadonlySet<string>;
+  entwinedActive: boolean;
+}
 
 /** Build the full pathing context for the current allocation. Computes the
  *  base block set once, then the per-edit-mode frontier and blocked sets (the
@@ -20,7 +34,7 @@ export function buildPathingContext(
   const all = allAllocated(allocation);
   const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, all);
   const base = buildBlockedKeys(data, classStartKey, ascendancyId, all);
-  const frontier = (mode: import('../../state/allocation').AllocationMode) =>
+  const frontier = (mode: AllocationMode) =>
     new Set([...frontierKeys, ...frontierForMode(allocation, mode)]);
   const withBlocked = (extra: ReadonlySet<string>, exclusive = false): Set<string> => {
     const out = new Set(base);
@@ -52,35 +66,4 @@ export function buildPathingContext(
     entwinedKeys: computeEntwinedAllocatableKeys(data, allocation.shared, ascendancyId, hiddenKeys),
     entwinedActive: isEntwinedRealitiesActive(data, allocation.shared, ascendancyId),
   };
-}
-
-/** Recompute the constraint-derived parts of `ctx.pathing` from the latest
- *  allocation. Called on every allocation change because constraints (and the
- *  per-mode block sets) flip when nodes are added or removed. Preserves the
- *  existing `ascendancyId` / `classStartKey` — those only change in
- *  {@link swapContext}. */
-export function refreshConstraintState(
-  ctx: MountContext,
-  data: TreeData,
-  allocation: Allocation,
-): void {
-  if (!ctx.pathing) return;
-  const { classStartKey, ascendancyId, frontierKeys } = ctx.pathing;
-  ctx.pathing = buildPathingContext(data, classStartKey, ascendancyId, frontierKeys, allocation);
-}
-
-/** Toggle wrap visibility for constraint-locked nodes. Hidden wraps lose all
- *  interactivity (`eventMode = 'none'`) so they can't intercept pointer events
- *  meant for the empty space they occupy. Constraint-locked nodes never reach
- *  the visible/interactive state unless their gate is allocated. */
-export function applyConstraintVisibility(ctx: MountContext): void {
-  const hidden = ctx.pathing?.hiddenKeys;
-  if (!hidden) return;
-  for (const key of ctx.constrainedWraps) {
-    const wrap = ctx.nodeWraps.get(key);
-    if (!wrap) continue;
-    const isHidden = hidden.has(key);
-    wrap.visible = !isHidden;
-    wrap.eventMode = isHidden ? 'none' : 'static';
-  }
 }

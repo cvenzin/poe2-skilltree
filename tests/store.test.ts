@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ASCENDANCY_CAP, PASSIVE_CAP, WEAPON_SET_CAP, countBudgets, useStore } from '../src/state/store';
+import { ASCENDANCY_CAP, PASSIVE_CAP, WEAPON_SET_CAP, countBudgets } from '../src/state/budgets';
+import { useStore } from '../src/state/store';
 import { buildAllocation } from '../src/state/allocation';
 import { keys, makeTree } from './fixtures/tree';
 

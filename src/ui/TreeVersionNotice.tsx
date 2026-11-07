@@ -1,25 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { BuildSnapshot } from '../state/store';
 import { useStore } from '../state/store';
-import { loadTreeData } from '../data/loader';
 import { getPatchUpdateVersion } from '../data/versions';
-import { readSnapshot, reconcileSnapshot } from '../state/persistence';
-import { copyToTreeVersion } from '../state/buildActions';
+import { changeBuildVersion, commitBuildVersionChange, type BuildVersionChange } from '../state/buildVersionChange';
 import { useBuildLibrary } from '../state/buildLibrary';
 import type { TreeData } from '../data/types';
 import { palette, fontBody, controlHeight } from './theme';
-
-interface PendingUpdate {
-  sourceVersion: string;
-  sourceId: string | null;
-  sourceFingerprint: string;
-  targetVersion: string;
-  snapshot: Omit<BuildSnapshot, 'version'>;
-  droppedNames: string[];
-  droppedAttributeChoices: number;
-  ascendancyCleared: boolean;
-  defaultAttributeCleared: boolean;
-}
 
 export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>) {
   const activeVersion = useStore((s) => s.activeVersion);
@@ -27,7 +12,7 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
   const targetVersion = getPatchUpdateVersion(activeVersion);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<PendingUpdate | null>(null);
+  const [pending, setPending] = useState<BuildVersionChange | null>(null);
 
   useEffect(() => {
     if (!pending) return;
@@ -41,75 +26,30 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
   if (!targetVersion || !activeVersion) return null;
 
   const checkUpdate = async () => {
-    const sourceVersion = activeVersion;
-    const sourceId = activeId;
-    const source = readSnapshot(sourceVersion);
-    if (!source) {
-      setError('The current build could not be read.');
-      return;
-    }
-
     setChecking(true);
     setError(null);
     setPending(null);
     try {
-      const targetData = await loadTreeData(targetVersion);
-      if (useStore.getState().activeVersion !== sourceVersion ||
-        useBuildLibrary.getState().library.activeId !== sourceId) return;
-      if (JSON.stringify(readSnapshot(sourceVersion)) !== JSON.stringify(source)) {
-        setError('The build changed while checking. Check the update again.');
-        return;
-      }
-
-      const snapshot = reconcileSnapshot(source, targetData);
-      if (!snapshot) {
-        setError(`This build cannot be carried into tree ${targetVersion}.`);
-        return;
-      }
-
-      const kept = new Set([...snapshot.shared, ...snapshot.set1, ...snapshot.set2]);
-      const droppedKeys = [...source.shared, ...source.set1, ...source.set2]
-        .filter((key) => !kept.has(key));
-      const droppedAttributeChoices = Object.entries(source.attributeChoices ?? {})
-        .filter(([key, choice]) => snapshot.attributeChoices?.[key] !== choice).length;
-      const ascendancyCleared = Boolean(source.ascendancyId && snapshot.ascendancyId !== source.ascendancyId);
-      const defaultAttributeCleared = Boolean(source.defaultAttribute && snapshot.defaultAttribute !== source.defaultAttribute);
-      if (droppedKeys.length === 0 && droppedAttributeChoices === 0 && !ascendancyCleared && !defaultAttributeCleared) {
-        copyToTreeVersion(targetVersion, snapshot);
-        return;
-      }
-
-      setPending({
-        sourceVersion,
-        sourceId,
-        sourceFingerprint: JSON.stringify(source),
-        targetVersion,
-        snapshot,
-        droppedNames: droppedKeys.map((key) => data.nodes[key]?.name ?? `Node ${key}`),
-        droppedAttributeChoices,
-        ascendancyCleared,
-        defaultAttributeCleared,
+      await changeBuildVersion(targetVersion, {
+        reviewLosses: setPending,
+        reportError: setError,
+        reportEdit: () => setError('The build changed while checking. Check the update again.'),
       });
-    } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : 'Could not check the new tree version.');
     } finally {
       setChecking(false);
     }
   };
 
   const confirmUpdate = () => {
-    if (!pending || useStore.getState().activeVersion !== pending.sourceVersion ||
-      useBuildLibrary.getState().library.activeId !== pending.sourceId) return;
-    if (JSON.stringify(readSnapshot(pending.sourceVersion)) !== pending.sourceFingerprint) {
+    if (!pending) return;
+    if (commitBuildVersionChange(pending) === 'edited') {
       setError('The build changed. Check the update again.');
-      setPending(null);
-      return;
     }
-    copyToTreeVersion(pending.targetVersion, pending.snapshot);
     setPending(null);
   };
 
-  const visiblePending = pending?.sourceVersion === activeVersion && pending.sourceId === activeId ? pending : null;
+  const visiblePending = pending?.source.version === activeVersion && pending.source.buildId === activeId ? pending : null;
+  const droppedNames = visiblePending?.droppedKeys.map((key) => data.nodes[key]?.name ?? `Node ${key}`) ?? [];
 
   return (
     <>
@@ -126,17 +66,17 @@ export default function TreeVersionNotice({ data }: Readonly<{ data: TreeData }>
           <section role="dialog" aria-modal="true" aria-labelledby="tree-update-title" style={dialogStyle}>
             <h2 id="tree-update-title" style={dialogTitleStyle}>Copy to tree {visiblePending.targetVersion}?</h2>
             <p style={dialogTextStyle}>Your original build will be kept.</p>
-            {visiblePending.droppedNames.length > 0 && (
+            {droppedNames.length > 0 && (
               <>
                 <p style={dialogTextStyle}>
-                  {visiblePending.droppedNames.length} allocated {visiblePending.droppedNames.length === 1 ? 'node will' : 'nodes will'} be removed to keep the build valid in this tree version.
+                  {droppedNames.length} allocated {droppedNames.length === 1 ? 'node will' : 'nodes will'} be removed to keep the build valid in this tree version.
                 </p>
                 <ul style={nodeListStyle}>
-                  {visiblePending.droppedNames.slice(0, 5).map((name, index) => (
+                  {droppedNames.slice(0, 5).map((name, index) => (
                     <li key={`${name}-${index}`}>{name}</li>
                   ))}
-                  {visiblePending.droppedNames.length > 5 && (
-                    <li>And {visiblePending.droppedNames.length - 5} more</li>
+                  {droppedNames.length > 5 && (
+                    <li>And {droppedNames.length - 5} more</li>
                   )}
                 </ul>
               </>

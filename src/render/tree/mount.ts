@@ -14,7 +14,7 @@ import { drawNodes, applyNodeStates, applyHoverScale } from './nodes';
 import { refreshSearchRingUniforms, applySearchHighlight, createSearchMatchLayer, updateSearchHighlightPulse } from './searchHighlight';
 import { allAllocated } from '../../state/allocation';
 import type { Allocation } from '../../state/allocation';
-import { refreshConstraintState, applyConstraintVisibility } from './pathingContext';
+import { refreshConstraintState, applyConstraintVisibility } from './constraintState';
 import { applyUnlockHighlight, applyJewelOverlay } from './radiusOverlays';
 import { swapContext } from './classContext';
 import { useStore } from '../../state/store';

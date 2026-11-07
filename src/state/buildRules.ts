@@ -59,17 +59,3 @@ export function revalidateAllocation(
     current = next;
   }
 }
-
-/** Export fields describe additional ordinary points and converted weapon-set
- * points separately. Weapon Master's conversion does not reduce active totals. */
-export function budgetBonuses(allocation: Allocation, ascendancyId: string | null, data: TreeData) {
-  let passive = 0;
-  let weaponSet = 0;
-  for (const key of allocation.shared) {
-    const node = data.nodes[key];
-    if (!node?.ascendancyId || node.ascendancyId !== ascendancyId) continue;
-    passive += node.grantedPassivePoints ?? 0;
-    weaponSet += node.weaponPassivePointsGranted ?? 0;
-  }
-  return { passive, weaponSet };
-}

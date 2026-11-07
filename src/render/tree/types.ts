@@ -1,3 +1,4 @@
+import type { PathingContext } from '../../interaction/pathingContext';
 import type { Allocation, AllocationMode } from '../../state/allocation';
 import { Application, Container } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
@@ -15,42 +16,6 @@ export interface WorldSize {
  *  group's container at creation time; call it whenever `allocation` /
  *  `previewPath` changes. */
 export type EdgeRedraw = (allocation: Allocation, previewPath: readonly string[] | null) => void;
-
-/** Class/ascendancy-derived state read live (via the ctx ref) by the
- *  permanent main-tree node interaction handlers and the main-tree edge
- *  redraw. Rewritten by {@link swapContext} when the user switches class or
- *  ascendancy — no node re-attachment needed. */
-export interface PathingContext {
-  classStartKey: string;
-  /** Currently selected ascendancy id (or null). Stashed here so the constraint
-   *  prune step at click-time can evaluate `unlockConstraint.ascendancy` without
-   *  re-reading the store inside the handler. */
-  ascendancyId: string | null;
-  /** Every allocated node across the three buckets — what the renderer paints
-   *  as allocated (both weapon-set trees are always shown). */
-  allAllocated: ReadonlySet<string>;
-  /** Per edit-mode connectable frontier (`shared` / `shared∪set1` / `shared∪set2`). */
-  frontierByMode: Record<AllocationMode, ReadonlySet<string>>;
-  /** Per edit-mode blocked-key set — the base blocks plus the weapon-set nodes
-   *  that mode can't route through (see {@link blockedForMode}). */
-  blockedByMode: Record<AllocationMode, ReadonlySet<string>>;
-  frontierKeys: ReadonlySet<string>;
-  /** Constraint-locked node keys that are currently hidden (e.g. Druid Oracle's
-   *  Forbidden Path nodes when "The Unseen Path" isn't allocated). Renderer
-   *  uses this to toggle wrap.visible and filter edges; pathing already has
-   *  these blocked via blockedKeys. */
-  hiddenKeys: ReadonlySet<string>;
-  /** Main-tree non-keystone nodes that "Entwined Realities" lets the player
-   *  click without a connecting path. Empty unless the notable is allocated on
-   *  Druid Oracle and at least one keystone is allocated. Recomputed in
-   *  {@link refreshConstraintState} so click/hover handlers see the current
-   *  allowed set without rescanning the tree on every event. */
-  entwinedKeys: ReadonlySet<string>;
-  /** True when "Entwined Realities" (Druid Oracle) is currently allocated.
-   *  Drives keystone-hover behaviour (show the medium-radius ring) even when
-   *  no keystones are yet allocated and `entwinedKeys` is therefore empty. */
-  entwinedActive: boolean;
-}
 
 export interface HoverPreviewDependencies {
   inspectionRevision: number;

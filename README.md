@@ -101,8 +101,9 @@ through `oxlint-tsgolint`. The ESLint migration maps 94 rules; unsupported rules
 and experimental nursery rules are omitted. TypeScript's strict compiler checks
 remain enabled for the app and tests.
 
-Tests, lint, and the production build run in CI via [.github/workflows/deploy.yml]
-on every push to `main`. Successful checks deploy `dist/` to GitHub Pages.
+Tests, lint, and the production build run on pull requests targeting `main` and
+pushes to `main`. The workflow publishes `dist/` to GitHub Pages after successful
+checks on `main`. See [.github/workflows/deploy.yml].
 
 [.github/workflows/deploy.yml]: .github/workflows/deploy.yml
 
@@ -185,21 +186,17 @@ The generator also keeps `og-image.png` as a compatibility copy for older embeds
 
 ## Tree data
 
-Tree data under `public/trees/<version>/` comes from GGG's official export:
-<https://github.com/grindinggear/poe2-skilltree-export>. Adding a new version
-is a matter of dropping a new export folder into `public/trees/` and
-prepending the version string to [src/data/versions.ts]. Import provenance is
+Tree data under `public/trees/<version>/` comes from
+[GGG's official export](https://github.com/grindinggear/poe2-skilltree-export).
+Follow the repository's [`update-poe2-tree` skill](.agents/skills/update-poe2-tree/SKILL.md)
+to check for new exports, import and register versions, audit changed passives,
+and verify runtime compatibility. Import provenance and verification are
 recorded in [docs/tree-imports.md](docs/tree-imports.md).
 
-For repeatable release imports, use the repository's
-[`update-poe2-tree` skill](.agents/skills/update-poe2-tree/SKILL.md), which covers
-version selection, asset/schema compatibility, and runtime verification.
 Project working instructions live in [AGENTS.md](AGENTS.md). For game mechanics
 and terminology, consult the [PoE 2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki);
 use [PoE2DB](https://poe2db.tw/) for game-data lookups and stat wording. Check
 that the information applies to the tree's patch version.
-
-[src/data/versions.ts]: src/data/versions.ts
 
 ## License
 

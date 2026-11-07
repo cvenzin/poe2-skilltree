@@ -6,7 +6,7 @@ import { destroyChildren, drawOverlayNodes } from './nodes';
 import { startNodeKeyForClass } from '../../data/normalize';
 import { useStore } from '../../state/store';
 import { findAscendancyStartKey, findAscendancy, collectClusterNodes } from './geometry';
-import { buildPathingContext } from './pathingContext';
+import { buildPathingContext } from '../../interaction/pathingContext';
 import { drawCentralBackdrop, drawMainCircle } from './decorations';
 import { applyJewelOverlay } from './radiusOverlays';
 import { applySearchHighlight } from './searchHighlight';

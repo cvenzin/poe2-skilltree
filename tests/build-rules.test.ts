@@ -4,10 +4,11 @@ import type { RawTreeData, TreeData } from '../src/data/types';
 import { frontierKeysFor, normalizeTreeData, startNodeKeyForClass } from '../src/data/normalize';
 import { VERSIONS } from '../src/data/versions';
 import { applyPathAllocation, autoOptionsForPath, bfsShortestPath, resolveCascade } from '../src/interaction/pathing';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import { computePreviewPathForNode } from '../src/render/tree/nodeInteraction';
 import { buildAllocation, EMPTY_ALLOCATION, removeKey, type Allocation, type AllocationMode } from '../src/state/allocation';
-import { effectiveBudgetCaps, countBudgets, useStore } from '../src/state/store';
+import { effectiveBudgetCaps, countBudgets } from '../src/state/budgets';
+import { useStore } from '../src/state/store';
 import { reconcileSnapshot } from '../src/state/persistence';
 import { makeTree, keys } from './fixtures/tree';
 

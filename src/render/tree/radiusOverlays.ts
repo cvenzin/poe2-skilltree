@@ -1,6 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { TreeData } from '../../data/types';
-import type { PathingContext, MountContext } from './types';
+import type { PathingContext } from '../../interaction/pathingContext';
+import type { MountContext } from './types';
 import { MEDIUM_RADIUS } from '../../interaction/pathing';
 import { ringRadiusForWrap, destroyChildren } from './nodes';
 import { isUnlockConstraintSatisfied } from '../../data/normalize';

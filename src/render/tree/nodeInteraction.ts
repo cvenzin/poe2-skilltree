@@ -1,7 +1,8 @@
 import { Container } from 'pixi.js';
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { TreeData } from '../../data/types';
-import type { MountContext, HoverPreviewDependencies, PathingContext } from './types';
+import type { PathingContext } from '../../interaction/pathingContext';
+import type { MountContext, HoverPreviewDependencies } from './types';
 import { useStore } from '../../state/store';
 import { bfsShortestPath, autoOptionsForPath } from '../../interaction/pathing';
 import { bucketOf, type AllocationMode } from '../../state/allocation';

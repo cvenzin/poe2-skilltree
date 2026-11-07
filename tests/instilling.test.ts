@@ -7,7 +7,7 @@ import type { RawTreeData } from '../src/data/types';
 import { VERSIONS } from '../src/data/versions';
 import { proposeNodeEdit } from '../src/interaction/nodeActions';
 import { attachNodeInteraction, computePreviewPathForNode } from '../src/render/tree/nodeInteraction';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import { applyJewelOverlay } from '../src/render/tree/radiusOverlays';
 import type { MountContext } from '../src/render/tree/types';
 import { buildAllocation } from '../src/state/allocation';

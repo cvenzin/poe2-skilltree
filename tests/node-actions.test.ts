@@ -1,9 +1,10 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { Container, EventBoundary, FederatedPointerEvent, Rectangle } from 'pixi.js';
-import { useStore, ASCENDANCY_CAP, PASSIVE_CAP } from '../src/state/store';
+import { ASCENDANCY_CAP, PASSIVE_CAP } from '../src/state/budgets';
+import { useStore } from '../src/state/store';
 import { buildAllocation } from '../src/state/allocation';
 import { proposeNodeEdit, editSummary } from '../src/interaction/nodeActions';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import { attachNodeInteraction } from '../src/render/tree/nodeInteraction';
 import { attachTouchTargets, chooseTouchTarget } from '../src/render/tree/touchTargets';
 import type { MountContext } from '../src/render/tree/types';

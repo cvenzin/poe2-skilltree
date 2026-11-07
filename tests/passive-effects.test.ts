@@ -5,10 +5,11 @@ import { frontierKeysFor, normalizeTreeData, startNodeKeyForClass } from '../src
 import { VERSIONS } from '../src/data/versions';
 import { passiveTooltipNode } from '../src/interaction/passiveEffects';
 import { applyPathAllocation, autoOptionsForPath, bfsShortestPath, computeEntwinedAllocatableKeys, MEDIUM_RADIUS } from '../src/interaction/pathing';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import { computePreviewPathForNode } from '../src/render/tree/nodeInteraction';
 import { buildAllocation, EMPTY_ALLOCATION, removeKey, type Allocation } from '../src/state/allocation';
-import { countBudgets, useStore } from '../src/state/store';
+import { countBudgets } from '../src/state/budgets';
+import { useStore } from '../src/state/store';
 import { reconcileSnapshot } from '../src/state/persistence';
 import { decodeShareHash, encodeShareHash, reconcileShareHash } from '../src/state/shareHash';
 import { createGggBuild } from '../src/state/gggBuild';

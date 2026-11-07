@@ -10,7 +10,7 @@ public asset URLs.
 - `src/data/` covers export types, loading, normalization, and available versions.
 - `src/interaction/` covers graph pathing, search, and stat markup.
 - `src/state/` covers allocation rules, Zustand state, undo/redo, persistence,
-  and sharing. The budget constants currently live in `src/state/store.ts`.
+  and sharing. The budget constants live in `src/state/budgets.ts`.
 - `src/render/` covers the Pixi canvas, atlas loading, textures, and node visuals.
   `TreeCanvas.tsx` owns the Pixi scene lifecycle in React. `render/tree/` handles
   scene mounting, class/ascendancy swaps, pointer interaction, camera, edges,

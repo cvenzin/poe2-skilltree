@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
-import { allocationBudgetError, type AppState } from './store';
+import { allocationBudgetError } from './budgets';
+import type { AppState } from './store';
 import type { TreeData } from '../data/types';
 import { proposeNodeEdit, type EditProposal } from '../interaction/nodeActions';
 

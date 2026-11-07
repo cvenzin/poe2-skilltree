@@ -1,4 +1,5 @@
-import { useStore, allocationBudgetError, type BuildSnapshot } from './store';
+import { allocationBudgetError } from './budgets';
+import { useStore, type BuildSnapshot } from './store';
 import { exclusiveAllocationError, multipleChoiceAllocationError, revalidateAllocation, shareAscendancyAllocation } from './buildRules';
 import { useBuildLibrary, persistLibrarySnapshot } from './buildLibrary';
 import { LIBRARY_KEY, parseLibrary, parseSnapshot, selectedSnapshot } from './buildStorage';

@@ -1,10 +1,9 @@
 import type { TreeData } from '../data/types';
 import { frontierKeysFor, startNodeKeyForClass } from '../data/normalize';
-import { allAllocated, bucketOf, removeKey, type Allocation } from '../state/allocation';
-import { allocationBudgetError, countBudgets, type AppState } from '../state/store';
+import { allAllocated, bucketOf, removeKey, type Allocation, type AllocationMode } from '../state/allocation';
+import { allocationBudgetError, countBudgets } from '../state/budgets';
 import { revalidateAllocation } from '../state/buildRules';
-import { buildPathingContext } from '../render/tree/pathingContext';
-import type { PathingContext } from '../render/tree/types';
+import { buildPathingContext, type PathingContext } from './pathingContext';
 import { bfsShortestPath, autoOptionsForPath, applyPathAllocation } from './pathing';
 
 export const modeName = { shared: 'Main', set1: 'Set 1', set2: 'Set 2' };
@@ -17,7 +16,12 @@ export interface EditProposal {
 }
 
 /** Preview exactly the allocation the store will validate, including options and cascades. */
-export type ProposalState = Pick<AppState, 'className' | 'ascendancyId' | 'allocation' | 'allocationMode'>;
+export interface ProposalState {
+  className: string | null;
+  ascendancyId: string | null;
+  allocation: Allocation;
+  allocationMode: AllocationMode;
+}
 export function proposeNodeEdit(key: string, data: TreeData, state: ProposalState, suppliedPathing?: PathingContext | null): EditProposal | string {
   const node = data.nodes[key];
   if (!node || !state.className) return 'Select a class to edit this tree.';

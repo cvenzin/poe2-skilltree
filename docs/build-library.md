@@ -69,6 +69,10 @@ the existing reconciliation rules. Allocations or choices removed by a version
 change require confirmation. An unnamed source draft is first saved as
 **My build**, so the original is retained as well.
 
+The selector and patch notice use the same version-change workflow. A newer
+choice supersedes an earlier load or confirmation. Editing or switching the
+source build invalidates a pending copy.
+
 Changing **Class** on a populated build requires confirmation because it clears
 all allocations and their undo history.
 

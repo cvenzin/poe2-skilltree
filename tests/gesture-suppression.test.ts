@@ -3,7 +3,7 @@ import { Viewport } from 'pixi-viewport';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { attachGestureSuppression, attachNodeInteraction } from '../src/render/tree/nodeInteraction';
 import type { MountContext } from '../src/render/tree/types';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import { useStore } from '../src/state/store';
 import { makeTree } from './fixtures/tree';
 

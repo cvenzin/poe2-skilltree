@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadTreeData } from '../src/data/loader';
 import { normalizeTreeData } from '../src/data/normalize';
 import type { RawTreeData } from '../src/data/types';
-import { changeBuildVersion } from '../src/state/buildActions';
+import { changeBuildVersion, commitBuildVersionChange, type BuildVersionChange } from '../src/state/buildVersionChange';
 import { useBuildLibrary } from '../src/state/buildLibrary';
 import { createGggBuild } from '../src/state/gggBuild';
 import { useStore } from '../src/state/store';
@@ -76,6 +76,39 @@ describe('latest tree-version selection', () => {
     const a = changeBuildVersion('0.5.2');
     await changeBuildVersion('0.5.5');
     first.resolve(makeTree()); await a;
+    expect(useStore.getState().activeVersion).toBe('0.5.5');
+    expect(useBuildLibrary.getState().library.builds).toHaveLength(0);
+  });
+
+  it.each(['selector', 'notice'] as const)('lets the %s supersede the other version control', async (latest) => {
+    useStore.setState({ activeVersion: '0.5.2', status: { kind: 'ready', version: '0.5.2', data: makeTree(), atlases: {} as never } });
+    const first = deferred(), last = deferred();
+    vi.mocked(loadTreeData).mockReturnValueOnce(first.promise).mockReturnValueOnce(last.promise);
+    const selectVersion = () => changeBuildVersion('0.5.1');
+    const updatePatch = () => changeBuildVersion('0.5.5', { reviewLosses: vi.fn() });
+
+    const earlier = latest === 'selector' ? updatePatch() : selectVersion();
+    const later = latest === 'selector' ? selectVersion() : updatePatch();
+    first.resolve(makeTree());
+    await earlier;
+    expect(useStore.getState().activeVersion).toBe('0.5.2');
+    expect(useBuildLibrary.getState().library.builds).toHaveLength(0);
+
+    last.resolve(makeTree());
+    await later;
+    const target = latest === 'selector' ? '0.5.1' : '0.5.5';
+    expect(useStore.getState().activeVersion).toBe(target);
+    expect(useBuildLibrary.getState().library.builds.map((build) => build.snapshot.version)).toEqual(['0.5.2', target]);
+  });
+
+  it('rejects a patch confirmation after the selector supersedes it', async () => {
+    const reviewLosses = vi.fn<(change: BuildVersionChange) => void>();
+    vi.mocked(loadTreeData).mockResolvedValue(makeTree({ '2': { isBlighted: true } }));
+    await changeBuildVersion('0.5.2', { reviewLosses });
+    expect(reviewLosses).toHaveBeenCalledWith(expect.objectContaining({ droppedKeys: ['2'] }));
+
+    await changeBuildVersion('0.5.5');
+    expect(commitBuildVersionChange(reviewLosses.mock.calls[0]![0])).toBe('superseded');
     expect(useStore.getState().activeVersion).toBe('0.5.5');
     expect(useBuildLibrary.getState().library.builds).toHaveLength(0);
   });

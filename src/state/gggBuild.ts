@@ -1,5 +1,6 @@
 import type { TreeData } from '../data/types';
-import { allocationBudgetError, type BuildSnapshot } from './store';
+import { allocationBudgetError } from './budgets';
+import type { BuildSnapshot } from './store';
 import { exclusiveAllocationError, shareAscendancyAllocation } from './buildRules';
 import { buildAllocation, pruneAllocation } from './allocation';
 import { encodeShareHash } from './shareHash';

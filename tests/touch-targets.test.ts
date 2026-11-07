@@ -3,7 +3,7 @@ import 'pixi.js/events';
 import { Container, EventBoundary, FederatedPointerEvent, Rectangle } from 'pixi.js';
 import { attachTouchTargets } from '../src/render/tree/touchTargets';
 import { attachNodeInteraction } from '../src/render/tree/nodeInteraction';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import type { MountContext } from '../src/render/tree/types';
 import { useStore } from '../src/state/store';
 import { makeTree } from './fixtures/tree';

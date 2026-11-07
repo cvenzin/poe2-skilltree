@@ -40,7 +40,7 @@ set2 ≤ WEAPON_SET_CAP + allocated weaponPassivePointsGranted
 ```
 
 The two sets can have different active totals and different unspent remainders.
-Base caps enforced by the planner are constants in [`src/state/store.ts`](../src/state/store.ts):
+Base caps enforced by the planner are constants in [`src/state/budgets.ts`](../src/state/budgets.ts):
 123 passives from levels and campaign rewards, 24 specialized points per set
 from the campaign, and 8 ascendancy points counted separately. These limits
 do not include the conditional additional passive point from the Site of the

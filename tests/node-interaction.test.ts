@@ -1,7 +1,7 @@
 import { Container, EventBoundary, FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import { attachGestureSuppression, attachNodeInteraction, computePreviewPathForNode } from '../src/render/tree/nodeInteraction';
 import type { MountContext } from '../src/render/tree/types';
 import { useStore } from '../src/state/store';

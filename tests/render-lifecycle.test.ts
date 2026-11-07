@@ -1,7 +1,8 @@
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { applyHoverScale, drawOverlayNodes } from '../src/render/tree/nodes';
-import { applyConstraintVisibility, buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
+import { applyConstraintVisibility } from '../src/render/tree/constraintState';
 import { swapContext } from '../src/render/tree/classContext';
 import type { MountContext } from '../src/render/tree/types';
 import type { AtlasBundle } from '../src/render/atlas';

@@ -115,6 +115,7 @@ paths from the repository root and follow its `AGENTS.md`.
 - Round-trip a shared build using the new export, reload a saved build, and
   check an existing older-version link still loads its own data and allocations.
 - Review the diff for accidental export modifications, unrelated deletions, or
-  temporary files. Report the imported tag, default version, compatibility
-  changes, checks completed, and anything that could not be verified. Do not
-  describe browser checks as passed unless they were actually performed.
+  temporary files. Report the imported version and commit, the tag when one
+  exists, the default version, compatibility changes, checks completed, and
+  anything that could not be verified. Report browser checks as passed only
+  after performing them.

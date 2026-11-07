@@ -3,7 +3,7 @@ import { Container, EventBoundary, FederatedPointerEvent, Rectangle } from 'pixi
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { attachCanvasInputGuard } from '../src/render/tree/canvasInputGuard';
 import { attachNodeInteraction } from '../src/render/tree/nodeInteraction';
-import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { buildPathingContext } from '../src/interaction/pathingContext';
 import type { MountContext } from '../src/render/tree/types';
 import { useStore } from '../src/state/store';
 import { makeTree } from './fixtures/tree';

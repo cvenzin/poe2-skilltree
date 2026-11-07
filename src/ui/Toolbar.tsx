@@ -12,7 +12,7 @@ import AttributeControls from './AttributeControls';
 import TreeVersionNotice from './TreeVersionNotice';
 import BuildLibraryControls from './BuildLibraryControls';
 import ClassSelector from './ClassSelector';
-import { changeBuildVersion } from '../state/buildActions';
+import { changeBuildVersion } from '../state/buildVersionChange';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, panelShadow } from './theme';
 import './Toolbar.css';
