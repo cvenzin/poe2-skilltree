@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadTreeData } from '../src/data/loader';
+import { normalizeTreeData } from '../src/data/normalize';
+import type { RawTreeData } from '../src/data/types';
 import { changeBuildVersion } from '../src/state/buildActions';
 import { useBuildLibrary } from '../src/state/buildLibrary';
+import { createGggBuild } from '../src/state/gggBuild';
 import { useStore } from '../src/state/store';
 import { makeTree } from './fixtures/tree';
 
@@ -29,6 +33,23 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('latest tree-version selection', () => {
+  it('warns and removes the unavailable Chayula nodes from an exportable 0.5.0 copy', async () => {
+    const readTree = (version: string) => normalizeTreeData(JSON.parse(readFileSync(`public/trees/${version}/data.json`, 'utf8')) as RawTreeData);
+    const oldTree = readTree('0.5.0');
+    useStore.getState().setStatus({ kind: 'ready', version: '0.5.5', data: readTree('0.5.5'), atlases: {} as never });
+    const source = { className: 'Monk', ascendancyId: 'Monk3', shared: ['24475', '59759', '60251', '34567'], set1: [], set2: [] };
+    useStore.getState().loadSnapshot(source);
+    vi.mocked(loadTreeData).mockResolvedValue(oldTree);
+
+    await changeBuildVersion('0.5.0');
+
+    expect(globalThis.confirm).toHaveBeenCalledOnce();
+    const [original, copy] = useBuildLibrary.getState().library.builds;
+    expect(original?.snapshot).toEqual({ ...source, version: '0.5.5' });
+    expect(copy?.snapshot).toEqual({ ...source, version: '0.5.0', shared: ['24475', '59759'] });
+    expect(createGggBuild(copy!.snapshot, oldTree, 'Chayula', 'https://planner.example/').passives).toHaveLength(2);
+  });
+
   it.each(['first', 'last'])('keeps the last selection when the %s request resolves first', async (order) => {
     const first = deferred(), last = deferred();
     vi.mocked(loadTreeData).mockReturnValueOnce(first.promise).mockReturnValueOnce(last.promise);

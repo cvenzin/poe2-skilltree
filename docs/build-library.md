@@ -69,6 +69,9 @@ the existing reconciliation rules. Allocations or choices removed by a version
 change require confirmation. An unnamed source draft is first saved as
 **My build**, so the original is retained as well.
 
+Changing **Class** on a populated build requires confirmation because it clears
+all allocations and their undo history.
+
 Deletion requires confirmation with the build's name. Deleting the active build
 opens a remaining build with an available version; deleting the last usable
 build opens a blank draft. Deleting a build cannot be undone. Allocation

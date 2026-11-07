@@ -1,4 +1,10 @@
-import type { RawTreeData, TreeData, Edge, UnlockConstraint } from './types';
+import type { RawTreeData, TreeData, TreeNode, Edge, UnlockConstraint } from './types';
+
+/** Some exports retain linked records for skills unavailable in that version. */
+export function isPassivePlaceholder(node: TreeNode): boolean {
+  return node.id === null && !node.name && !node.icon && !node.stats?.length &&
+    !node.isAscendancyStart && !node.classStartIndex?.length && !node.isJewelSocket;
+}
 
 // data.json arrives with mixed-type edge endpoints ("root" string, otherwise
 // numeric). The renderer + pathing code only deals in node *keys*, which are

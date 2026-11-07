@@ -11,6 +11,7 @@ import ExportBuildButton from './ExportBuildButton';
 import AttributeControls from './AttributeControls';
 import TreeVersionNotice from './TreeVersionNotice';
 import BuildLibraryControls from './BuildLibraryControls';
+import ClassSelector from './ClassSelector';
 import { changeBuildVersion } from '../state/buildActions';
 import { useIsMobile } from './useIsMobile';
 import { palette, fontBody, fontDisplay, panelShadow } from './theme';
@@ -21,7 +22,6 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
   const className = useStore((s) => s.className);
   const ascendancyId = useStore((s) => s.ascendancyId);
   const activeVersion = useStore((s) => s.activeVersion);
-  const setClass = useStore((s) => s.setClass);
   const setAscendancy = useStore((s) => s.setAscendancy);
   const patchUpdateVersion = getPatchUpdateVersion(activeVersion);
 
@@ -110,12 +110,7 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
         <BuildLibraryControls data={data} />
         <TreeVersionNotice data={data} />
         <div className="toolbar-character">
-          <label className="toolbar-field">
-            <span>Class</span>
-            <select value={className ?? ''} onChange={(e) => setClass(e.target.value)}>
-              {playableClasses.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-            </select>
-          </label>
+          <ClassSelector className={className} playableClasses={playableClasses} />
           <label className="toolbar-field">
             <span>Ascendancy</span>
             <select value={ascendancyId ?? ''} onChange={(e) => setAscendancy(e.target.value || null)}

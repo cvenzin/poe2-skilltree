@@ -5,6 +5,7 @@ import { frontierKeysFor, normalizeTreeData, startNodeKeyForClass } from '../src
 import { VERSIONS } from '../src/data/versions';
 import { applyPathAllocation, autoOptionsForPath, bfsShortestPath, resolveCascade } from '../src/interaction/pathing';
 import { buildPathingContext } from '../src/render/tree/pathingContext';
+import { computePreviewPathForNode } from '../src/render/tree/nodeInteraction';
 import { buildAllocation, EMPTY_ALLOCATION, removeKey, type Allocation, type AllocationMode } from '../src/state/allocation';
 import { effectiveBudgetCaps, countBudgets, useStore } from '../src/state/store';
 import { reconcileSnapshot } from '../src/state/persistence';
@@ -105,6 +106,36 @@ describe.each(VERSIONS)('real allocation regressions in %s', (version) => {
     expect(useStore.getState().allocation.shared.has('44871')).toBe(true);
     state.redo();
     expect(useStore.getState().allocation.shared.has('44871')).toBe(false);
+  });
+
+  it.each(['set1', 'set2'] as const)('keeps Path Seeker changes out of %s previews and commits', (mode) => {
+    const state = ready(data, 'Ranger', 'Ranger3');
+    const roots = frontierKeysFor(data, 'Ranger', 'Ranger3');
+    const start = startNodeKeyForClass('Ranger', data);
+    const preview = (key: string, editing: AllocationMode) => computePreviewPathForNode(key, data,
+      buildPathingContext(data, start, 'Ranger3', roots, useStore.getState().allocation), editing);
+    state.setWeaponSetsEnabled(true);
+    state.setAllocationMode(mode);
+    expect(preview('44871', mode) ?? []).not.toContain('12795');
+
+    state.setAllocationMode('shared');
+    const main = addPath(data, EMPTY_ALLOCATION, 'Ranger', 'Ranger3', '12795');
+    expect(state.tryAllocate(main, data)).toBe(true);
+    state.setAllocationMode(mode);
+    expect(preview('44871', mode)).toEqual(['44871']);
+    state.requestNodeAllocation('44871', data);
+    const before = useStore.getState().allocation;
+    expect(before[mode]).toEqual(new Set(['44871']));
+
+    const other = mode === 'set1' ? 'set2' : 'set1';
+    state.setAllocationMode(other);
+    expect(preview('38646', other) ?? []).not.toContain('57253');
+    expect(applyPathAllocation(data, before, ['57253', '38646'], [], other)).toBe(before);
+    state.requestNodeAllocation('38646', data);
+    const after = useStore.getState();
+    expect(after.pendingRemoval).toBeNull();
+    expect(after.allocation.shared).toEqual(main.shared);
+    expect(after.allocation[mode]).toEqual(before[mode]);
   });
 
   it('settles Oracle radius cascades in one removal, including both weapon sets', () => {

@@ -27,7 +27,8 @@ export function buildPathingContext(
     for (const k of extra) out.add(k);
     if (exclusive) {
       for (const [key, node] of Object.entries(data.nodes)) {
-        if ((node.isKeystone || node.isJewelSocket) && !allocation.shared.has(key)) out.add(key);
+        const requiresMain = node.isKeystone || node.isJewelSocket || (node.ascendancyId && !node.isAscendancyStart);
+        if (requiresMain && !allocation.shared.has(key)) out.add(key);
       }
     }
     return out;

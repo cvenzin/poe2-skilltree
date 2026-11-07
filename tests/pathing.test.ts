@@ -29,8 +29,8 @@ describe('path preview and cascade', () => {
       .toEqual(buildAllocation(['2'], ['3', '4'], []));
   });
 
-  it('always assigns ascendancy nodes to shared and omits the implicit start', () => {
-    const next = applyPathAllocation(data, buildAllocation([], [], []), ['2', '10', '11'], [], 'set2');
-    expect(next).toEqual(buildAllocation(['11'], [], ['2']));
+  it('allocates ascendancy skills in Main and omits the implicit start', () => {
+    const next = applyPathAllocation(data, buildAllocation([], [], []), ['10', '11'], [], 'shared');
+    expect(next).toEqual(buildAllocation(['11'], [], []));
   });
 });

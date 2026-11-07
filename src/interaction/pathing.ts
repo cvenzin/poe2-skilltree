@@ -1,5 +1,5 @@
 import type { TreeData, TreeNode } from '../data/types';
-import { computeConstraintHiddenKeys } from '../data/normalize';
+import { computeConstraintHiddenKeys, isPassivePlaceholder } from '../data/normalize';
 import {
   type Allocation,
   type AllocationMode,
@@ -173,8 +173,8 @@ export function buildBlockedKeys(
     // its own non-mastery chain. Verified safe — no normal node is reachable
     // only through a mastery in the 0.5.0 main tree.
     if (node.isMastery) blocked.add(key);
-    // Instilments are item-granted references, never passive-point paths.
-    if (node.isBlighted) blocked.add(key);
+    // Instilments and empty export records cannot be allocated.
+    if (node.isBlighted || isPassivePlaceholder(node)) blocked.add(key);
   }
   for (const key of computeConstraintHiddenKeys(data, selectedAscendancyId, allocated)) {
     blocked.add(key);
@@ -241,7 +241,7 @@ function isEntwinedEligible(
   if (n.ascendancyId) return false;
   if (n.isKeystone) return false;
   if (n.isMastery) return false;
-  if (n.isJewelSocket || n.isBlighted) return false;
+  if (n.isJewelSocket || n.isBlighted || isPassivePlaceholder(n)) return false;
   if (n.classStartIndex && n.classStartIndex.length > 0) return false;
   if (n.x === undefined || n.y === undefined) return false;
   if (hiddenKeys.has(key)) return false;
@@ -345,11 +345,11 @@ export function applyPathAllocation(
   const ascKeys: string[] = [];
   const mainKeys: string[] = [];
   const newKeys = [...path, ...autoOptions];
-  // A set path must never create an exclusive keystone/socket or move a
-  // shared one into a set. Allocate these through Main's shared-only path.
+  // Set paths can use existing shared skills as their frontier, but can only
+  // add nodes that belong in the active weapon set.
   if (mode !== 'shared' && newKeys.some((key) => {
     const node = data.nodes[key];
-    return node?.isKeystone || node?.isJewelSocket;
+    return node?.isKeystone || node?.isJewelSocket || (node?.ascendancyId && !node.isAscendancyStart);
   })) return allocation;
   for (const key of newKeys) {
     const node = data.nodes[key];

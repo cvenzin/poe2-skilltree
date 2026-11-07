@@ -86,6 +86,8 @@ editing; clicks add/remove nodes only in that tree:
 - **Set 2** — frontier `shared ∪ set2`, blocks `set1`.
 
 Per-mode frontier/blocked sets come from `frontierForMode` / `blockedForMode`.
+Weapon-set paths can start from an allocated Path Seeker option. Select or
+replace the option in Main before using it as a starting point.
 Clicking a node that belongs to a different tree explains which Editing mode to select. There is no
 node-conversion between trees — switch mode and re-allocate.
 
@@ -166,7 +168,7 @@ stores independent named snapshots and an unnamed draft. Shared links open a
 draft without replacing named builds. Version changes save a separate copy and
 preserve the source; reopening the base URL restores the active copy and its
 version without another edit. Imports return editing to Main and clear hover,
-preview, search, and history. Reconciliation drops unknown keys, foreign
+preview, search, and history. Reconciliation drops unknown keys, empty export records, foreign
 ascendancy skills, locked nodes, and unreachable branches in each bucket;
 mismatched ascendancies become none. Imports use the same fixed-point cascade
 as edits, including legal radius anchors and removal of optionless
