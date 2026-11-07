@@ -105,8 +105,9 @@ paths from the repository root and follow its `AGENTS.md`.
 - Parse the imported JSON and check required fields and referenced atlas images.
   Confirm every registered version has its expected directory. TypeScript and
   Vite builds alone do not validate runtime JSON or atlas content.
-- Run `npm test`, `npm run build` and `npm run lint`. Inspect the running app under
-  `/poe2-skilltree/` for asset 404s, missing frames, and console/load errors.
+- Run `npm test`, `npm run build` and `npm run lint`. Follow `AGENTS.md` for
+  preview setup and inspect the running app at `/` for asset 404s, missing
+  frames, and console/load errors.
 - Switch between the new and an older version. Check playable class and
   ascendancy selection, class backgrounds, search, tooltip stats, path preview
   and allocation, cascade removal, budgets, undo/redo, and both weapon sets.

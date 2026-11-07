@@ -98,9 +98,10 @@ export files are exempt from these guidelines.
   as the source of truth for official announcements, game status, and developer
   clarifications. Prefer GGG-authored posts and check their date and patch context;
   distinguish community discussion and bug reports from confirmed GGG information.
-- Use [GGG's official export releases](https://github.com/grindinggear/poe2-skilltree-export/releases)
-  for tree data and assets. Preserve versioned exports and upstream attribution;
-  make app-specific adaptations in code rather than editing exported data.
+- Use GGG's official [export releases](https://github.com/grindinggear/poe2-skilltree-export/releases)
+  and [version-labelled commits on the default branch](https://github.com/grindinggear/poe2-skilltree-export/commits/main/)
+  for tree data and assets. Preserve versioned exports and upstream attribution.
+  Make app-specific adaptations in code rather than editing exported data.
 - Check [GGG's Early Access patch notes](https://www.pathofexile.com/forum/view-forum/2212)
   for version-specific changes and use official material to resolve conflicts.
 - Use the [Path of Exile 2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki)

@@ -22,8 +22,9 @@ Compared with 0.5.2, the export has 5,153 nodes and 6,076 edges (two additional
 icon-less Huntress ascendancy connectors). There are 287 changed existing node
 records, mostly Hit stat markup, plus node/group/edge updates, passive names,
 and granted-skill metadata. Staunch Deflection gains Deflection Rating equal to
-8% of Evasion Rating; Dominus' Providence replaces immunity to Elemental
-Weakness with 30% reduced curse effect. These stats were cross-checked against
+8% of Evasion Rating. Dominus' Providence replaces
+`Unaffected by Elemental Weakness` with `30% reduced effect of Curses on you`.
+These stats were cross-checked against
 [PoE2DB's Staunch Deflection](https://poe2db.tw/us/Staunch_Deflection) and
 [Dominus' Providence](https://poe2db.tw/us/Dominus_Providence) pages; those pages
 do not expose a patch label, so the pinned GGG export remains authoritative.
