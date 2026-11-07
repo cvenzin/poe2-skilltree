@@ -1,49 +1,22 @@
 import { useState } from 'react';
 import { useStore } from '../state/store';
-import { encodeShareHash } from '../state/shareHash';
+import { shareCurrentBuild } from '../state/buildActions';
 import { palette, controlHeight } from './theme';
 
 const TOAST_MS = 1500;
 
-/**
- * Serialises the current build into the URL share-hash format (see state/shareHash.ts),
- * writes it to `location.hash`, and copies the full URL to clipboard.
- * Shows a brief "Copied!" pill next to the button on success.
- *
- * Writing to `location.hash` triggers `hashchange`; the listener in App
- * decodes and applies — for the same build that produced the hash, this
- * is a no-op (state already matches), so the round-trip is safe.
- */
+/** Copies a snapshot of the current build to the clipboard. */
 export default function ShareButton() {
   const className = useStore((s) => s.className);
-  const ascendancyId = useStore((s) => s.ascendancyId);
-  const allocation = useStore((s) => s.allocation);
-  const activeVersion = useStore((s) => s.activeVersion);
 
   const [toast, setToast] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const onClick = async () => {
-    if (!activeVersion || !className) return;
-
-    const hash = encodeShareHash({
-      version: activeVersion,
-      className,
-      ascendancyId,
-      sharedKeys: [...allocation.shared],
-      set1Keys: [...allocation.set1],
-      set2Keys: [...allocation.set2],
-      attributeChoices: useStore.getState().attributeChoices,
-      defaultAttribute: useStore.getState().defaultAttribute ?? undefined,
-    });
-
-    // Update the URL without history pollution. `replaceState` doesn't fire
-    // `hashchange`, but that's fine — the store state already matches what
-    // we just encoded, so there's nothing for the listener to reconcile.
-    const url = `${globalThis.location.pathname}${globalThis.location.search}${hash}`;
-    globalThis.history.replaceState(null, '', url);
+    const url = shareCurrentBuild();
+    if (!url) return;
 
     try {
-      await globalThis.navigator.clipboard.writeText(globalThis.location.href);
+      await globalThis.navigator.clipboard.writeText(url);
       setToast('copied');
     } catch {
       setToast('failed');

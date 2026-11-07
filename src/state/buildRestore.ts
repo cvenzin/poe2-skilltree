@@ -1,12 +1,15 @@
 import type { TreeData } from '../data/types';
 import { VERSIONS, DEFAULT_CLASS } from '../data/versions';
 import { useStore } from './store';
-import { loadPersistedSnapshot, reconcileSnapshot } from './persistence';
+import { forgetBuildHash, loadPersistedSnapshot, reconcileSnapshot, rememberBuildHash } from './persistence';
 import { decodeShareHash, reconcileShareHash } from './shareHash';
 import { beginSharedDraft, saveBeforeLeaving } from './buildActions';
 
 /** Load external share links without leaving a build that could not be saved. */
 export function handleSharedHashChange(): void {
+  // Navigation can revisit the same hash text. Flushing the previous build
+  // must leave the incoming history entry intact.
+  forgetBuildHash();
   const raw = decodeShareHash(globalThis.location.hash);
   if (!raw || !(VERSIONS as readonly string[]).includes(raw.version)) return;
   const s = useStore.getState();
@@ -16,8 +19,11 @@ export function handleSharedHashChange(): void {
   }
   if (s.status.kind === 'ready') {
     const reconciled = reconcileShareHash(raw, s.status.data);
-    if (reconciled && beginSharedDraft({ version: raw.version, ...reconciled })) s.loadSnapshot(reconciled);
-    else s.setValidationMessage('Cannot load this build: its class, allocation rules, or point budgets are invalid.');
+    const snapshot = reconciled && { version: raw.version, ...reconciled };
+    if (snapshot && beginSharedDraft(snapshot)) {
+      rememberBuildHash(snapshot);
+      s.loadSnapshot(snapshot);
+    } else s.setValidationMessage('Cannot load this build: its class, allocation rules, or point budgets are invalid.');
   }
 }
 
@@ -31,7 +37,12 @@ export function applyBootSnapshot(
   const hashRaw = decodeShareHash(globalThis.location.hash);
   if (hashRaw && hashRaw.version === version) {
     const reconciled = reconcileShareHash(hashRaw, data);
-    if (reconciled && beginSharedDraft({ version, ...reconciled }, { restoring: true })) { loadSnapshot(reconciled); return; }
+    const snapshot = reconciled && { version, ...reconciled };
+    if (snapshot && beginSharedDraft(snapshot, { restoring: true })) {
+      rememberBuildHash(snapshot);
+      loadSnapshot(snapshot);
+      return;
+    }
   }
   const persisted = loadPersistedSnapshot(version);
   const reconciledLs = persisted ? reconcileSnapshot(persisted, data) : null;

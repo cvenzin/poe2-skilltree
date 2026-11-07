@@ -1,11 +1,21 @@
 import { VERSIONS } from '../data/versions';
 import { loadTreeData } from '../data/loader';
 import { useStore, type BuildSnapshot } from './store';
-import { flushPersistence, readSnapshot, reconcileSnapshot } from './persistence';
+import { clearBuildHash, flushPersistence, readSnapshot, reconcileSnapshot, rememberBuildHash } from './persistence';
 import { currentBuildName, nameCurrentBuild, useBuildLibrary, writeLibrary } from './buildLibrary';
+import { encodeShareHash } from './shareHash';
 
-export function clearBuildHash(): void {
-  globalThis.history.replaceState(null, '', `${globalThis.location.pathname}${globalThis.location.search}`);
+/** Publish a point-in-time build URL for the clipboard and address bar. */
+export function shareCurrentBuild(): string | null {
+  const { activeVersion } = useStore.getState();
+  const snapshot = activeVersion ? readSnapshot(activeVersion) : null;
+  if (!snapshot) return null;
+  const { shared: sharedKeys, set1: set1Keys, set2: set2Keys, ...context } = snapshot;
+  const url = new URL(globalThis.location.href);
+  url.hash = encodeShareHash({ ...context, sharedKeys, set1Keys, set2Keys });
+  globalThis.history.replaceState(null, '', url.href);
+  rememberBuildHash(snapshot);
+  return url.href;
 }
 
 export function saveBeforeLeaving(): boolean {

@@ -30,6 +30,9 @@ The original `allocated` array is still accepted as shared-only allocation.
 
 Boot precedence remains URL hash, active library snapshot, defaults. Opening a
 shared URL creates an independent draft; saving it creates a new named entry.
+**Share** copies the current snapshot and puts its link in the address bar.
+The first build edit after sharing or opening a link saves immediately, then
+removes the old snapshot from the address bar so a refresh restores the edit.
 Switching builds clears the URL hash, loads the build's own version, and resets
 history and transient editing state through the existing snapshot restore.
 Unavailable or invalid saved builds are preserved in the library instead of

@@ -9,6 +9,25 @@ import { attributeOptions, parseAttributeChoices, reconcileAttributeChoices } fr
 /** localStorage key for the last saved build. */
 const STORAGE_KEY = 'poe2-tree:last';
 const DEBOUNCE_MS = 500;
+let displayedShare: { hash: string; snapshot: string } | undefined;
+
+/** Track a share URL generated here or successfully opened by the planner. */
+export function rememberBuildHash(snapshot: BuildSnapshot): void {
+  displayedShare = { hash: globalThis.location.hash, snapshot: JSON.stringify(snapshot) };
+}
+
+export function forgetBuildHash(): void {
+  displayedShare = undefined;
+}
+
+export function clearBuildHash(): void {
+  globalThis.history.replaceState(null, '', `${globalThis.location.pathname}${globalThis.location.search}`);
+  forgetBuildHash();
+}
+
+function currentDisplayedShare() {
+  return displayedShare?.hash === globalThis.location?.hash ? displayedShare : undefined;
+}
 
 /** Snapshot the current store state into a JSON-friendly build descriptor.
  *  Returns null if no class is set (nothing meaningful to save). */
@@ -111,7 +130,9 @@ export function startPersistence(version: string): () => void {
     if (!snap) return;
     if (useBuildLibrary.getState().initialized) {
       if (useStore.getState().activeVersion !== version) return;
-      persistLibrarySnapshot(snap);
+      const saved = persistLibrarySnapshot(snap);
+      const share = currentDisplayedShare();
+      if (saved && share && JSON.stringify(snap) !== share.snapshot) clearBuildHash();
       return;
     }
     const next = JSON.stringify(snap);
@@ -147,7 +168,10 @@ export function startPersistence(version: string): () => void {
       s.className !== prev.className ||
       s.ascendancyId !== prev.ascendancyId
     ) {
-      schedule();
+      // Save before removing an outdated share URL, even if refresh follows
+      // the edit before the normal autosave timer would run.
+      if (currentDisplayedShare()) writeIfChanged();
+      else schedule();
     }
   });
 

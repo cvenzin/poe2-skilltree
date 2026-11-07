@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initializeBuildLibrary, useBuildLibrary } from '../src/state/buildLibrary';
+import { newBuild, shareCurrentBuild } from '../src/state/buildActions';
 import { LIBRARY_KEY, parseLibrary, type BuildLibrary } from '../src/state/buildStorage';
 import { applyBootSnapshot, handleSharedHashChange } from '../src/state/buildRestore';
 import { flushPersistence, loadPersistedSnapshot, readSnapshot, startPersistence } from '../src/state/persistence';
@@ -38,7 +39,10 @@ beforeEach(() => {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => { if (full) throw new Error('quota'); storage.set(key, value); },
   });
-  vi.stubGlobal('location', { pathname: '/', search: '', hash: '' });
+  vi.stubGlobal('location', new URL('https://planner.example/?view=tree'));
+  vi.stubGlobal('history', {
+    replaceState: (_state: unknown, _title: string, url: string) => { location.href = new URL(url, location.href).href; },
+  });
   const library: BuildLibrary = { schema: 1, activeId: 'original', draft: null,
     builds: [{ id: 'original', name: 'Original', updatedAt: 1, snapshot: original }] };
   storage.set(LIBRARY_KEY, JSON.stringify(library));
@@ -50,6 +54,58 @@ afterEach(() => {
   stop?.(); stop = undefined;
   useBuildLibrary.setState(useBuildLibrary.getInitialState(), true);
   vi.useRealTimers(); vi.unstubAllGlobals();
+});
+
+describe('refresh after sharing', () => {
+  it('saves edits after Share before an immediate reload and still opens the copied snapshot', () => {
+    expect(newBuild()).toBe(true);
+    const sharedUrl = shareCurrentBuild()!;
+    expect(location.href).toBe(sharedUrl);
+    expect(location.hash).toBe('#v=0.5.5&c=Witch');
+
+    useStore.getState().commitAllocation(buildAllocation(['2', '3'], [], []));
+    expect(location.href).toBe('https://planner.example/?view=tree');
+    reload();
+    expect(readSnapshot(original.version)?.shared).toEqual(['2', '3']);
+
+    location.href = sharedUrl;
+    reload();
+    expect(readSnapshot(original.version)?.shared).toEqual([]);
+    expect(useBuildLibrary.getState().library.builds[0]!.snapshot).toEqual(original);
+  });
+
+  it('keeps an opened share URL through a failed edit save and clears it when saving recovers', () => {
+    const incoming = '#v=0.5.2&c=Witch&n=Ag';
+    location.hash = incoming;
+    handleSharedHashChange();
+    reload();
+    expect(readSnapshot('0.5.2')?.shared).toEqual(['2']);
+    expect(location.hash).toBe(incoming);
+
+    full = true;
+    useStore.getState().commitAllocation(buildAllocation(['2', '3'], [], []));
+    expect(location.hash).toBe(incoming);
+    expect(useBuildLibrary.getState().saveStatus).toBe('error');
+
+    full = false;
+    flushPersistence();
+    expect(location.hash).toBe('');
+    reload();
+    expect(readSnapshot('0.5.2')?.shared).toEqual(['2', '3']);
+  });
+
+  it('keeps an incoming share URL when navigation revisits it with a pending autosave', () => {
+    const sharedUrl = shareCurrentBuild()!;
+    location.hash = '#other';
+    handleSharedHashChange();
+    useStore.getState().commitAllocation(buildAllocation(['2', '3'], [], []));
+
+    location.href = sharedUrl;
+    handleSharedHashChange();
+    expect(location.href).toBe(sharedUrl);
+    expect(readSnapshot(original.version)).toEqual(original);
+    expect(useBuildLibrary.getState().library.builds[0]!.snapshot.shared).toEqual(['2', '3']);
+  });
 });
 
 describe('build restore save failures', () => {
