@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useStore } from '../state/store';
 import { allAllocated } from '../state/allocation';
 import type { TreeData } from '../data/types';
-import { buildSearchIndex, findMatches, filterConstraintHidden } from '../interaction/search';
+import { visibleSearchMatches } from '../interaction/search';
 import { palette, controlHeight } from './theme';
 import { proposeNodeEdit } from '../interaction/nodeActions';
 
@@ -32,13 +32,10 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
   const resetToken = useStore((s) => s.searchResetToken);
   const matches = useStore((s) => s.searchMatches);
   const cursor = useStore((s) => s.searchCursor);
-  const ascendancyId = useStore((s) => s.ascendancyId);
-  const allocation = useStore((s) => s.allocation);
   const setSearch = useStore((s) => s.setSearch);
   const clearSearch = useStore((s) => s.clearSearch);
   const stepSearch = useStore((s) => s.stepSearch);
 
-  const index = useMemo(() => buildSearchIndex(data), [data]);
   const [draft, setDraft] = useState(query);
   const pendingTimer = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
 
@@ -56,10 +53,8 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
   }
 
   // Debounced commit: every time `draft` changes, schedule a commit; clear
-  // any pending one so only the last keystroke wins. Also re-runs when the
-  // constraint-gate state changes (`ascendancyId`, `allocated`) so toggling
-  // "The Unseen Path" reveals/hides matching gated nodes without forcing the
-  // user to retype.
+  // any pending one so only the last keystroke wins. The store keeps a
+  // committed query current across build edits, even when this input unmounts.
   useEffect(() => {
     const timer = pendingTimer.current = globalThis.setTimeout(() => {
       // A reset may occur before React cleans up this effect.
@@ -69,14 +64,11 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
         setSearch(draft, []);
         return;
       }
-      const raw = findMatches(draft, index);
-      // Filter against all allocated nodes so constraint-gated nodes hidden by
-      // the current build aren't offered as matches.
-      const ms = filterConstraintHidden(raw, data, ascendancyId, allAllocated(allocation));
-      setSearch(draft, ms);
+      const state = useStore.getState();
+      setSearch(draft, visibleSearchMatches(draft, data, state.ascendancyId, allAllocated(state.allocation)));
     }, DEBOUNCE_MS);
     return () => { globalThis.clearTimeout(timer); };
-  }, [draft, query, resetToken, index, data, ascendancyId, allocation, matches.length, setSearch]);
+  }, [draft, query, resetToken, data, matches.length, setSearch]);
 
   const hasQuery = draft.length > 0;
 
@@ -95,7 +87,7 @@ export default function SearchInput({ data, inputRef }: Readonly<SearchInputProp
             // may select a different target after this key press.
             globalThis.clearTimeout(pendingTimer.current);
             const state = useStore.getState();
-            setSearch(draft, filterConstraintHidden(findMatches(draft, index), data,
+            setSearch(draft, visibleSearchMatches(draft, data,
               state.ascendancyId, allAllocated(state.allocation)));
             if (e.altKey) {
               if (useStore.getState().searchCursor < 0) stepSearch(1);

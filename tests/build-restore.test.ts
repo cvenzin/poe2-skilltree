@@ -125,6 +125,8 @@ describe('build restore save failures', () => {
     expect(storage.get(LIBRARY_KEY)).toBe(saved);
 
     full = false;
+    expect(location.hash).toBe('');
+    location.hash = '#v=0.5.2&c=Witch&n=Ag';
     handleSharedHashChange();
     expect(useStore.getState().activeVersion).toBe('0.5.2');
     stop?.();
@@ -133,6 +135,24 @@ describe('build restore save failures', () => {
     expect(readSnapshot('0.5.2')!.shared).toEqual(['2']);
     expect(useStore.getState().past).toEqual([]);
     expect(parseLibrary(storage.get(LIBRARY_KEY)!).builds[0]!.snapshot).toEqual(edited);
+  });
+
+  it.each(['0.5.5', '0.5.2'])('reloads the recovered draft after refusing a %s share link', (version) => {
+    expect(newBuild()).toBe(true);
+    const state = useStore.getState();
+    state.commitAllocation(buildAllocation(['2', '3'], [], []));
+    full = true;
+    location.hash = '#v=' + version + '&c=Witch&n=Ag';
+    handleSharedHashChange();
+    expect(useBuildLibrary.getState().saveStatus).toBe('error');
+    expect(location.hash).toBe('');
+    full = false;
+    state.commitAllocation(buildAllocation(['2', '3', '6'], [], []));
+    vi.advanceTimersByTime(500);
+    expect(useBuildLibrary.getState().saveStatus).toBe('saved');
+    reload();
+    expect(useStore.getState().activeVersion).toBe('0.5.5');
+    expect(readSnapshot('0.5.5')?.shared).toEqual(['2', '3', '6']);
   });
 
   it.each(['shared URL', 'blank fallback'])('keeps the source intact when a %s cannot be saved after switching versions', (mode) => {

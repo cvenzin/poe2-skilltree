@@ -1,7 +1,7 @@
 import type { TreeData } from '../data/types';
 import { VERSIONS, DEFAULT_CLASS } from '../data/versions';
 import { useStore } from './store';
-import { forgetBuildHash, loadPersistedSnapshot, reconcileSnapshot, rememberBuildHash } from './persistence';
+import { clearBuildHash, forgetBuildHash, loadPersistedSnapshot, reconcileSnapshot, rememberBuildHash } from './persistence';
 import { decodeShareHash, reconcileShareHash } from './shareHash';
 import { beginSharedDraft, saveBeforeLeaving } from './buildActions';
 
@@ -15,6 +15,7 @@ export function handleSharedHashChange(): void {
   const s = useStore.getState();
   if (raw.version !== s.activeVersion) {
     if (saveBeforeLeaving()) s.setActiveVersion(raw.version);
+    else clearBuildHash();
     return;
   }
   if (s.status.kind === 'ready') {
@@ -23,7 +24,10 @@ export function handleSharedHashChange(): void {
     if (snapshot && beginSharedDraft(snapshot)) {
       rememberBuildHash(snapshot);
       s.loadSnapshot(snapshot);
-    } else s.setValidationMessage('Cannot load this build: its class, allocation rules, or point budgets are invalid.');
+    } else {
+      clearBuildHash();
+      if (!snapshot) s.setValidationMessage('Cannot load this build: its class, allocation rules, or point budgets are invalid.');
+    }
   }
 }
 

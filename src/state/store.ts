@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { visibleSearchMatches } from '../interaction/search';
 import type { TreeData } from '../data/types';
 import type { AtlasBundle } from '../render/atlas';
 import { attributeOptions, choicesForAllocation, isAttributeChoice, parseAttributeChoices, reconcileAttributeChoices,
@@ -297,6 +298,8 @@ export const useStore = create<AppState>()((set, get, api) => ({
       const invalid = exclusiveAllocationError(next, data);
       if (invalid) return { validationMessage: invalid };
       next = revalidateAllocation(next, data, s.className, s.ascendancyId);
+      const choiceError = multipleChoiceAllocationError(next, data);
+      if (choiceError) return { validationMessage: choiceError };
       const error = allocationBudgetError(next, s.ascendancyId, data);
       if (error) return { validationMessage: error.message, [error.tick]: s[error.tick] + 1 };
     }
@@ -316,6 +319,8 @@ export const useStore = create<AppState>()((set, get, api) => ({
     const invalid = exclusiveAllocationError(next, data);
     if (invalid) { set({ validationMessage: invalid }); return false; }
     const pruned = revalidateAllocation(next, data, s.className, s.ascendancyId);
+    const choiceError = multipleChoiceAllocationError(pruned, data);
+    if (choiceError) { set({ validationMessage: choiceError }); return false; }
     const error = allocationBudgetError(pruned, s.ascendancyId, data);
     if (error) {
       set({ validationMessage: error.message, [error.tick]: s[error.tick] + 1 });
@@ -439,6 +444,12 @@ export const useStore = create<AppState>()((set, get, api) => ({
 
 // Invalidate inspection synchronously even when edits originate outside the canvas.
 useStore.subscribe((s, prev) => {
+  if (s.allocation !== prev.allocation && s.searchQuery.trim() && s.status.kind === 'ready') {
+    const matches = visibleSearchMatches(s.searchQuery, s.status.data, s.ascendancyId, allAllocated(s.allocation));
+    if (matches.length !== s.searchMatches.length || matches.some((key, i) => key !== s.searchMatches[i])) {
+      s.setSearch(s.searchQuery, matches);
+    }
+  }
   const buildChanged = s.allocation !== prev.allocation || s.allocationMode !== prev.allocationMode ||
     s.className !== prev.className || s.ascendancyId !== prev.ascendancyId ||
     s.activeVersion !== prev.activeVersion || s.status !== prev.status ||

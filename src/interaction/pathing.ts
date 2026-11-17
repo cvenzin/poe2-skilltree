@@ -63,8 +63,8 @@ export function bfsShortestPath(
   };
   seedFrontier(ctx, allocated, classStartKey);
 
-  while (ctx.queue.length > 0) {
-    const current = ctx.queue.shift()!;
+  for (let index = 0; index < ctx.queue.length; index++) {
+    const current = ctx.queue[index]!;
     if (expandFrom(ctx, current)) return reconstructPath(ctx.parent, target);
   }
   return null;
@@ -111,6 +111,7 @@ function expandFrom(ctx: BfsContext, current: string): boolean {
   for (const neighbour of neighbours(node)) {
     if (ctx.visited.has(neighbour)) continue;
     if (ctx.blockedKeys.has(neighbour)) continue;
+    if (entersPathSeekerBackwards(node, ctx.data.nodes[neighbour])) continue;
     ctx.visited.add(neighbour);
     ctx.parent.set(neighbour, current);
     if (neighbour === ctx.target) return true;
@@ -404,8 +405,13 @@ function pruneTreeToReachable(
 ): Set<string> {
   let current = new Set(tree);
   for (;;) {
-    const seeds = collectCascadeSeeds(data, current, frontierKeys, ascendancyId, hiddenKeys);
-    const reachable = walkAllocated(data, current, seeds);
+    const reachable = walkAllocated(data, current, frontierKeys);
+    // Only independently connected keystones grant a radius. A disconnected
+    // passive can survive inside it, but cannot connect its neighbours.
+    const radius = computeEntwinedAllocatableKeys(data, reachable, ascendancyId, hiddenKeys);
+    for (const key of current) {
+      if (radius.has(key)) reachable.add(key);
+    }
     dropOptionlessMcHubs(data, reachable);
     for (const key of frontierKeys) reachable.delete(key);
     // Losing the notable or a keystone can invalidate the radius seeds used
@@ -494,33 +500,14 @@ function dropOptionlessMcHubs(
   return changed;
 }
 
-/** Seed set for cascade BFS: class/ascendancy starts + Entwined Realities
- *  anchors. Each anchor is an allocated node within Medium Radius of an
- *  allocated keystone (when the notable is itself allocated on Druid Oracle);
- *  treating it as a reachability root keeps deliberately-disconnected nodes
- *  from being dropped when neighbours change. */
-function collectCascadeSeeds(
+/** Ordinary connectivity, before disconnected radius permissions are applied. */
+export function walkAllocated(
   data: TreeData,
   remaining: ReadonlySet<string>,
-  frontierKeys: ReadonlySet<string>,
-  ascendancyId: string | null,
-  hiddenKeys: ReadonlySet<string>,
-): string[] {
-  const seeds: string[] = [...frontierKeys];
-  const entwined = computeEntwinedAllocatableKeys(data, remaining, ascendancyId, hiddenKeys);
-  for (const key of remaining) {
-    if (entwined.has(key)) seeds.push(key);
-  }
-  return seeds;
-}
-
-function walkAllocated(
-  data: TreeData,
-  remaining: ReadonlySet<string>,
-  seeds: readonly string[],
+  roots: ReadonlySet<string>,
 ): Set<string> {
   const reachable = new Set<string>();
-  const queue: string[] = [...seeds];
+  const queue: string[] = [...roots];
   while (queue.length > 0) {
     const current = queue.shift()!;
     if (reachable.has(current)) continue;
@@ -528,7 +515,7 @@ function walkAllocated(
     const node = data.nodes[current];
     if (!node) continue;
     for (const neighbour of neighbours(node)) {
-      if (remaining.has(neighbour) && !reachable.has(neighbour)) {
+      if (remaining.has(neighbour) && !reachable.has(neighbour) && !entersPathSeekerBackwards(node, data.nodes[neighbour])) {
         queue.push(neighbour);
       }
     }
@@ -537,6 +524,12 @@ function walkAllocated(
 }
 
 const EMPTY_SET: ReadonlySet<string> = new Set();
+
+/** Path Seeker opens an exit into another class's tree. Only its ascendancy
+ * can supply the connection into the option. */
+function entersPathSeekerBackwards(from: TreeNode, to: TreeNode | undefined): boolean {
+  return !!to?.isMultipleChoiceOption && !!to.ascendancyId && !from.ascendancyId;
+}
 
 function neighbours(node: TreeNode): readonly string[] {
   // PoE edge lists are direction-tagged but gameplay is undirected, so we

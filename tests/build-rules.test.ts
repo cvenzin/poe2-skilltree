@@ -9,7 +9,8 @@ import { computePreviewPathForNode } from '../src/render/tree/nodeInteraction';
 import { buildAllocation, EMPTY_ALLOCATION, removeKey, type Allocation, type AllocationMode } from '../src/state/allocation';
 import { effectiveBudgetCaps, countBudgets } from '../src/state/budgets';
 import { useStore } from '../src/state/store';
-import { reconcileSnapshot } from '../src/state/persistence';
+import { readSnapshot, reconcileSnapshot } from '../src/state/persistence';
+import { encodeShareHash, decodeShareHash, reconcileShareHash } from '../src/state/shareHash';
 import { makeTree, keys } from './fixtures/tree';
 
 beforeEach(() => useStore.setState(useStore.getInitialState(), true));
@@ -92,6 +93,36 @@ describe.each(VERSIONS)('real allocation regressions in %s', (version) => {
     expect(useStore.getState().ascendancyId).toBeNull();
   });
 
+  it('round-trips a Pathfinder option selected from an already-connected Sorceress starting area', () => {
+    const state = ready(data, 'Ranger', null);
+    state.requestNodeAllocation('44871', data);
+    expect(useStore.getState().allocation.shared.has('44871')).toBe(true);
+    state.setAscendancy('Ranger3');
+    state.requestNodeAllocation('12795', data);
+    const snapshot = readSnapshot(version)!;
+    expect(snapshot.shared).toEqual(expect.arrayContaining(['12795', '16433', '12183', '44871']));
+    const saved = reconcileSnapshot(snapshot, data)!;
+    const hash = encodeShareHash({ ...snapshot, sharedKeys: snapshot.shared, set1Keys: [], set2Keys: [] });
+    const shared = reconcileShareHash(decodeShareHash(hash)!, data)!;
+    for (const restored of [saved, shared]) {
+      state.loadSnapshot(restored);
+      expect(useStore.getState().className).toBe('Ranger');
+      expect(useStore.getState().allocation.shared).toEqual(new Set(snapshot.shared));
+    }
+  });
+
+  it('recovers the connected main tree from a save made with the old backwards Path Seeker route', () => {
+    const state = ready(data, 'Ranger', null);
+    state.requestNodeAllocation('44871', data);
+    const mainTree = readSnapshot(version)!;
+    const oldSave = { ...mainTree, ascendancyId: 'Ranger3', shared: [...mainTree.shared, '12795'] };
+    const restored = reconcileSnapshot(oldSave, data)!;
+    expect(new Set(restored.shared)).toEqual(new Set(mainTree.shared));
+    state.loadSnapshot(restored);
+    state.requestNodeAllocation('12795', data);
+    expect(useStore.getState().allocation.shared).toEqual(new Set([...mainTree.shared, '12183', '16433', '12795']));
+  });
+
   it('prunes the old Path Seeker option and its dependent main-tree branch in the same edit', () => {
     const state = ready(data, 'Ranger', 'Ranger3');
     let allocation = addPath(data, EMPTY_ALLOCATION, 'Ranger', 'Ranger3', '12795');
@@ -137,6 +168,41 @@ describe.each(VERSIONS)('real allocation regressions in %s', (version) => {
     expect(after.pendingRemoval).toBeNull();
     expect(after.allocation.shared).toEqual(main.shared);
     expect(after.allocation[mode]).toEqual(before[mode]);
+  });
+
+  it('previews and commits the passive-only path when Path Seeker would exceed eight ascendancy points', () => {
+    const state = ready(data, 'Ranger', 'Ranger3');
+    for (const key of ['40', '24868', '29074', '41619']) state.requestNodeAllocation(key, data);
+    const before = useStore.getState().allocation;
+    expect(countBudgets(before, 'Ranger3', data).ascendancy).toBe(8);
+    const ctx = buildPathingContext(data, startNodeKeyForClass('Ranger', data), 'Ranger3',
+      frontierKeysFor(data, 'Ranger', 'Ranger3'), before);
+    const preview = computePreviewPathForNode('44871', data, ctx, 'shared')!;
+    expect(preview).toHaveLength(21);
+    expect(preview.every((key) => !data.nodes[key]?.ascendancyId)).toBe(true);
+    state.requestNodeAllocation('44871', data);
+    expect(useStore.getState().allocation.shared).toEqual(new Set([...before.shared, ...preview]));
+    expect(countBudgets(useStore.getState().allocation, 'Ranger3', data)).toMatchObject({ shared: 21, ascendancy: 8 });
+  });
+
+  it('refunds a severed Oracle keystone and radius dependants, preserving each bucket on undo', () => {
+    const state = ready(data, 'Druid', 'Druid1');
+    state.requestNodeAllocation('32905', data);
+    const ascendancy = useStore.getState().allocation;
+    state.requestNodeAllocation('52', data);
+    state.setAllocationMode('set1');
+    state.requestNodeAllocation('33393', data);
+    expect(useStore.getState().allocation.set1).toEqual(new Set(['33393']));
+    state.setAllocationMode('shared');
+    const before = useStore.getState().allocation;
+    state.requestRemoval('50084', data);
+    expect(useStore.getState().pendingRemoval?.proposal.removed).toEqual(expect.arrayContaining(['50084', '52', '33393']));
+    state.confirmRemoval();
+    expect(useStore.getState().allocation).toEqual(ascendancy);
+    state.undo();
+    expect(useStore.getState().allocation).toEqual(before);
+    state.redo();
+    expect(useStore.getState().allocation).toEqual(ascendancy);
   });
 
   it('settles Oracle radius cascades in one removal, including both weapon sets', () => {

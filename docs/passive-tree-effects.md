@@ -33,6 +33,10 @@ Sources checked on 2026-10-31:
   units. They list only one keystone per node, even when circles overlap, so
   they are a cross-check rather than a complete allocation lookup.
 
+Only keystones connected to the class tree grant radius access. Disconnected
+radius allocations survive individually and cannot act as starting points for
+paths beyond the radius or sustain their own keystone.
+
 Removing an anchor or Entwined Realities revalidates shared and both weapon-set
 branches. Ordinary paths can preserve nodes that have an independent connection.
 

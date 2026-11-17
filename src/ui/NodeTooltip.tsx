@@ -47,10 +47,12 @@ export default function NodeTooltip() {
   const refund = proposal && typeof proposal !== 'string' && !proposal.error && proposal.path.length === 0 && proposal.removed.length > 0
     ? pathCost(proposal.next, allocation, data, ascendancyId) : null;
 
+  const error = typeof proposal === 'string' ? proposal : proposal?.error;
   const contents = <>
     <NodeTooltipContents node={node} bucket={bucket} dismissible={isMobile} />
-    {proposal && typeof proposal !== 'string' && !proposal.error && proposal.path.length > 0 &&
+    {proposal && typeof proposal !== 'string' && proposal.path.length > 0 &&
       <div className="node-tooltip-note">{pathCost(allocation, proposal.next, data, ascendancyId)}</div>}
+    {error && hovered.inputType !== 'keyboard' && <div className="node-tooltip-note">{error}</div>}
     {refund && <div className="node-tooltip-note">{refund === 'Free' ? 'No points refunded' : `${refund} refunded`}</div>}
     {isMobile && previewPath?.length && proposal && typeof proposal !== 'string' && !proposal.error
       ? <div className="node-tooltip-note">Tap again to allocate</div> : null}

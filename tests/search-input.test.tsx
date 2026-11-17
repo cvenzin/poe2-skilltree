@@ -150,6 +150,20 @@ it.each(['class', 'ascendancy', 'build', 'clear'].flatMap((context) => [false, t
   expect(useStore.getState().preSearchCamera).toBeNull();
 });
 
+it('removes a relocked result and restores it on redo while the search input is unmounted', () => {
+  const gated = makeTree({ '4': { name: 'Hidden Forms', x: 1, y: 2, unlockConstraint: { nodes: [11] } } });
+  useStore.setState({ className: 'Witch', ascendancyId: 'Witch1',
+    status: { kind: 'ready', version: 'test', data: gated, atlases: {} as never } });
+  const state = useStore.getState();
+  state.requestNodeAllocation('11', gated);
+  state.setSearch('Hidden Forms', ['4']);
+  state.stepSearch(1);
+  state.undo();
+  expect(useStore.getState()).toMatchObject({ searchQuery: 'Hidden Forms', searchMatches: [], searchCursor: -1 });
+  state.redo();
+  expect(useStore.getState().searchMatches).toEqual(['4']);
+});
+
 it('keeps the draft through no-op context selections and ordinary allocation changes', () => {
   useStore.setState({ className: 'Witch' });
   type('life');

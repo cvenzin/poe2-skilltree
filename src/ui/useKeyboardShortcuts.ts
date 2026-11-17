@@ -71,6 +71,7 @@ function handleRedo(e: KeyboardEvent): void {
 function handleReset(e: KeyboardEvent): void {
   e.preventDefault();
   const s = useStore.getState();
+  if (e.repeat || s.status.kind !== 'ready') return;
   if (s.resetConfirmOpen) {
     // Second R while popover open → confirm.
     s.resetAllocation();

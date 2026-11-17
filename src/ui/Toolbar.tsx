@@ -28,6 +28,8 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
   const isMobile = useIsMobile();
   // Use the initial viewport only: resizing must not discard an open panel.
   const [expanded, setExpanded] = useState(() => !isMobile);
+  const resetConfirmOpen = useStore((s) => s.resetConfirmOpen);
+  if (resetConfirmOpen && !expanded) setExpanded(true);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const focusSearchOnExpand = useRef(false);
@@ -58,6 +60,7 @@ export default function Toolbar({ data }: Readonly<{ data: TreeData }>) {
     return () => { globalThis.removeEventListener('poe2:focus-search', handler); };
   }, []);
   const toggleExpanded = () => {
+    if (resetConfirmOpen) useStore.getState().setResetConfirmOpen(false);
     restoreFocus.current = true;
     setExpanded((value) => !value);
   };

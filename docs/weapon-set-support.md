@@ -87,7 +87,10 @@ editing; clicks add/remove nodes only in that tree:
 
 Per-mode frontier/blocked sets come from `frontierForMode` / `blockedForMode`.
 Weapon-set paths can start from an allocated Path Seeker option. Select or
-replace the option in Main before using it as a starting point.
+replace the option in Main before using it as a starting point. The option connects out to the
+main tree. A path into the option must come through its ascendancy skill.
+If the shortest main-tree route needs unavailable ascendancy points, the
+planner also checks the ordinary passive route.
 Clicking a node that belongs to a different tree explains which Editing mode to select. There is no
 node-conversion between trees — switch mode and re-allocate.
 

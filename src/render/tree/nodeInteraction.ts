@@ -4,7 +4,7 @@ import type { TreeData } from '../../data/types';
 import type { PathingContext } from '../../interaction/pathingContext';
 import type { MountContext, HoverPreviewDependencies } from './types';
 import { useStore } from '../../state/store';
-import { bfsShortestPath, autoOptionsForPath } from '../../interaction/pathing';
+import { allocationPath } from '../../interaction/allocationPath';
 import { bucketOf, type AllocationMode } from '../../state/allocation';
 import { proposeNodeEdit } from '../../interaction/nodeActions';
 import { Viewport } from 'pixi-viewport';
@@ -120,15 +120,7 @@ export function computePreviewPathForNode(
 ): readonly string[] | null {
   const node = data.nodes[nodeKey];
   if (!pathing || !node || node.isBlighted || node.isAscendancyStart || node.isMultipleChoice || pathing.allAllocated.has(nodeKey)) return null;
-  if (pathing.blockedByMode[mode].has(nodeKey)) return null;
-  // Entwined Realities allows an eligible target to allocate without a path.
-  if (pathing.entwinedKeys.has(nodeKey)) return [nodeKey];
-
-  const frontier = pathing.frontierByMode[mode];
-  const path = bfsShortestPath(data, frontier, pathing.classStartKey, nodeKey, pathing.blockedByMode[mode]);
-  if (!path) return null;
-  const autoOptions = autoOptionsForPath(data, path, frontier);
-  return autoOptions.length > 0 ? [...path, ...autoOptions] : path;
+  return allocationPath(data, pathing, mode, nodeKey)?.path ?? null;
 }
 
 /** How long after a pan/pinch ends to keep ignoring node taps — covers the

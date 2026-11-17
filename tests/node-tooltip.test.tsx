@@ -41,6 +41,25 @@ it.each([['touch', 100, 'bottom'], ['touch', 700, 'top'], ['mouse', 100, null]] 
     expect(html).toContain('overflow-y:auto');
   });
 
+it.each(['mouse', 'touch'] as const)('explains a one-point path over the cap on %s without changing history', (inputType) => {
+  const keys = Array.from({ length: 122 }, (_, i) => String(100 + i));
+  const tree = makeTree(Object.fromEntries(keys.map((key) => [key, { in: ['1'] }])));
+  tree.nodes['1']!.out.push(...keys);
+  tree.nodes['3']!.name = 'Target';
+  const source = buildAllocation(['2', ...keys], [], []);
+  useStore.setState({ status: { kind: 'ready', version: 'test', data: tree, atlases: {} as never }, allocation: source });
+  useStore.getState().setHoverState({ nodeKey: '3', clientX: 10, clientY: 10, inputType }, ['3']);
+  const before = useStore.getState();
+  const html = renderToStaticMarkup(<NodeTooltip />);
+  expect(html).toContain('1 passive point');
+  expect(html).toContain('would exceed the passive point limit (123)');
+  expect(html).not.toContain('Tap again');
+  before.requestNodeAllocation('3', tree);
+  expect(useStore.getState().allocation).toBe(source);
+  expect(useStore.getState().past).toBe(before.past);
+  expect(useStore.getState().future).toBe(before.future);
+});
+
 it('uses touch placement on a wide screen too', () => {
   vi.stubGlobal('window', { innerWidth: 1440, innerHeight: 900 });
   useStore.setState({ hovered: { nodeKey: '3', clientX: 700, clientY: 100, inputType: 'touch' } });

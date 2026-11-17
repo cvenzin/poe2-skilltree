@@ -41,6 +41,17 @@ export function buildSearchIndex(data: TreeData): SearchEntry[] {
   return out;
 }
 
+const indices = new WeakMap<TreeData, SearchEntry[]>();
+
+export function visibleSearchMatches(query: string, data: TreeData, ascendancyId: string | null, allocated: ReadonlySet<string>) {
+  let index = indices.get(data);
+  if (!index) {
+    index = buildSearchIndex(data);
+    indices.set(data, index);
+  }
+  return filterConstraintHidden(findMatches(query, index), data, ascendancyId, allocated);
+}
+
 /** Case- and accent-insensitive normalisation. NFD decomposes a base
  *  letter + diacritic, then `[̀-ͯ]` strips the combining marks. */
 export function normalizeForSearch(s: string): string {

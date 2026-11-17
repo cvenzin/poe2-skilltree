@@ -1,10 +1,11 @@
 import { computeConstraintHiddenKeys } from '../data/normalize';
 import type { TreeData } from '../data/types';
 import { allAllocated, frontierForMode, blockedForMode, type Allocation, type AllocationMode } from '../state/allocation';
-import { buildBlockedKeys, computeEntwinedAllocatableKeys, isEntwinedRealitiesActive } from './pathing';
+import { buildBlockedKeys, computeEntwinedAllocatableKeys, isEntwinedRealitiesActive, walkAllocated } from './pathing';
 
 /** Allocation and graph context shared by previews and committed node edits. */
 export interface PathingContext {
+  allocation: Allocation;
   classStartKey: string;
   ascendancyId: string | null;
   allAllocated: ReadonlySet<string>;
@@ -34,8 +35,11 @@ export function buildPathingContext(
   const all = allAllocated(allocation);
   const hiddenKeys = computeConstraintHiddenKeys(data, ascendancyId, all);
   const base = buildBlockedKeys(data, classStartKey, ascendancyId, all);
-  const frontier = (mode: AllocationMode) =>
-    new Set([...frontierKeys, ...frontierForMode(allocation, mode)]);
+  const entwinedActive = isEntwinedRealitiesActive(data, allocation.shared, ascendancyId);
+  const frontier = (mode: AllocationMode) => {
+    const active = frontierForMode(allocation, mode);
+    return entwinedActive ? walkAllocated(data, active, frontierKeys) : new Set([...frontierKeys, ...active]);
+  };
   const withBlocked = (extra: ReadonlySet<string>, exclusive = false): Set<string> => {
     const out = new Set(base);
     for (const k of extra) out.add(k);
@@ -48,6 +52,7 @@ export function buildPathingContext(
     return out;
   };
   return {
+    allocation,
     classStartKey,
     ascendancyId,
     frontierKeys,
@@ -64,6 +69,6 @@ export function buildPathingContext(
     },
     hiddenKeys,
     entwinedKeys: computeEntwinedAllocatableKeys(data, allocation.shared, ascendancyId, hiddenKeys),
-    entwinedActive: isEntwinedRealitiesActive(data, allocation.shared, ascendancyId),
+    entwinedActive,
   };
 }

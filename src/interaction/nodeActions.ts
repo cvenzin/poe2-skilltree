@@ -2,9 +2,9 @@ import type { TreeData } from '../data/types';
 import { frontierKeysFor, startNodeKeyForClass } from '../data/normalize';
 import { allAllocated, bucketOf, removeKey, type Allocation, type AllocationMode } from '../state/allocation';
 import { allocationBudgetError, countBudgets } from '../state/budgets';
-import { revalidateAllocation } from '../state/buildRules';
+import { multipleChoiceAllocationError, revalidateAllocation } from '../state/buildRules';
 import { buildPathingContext, type PathingContext } from './pathingContext';
-import { bfsShortestPath, autoOptionsForPath, applyPathAllocation } from './pathing';
+import { allocationPath } from './allocationPath';
 
 export const modeName = { shared: 'Main', set1: 'Set 1', set2: 'Set 2' };
 export interface EditProposal {
@@ -41,18 +41,16 @@ export function proposeNodeEdit(key: string, data: TreeData, state: ProposalStat
     const ctx = suppliedPathing ?? buildPathingContext(data, startNodeKeyForClass(state.className, data),
       state.ascendancyId, frontierKeysFor(data, state.className, state.ascendancyId), state.allocation);
     if (ctx.blockedByMode[state.allocationMode].has(key)) return 'This node is restricted by the current class, ascendancy, unlock requirements, or allocation mode.';
-    const frontier = ctx.frontierByMode[state.allocationMode];
-    const route = ctx.entwinedKeys.has(key) ? [key] : bfsShortestPath(data, frontier, ctx.classStartKey, key, ctx.blockedByMode[state.allocationMode]);
-    if (!route?.length) return 'No reachable path in this allocation mode. Try Main or the connected weapon set.';
-    const options = autoOptionsForPath(data, route, frontier);
-    path = [...route, ...options];
-    next = applyPathAllocation(data, state.allocation, route, options, state.allocationMode);
+    const route = allocationPath(data, ctx, state.allocationMode, key);
+    if (!route) return 'No reachable path in this allocation mode. Try Main or the connected weapon set.';
+    path = route.path;
+    next = route.next;
   }
   next = revalidateAllocation(next, data, state.className, state.ascendancyId);
   const before = allAllocated(state.allocation), after = allAllocated(next);
   const added = [...after].filter((k) => !before.has(k));
   const removed = [...before].filter((k) => !after.has(k));
-  return { next, path, added, removed, error: allocationBudgetError(next, state.ascendancyId, data)?.message ??
+  return { next, path, added, removed, error: multipleChoiceAllocationError(next, data) ?? allocationBudgetError(next, state.ascendancyId, data)?.message ??
     (!bucket && !after.has(key) ? 'This node does not meet its connection or unlock requirements.' : null) };
 }
 

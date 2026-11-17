@@ -52,7 +52,8 @@ unreadable storage is left untouched for recovery; reload after resolving it.
 If a shared URL or a fallback tree opens during startup while storage is full,
 it stays in an independent draft in memory. Named builds remain intact when
 saving recovers. During editing, opening a shared URL for another version first
-requires the current build to save successfully.
+requires the current build to save successfully. A refused link is removed from
+the address bar so reloading after storage recovers restores the current draft.
 The library is local to this browser, device, and site origin. There is no cloud
 sync or cross-tab merge; avoid editing the library in multiple tabs at once.
 

@@ -60,12 +60,15 @@ uses mobile interactions.
 
 ## Keyboard access
 
-Search highlights matching nodes on the tree. Enter and Shift+Enter move
+Search highlights matching nodes on the tree. Unlocking or refunding a skill refreshes
+those highlights even with the toolbar collapsed. Enter and Shift+Enter move
 through matches; Alt+Enter opens a separate accessible inspector for the
 current match. It provides the full node details and an action to allocate,
 edit an attribute, or remove. Escape closes it and returns focus to search.
 Keyboard cascade removals use a confirmation. Undo and redo remain in the
-Build menu and are also available through their keyboard shortcuts.
+Build menu and are also available through their keyboard shortcuts. For more
+than ten allocated nodes, R opens the build controls and shows the reset
+confirmation. A second press confirms it. Holding R leaves the dialog open.
 
 ## Shared behavior
 
@@ -87,6 +90,7 @@ Build menu and are also available through their keyboard shortcuts.
 - **Costs and availability:** Show the actual cost of a proposed path,
   accounting for free skills, automatic options, ascendancy points, and the
   edited tree. Explain rejected or unavailable edits when the reason is known.
+  A pointer preview over budget shows both its cost and the rejection reason.
 - **Weapon sets:** Main, Set 1, and Set 2 edit only their own allocations.
   A shared removal can affect both weapon-set branches; show the affected
   branches before committing. See [weapon-set support](weapon-set-support.md)
